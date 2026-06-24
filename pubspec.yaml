@@ -39,7 +39,7 @@ dependencies:
   timeago: ^3.6.1
   go_router: ^17.0.0
   google_fonts: ^6.3.2
-  intl: ^0.19.0
+  intl: ^0.20.2
   shared_preferences: ^2.5.4
   file_picker: ^10.3.8
   image_picker: ^1.0.7
@@ -57,10 +57,11 @@ dependencies:
   flutter_markdown: ^0.7.2+1
   uuid: ^4.5.1
   record: ^6.1.2
-  audioplayers: ^6.5.1
+  audioplayers: ^6.6.0
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
   http: ^1.2.0
+  image: ^4.1.7
   flutter_web_plugins:
     sdk: flutter
   pdf: ^3.11.3
@@ -68,6 +69,10 @@ dependencies:
   url_launcher: ^6.3.2
   share_plus: ^12.0.1
   screenshot: ^3.0.0
+  archive: ^4.0.9
+  web: ^1.1.1
+  flutter_quill: ^11.5.0
+  quill_markdown: ^0.1.0
 
 dev_dependencies:
   flutter_test:

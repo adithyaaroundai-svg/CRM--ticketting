@@ -51,7 +51,7 @@ class UnclaimedTicketsSplitPage extends ConsumerWidget {
                       context.go('/admin');
                     } else if (currentUser?.isAccountant == true) {
                       context.go('/accountant');
-                    } else if (currentUser?.isSupport == true) {
+                    } else if (currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isProjectCoordinator == true) {
                       context.go('/support');
                     } else {
                       context.go('/'); // Default to agent dashboard

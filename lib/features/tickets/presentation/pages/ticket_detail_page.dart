@@ -19,11 +19,9 @@ import '../widgets/resolve_bill_dialog.dart';
 
 class TicketDetailPage extends ConsumerStatefulWidget {
   final String ticketId;
-  final bool autoClaim;
   const TicketDetailPage({
     super.key,
     required this.ticketId,
-    this.autoClaim = false,
   });
 
   @override
@@ -68,8 +66,6 @@ String _agentLoadLabel(int count) {
 }
 
 class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
-  bool _didAutoClaim = false;
-
   Future<void> _updateStatus(String newStatus) async {
     await ref
         .read(ticketStatusUpdaterProvider.notifier)
@@ -88,21 +84,6 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
 
     if (success) {
       // Keep it simple: claim only. No auto status changes or manual invalidation.
-    }
-  }
-
-  void _maybeAutoClaim(Ticket ticket, Agent? currentUser) {
-    if (_didAutoClaim || !widget.autoClaim) return;
-
-    final canClaim = currentUser?.isSupport == true ||
-        currentUser?.isSupportHead == true ||
-        currentUser?.isAgent == true;
-    final isUnassigned =
-        ticket.assignedTo == null || ticket.assignedTo!.isEmpty;
-
-    _didAutoClaim = true;
-    if (canClaim && isUnassigned) {
-      _claimTicket(ticket);
     }
   }
 
@@ -136,22 +117,18 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
     final agentsAsync = ref.read(agentsListProvider);
     final currentUser = ref.read(authProvider);
     final isAdmin = currentUser?.isAdmin == true;
-    final ticketsSnapshot = ref.read(ticketsStreamProvider);
     final Map<String, int> agentLoadCounts = {};
     const completedStatuses = {'Resolved', 'Closed', 'BillProcessed'};
 
-    ticketsSnapshot.when(
-      data: (tickets) {
-        for (final ticket in tickets) {
-          final assignee = ticket.assignedTo;
-          if (assignee == null || assignee.isEmpty) continue;
-          if (completedStatuses.contains(ticket.status)) continue;
-          agentLoadCounts[assignee] = (agentLoadCounts[assignee] ?? 0) + 1;
-        }
-      },
-      loading: () {},
-      error: (_, __) {},
-    );
+    // Read the raw stream to count agent load
+    ref.read(rawAllTicketsStreamProvider).whenData((tickets) {
+      for (final ticket in tickets) {
+        final assignee = ticket.assignedTo;
+        if (assignee == null || assignee.isEmpty) continue;
+        if (completedStatuses.contains(ticket.status)) continue;
+        agentLoadCounts[assignee] = (agentLoadCounts[assignee] ?? 0) + 1;
+      }
+    });
 
     agentsAsync.when(
       data: (agents) {
@@ -351,7 +328,9 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
     final canManageAssignment = isAdmin ||
         currentUser?.isSupportHead == true ||
         currentUser?.isAgent == true;
-    final ticketsAsync = ref.watch(ticketsStreamProvider);
+    final ticketsAsync = ref.watch(
+      singleTicketStreamProvider(widget.ticketId),
+    );
     final appSettings = ref
         .watch(appSettingsProvider)
         .maybeWhen(data: (value) => value, orElse: () => null);
@@ -434,12 +413,11 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
           ],
         ),
         body: ticketsAsync.when(
-          data: (tickets) {
-            final ticket = tickets.firstWhere(
-              (t) => t.ticketId == widget.ticketId,
-              orElse: () => tickets.first,
-            );
-            _maybeAutoClaim(ticket, currentUser);
+          skipLoadingOnReload: true,
+          data: (ticket) {
+            if (ticket == null) {
+              return const Center(child: Text('Ticket not found'));
+            }
             final agentsAsync = ref.watch(agentsListProvider);
             final customerAsync = ref.watch(
               customerProvider(ticket.customerId),
@@ -573,12 +551,43 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
                                   const SizedBox(width: 6),
                                   Text(
                                     ticket.createdAt != null
-                                        ? timeago.format(ticket.createdAt!)
+                                        ? timeago.format(ticket.createdAt!.toLocal())
                                         : 'Unknown',
                                     style: TextStyle(color: AppColors.slate500, fontSize: 13),
                                   ),
                                 ],
                               ),
+                              if ((ticket.contactPhone ?? '').isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      LucideIcons.phone,
+                                      size: 14,
+                                      color: AppColors.slate400,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Caller:',
+                                      style: TextStyle(
+                                        color: AppColors.slate500,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: SelectableText(
+                                        ticket.contactPhone!,
+                                        style: const TextStyle(
+                                          color: AppColors.slate900,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                               const SizedBox(height: 8),
                               // Assignee row
                               agentsAsync.when(
@@ -751,6 +760,8 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
                   if ((ticket.assignedTo == null ||
                           ticket.assignedTo!.isEmpty) &&
                       (currentUser?.isSupport == true ||
+                          currentUser?.isHR == true ||
+                          currentUser?.isProjectCoordinator == true ||
                           currentUser?.isSupportHead == true ||
                           currentUser?.isAgent == true))
                     AppButton(
@@ -773,7 +784,36 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
                         AppButton.secondary(
                           label: 'Resolve',
                           icon: LucideIcons.check,
-                          onPressed: () => _updateStatus('Resolved'),
+                          onPressed: () async {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (dialogContext) => AlertDialog(
+                                title: const Text('Resolve Ticket'),
+                                content: const Text(
+                                  'Are you sure you want to resolve this ticket? This will mark it as completed.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, true),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.success,
+                                    ),
+                                    child: const Text('Resolve'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirmed == true) {
+                              _updateStatus('Resolved');
+                            }
+                          },
                         ),
                         const SizedBox(width: 12),
                         AppButton(
@@ -1006,11 +1046,11 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
                                           final timeLabel = completed
                                               ? (completedAt == null
                                                     ? null
-                                                    : 'Completed ${timeago.format(completedAt)}')
+                                                    : 'Completed ${timeago.format(completedAt.toLocal())}')
                                               : (assignedAt == null
                                                     ? null
                                                     : timeago.format(
-                                                        assignedAt,
+                                                        assignedAt.toLocal(),
                                                       ));
 
                                           return Padding(
@@ -1191,7 +1231,7 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
-                                              '${a.type} · ${timeago.format(a.occurredAt)}',
+                                              '${a.type} · ${timeago.format(a.occurredAt.toLocal())}',
                                               style: const TextStyle(
                                                 fontSize: 11,
                                                 color: AppColors.slate600,
@@ -1478,3 +1518,10 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
     );
   }
 }
+
+
+
+
+
+
+

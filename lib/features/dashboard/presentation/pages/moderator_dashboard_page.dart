@@ -6,13 +6,56 @@ import '../../../../core/design_system/design_system.dart';
 import '../widgets/animated_create_ticket_fab.dart';
 import '../widgets/create_ticket_dialog.dart';
 import '../../../tickets/presentation/providers/ticket_provider.dart';
+import '../../../tickets/domain/entities/ticket.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../chat/data/repositories/chat_repository.dart';
+import '../../../chat/presentation/providers/chat_provider.dart';
 import '../widgets/ticket_card_with_amc.dart';
 
-class ModeratorDashboardPage extends ConsumerWidget {
+class ModeratorDashboardPage extends ConsumerStatefulWidget {
   const ModeratorDashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ModeratorDashboardPage> createState() => _ModeratorDashboardPageState();
+}
+
+class _ModeratorDashboardPageState extends ConsumerState<ModeratorDashboardPage> {
+  Future<void> _showCreateTicketDialog() async {
+    final createdTicket = await showDialog<Ticket>(
+      context: context,
+      builder: (context) => const CreateTicketDialog(
+        postToChat: false,
+      ),
+    );
+
+    if (createdTicket == null) return;
+
+    await _sendCreatedTicketMessage(createdTicket);
+    ref.invalidate(chatStreamProvider('support-chat'));
+    ref.invalidate(chatUnreadCountProvider);
+  }
+
+  Future<void> _sendCreatedTicketMessage(Ticket ticket) async {
+    final agent = ref.read(authProvider);
+    if (agent == null) return;
+
+    final chatContent = [
+      'Company: ${ticket.customerId}',
+      'Issue: ${ticket.title}',
+      'TicketID: ${ticket.ticketId}',
+    ].join('\n');
+
+    await ref.read(chatRepositoryProvider).sendMessage(
+          senderId: agent.id,
+          senderName: agent.fullName ?? agent.username,
+          senderRole: agent.role,
+          content: chatContent,
+          senderAvatarUrl: agent.avatarUrl,
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ticketsAsync = ref.watch(ticketsStreamProvider);
 
     return MainLayout(
@@ -20,12 +63,7 @@ class ModeratorDashboardPage extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: AppColors.slate50,
         floatingActionButton: AnimatedCreateTicketFab(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) => const CreateTicketDialog(),
-            );
-          },
+          onPressed: _showCreateTicketDialog,
         ),
         body: ticketsAsync.when(
           data: (tickets) {
@@ -80,7 +118,7 @@ class ModeratorDashboardPage extends ConsumerWidget {
                     trailing: AppButton.ghost(
                       label: 'Refresh',
                       icon: Icons.refresh,
-                      onPressed: () => ref.invalidate(ticketsStreamProvider),
+                      onPressed: () => ref.invalidate(rawTicketsStreamProvider),
                     ),
                   ),
                   const SizedBox(height: 16),

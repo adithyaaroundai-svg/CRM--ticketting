@@ -1,78 +1,329 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../theme/theme_mode_provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../features/auth/presentation/providers/auth_provider.dart';
 import '../theme/app_colors.dart';
+
 import '../../../features/tickets/presentation/providers/ticket_provider.dart';
 import '../../../features/customers/presentation/providers/customer_provider.dart';
 import '../../../features/dashboard/presentation/providers/app_settings_provider.dart';
 import '../../network/connectivity_provider.dart';
 import '../../../features/productivity/presentation/widgets/notification_bell.dart';
 import '../../../features/chat/presentation/providers/chat_provider.dart';
+import '../../../features/tickets/domain/entities/ticket.dart';
+import '../../../features/chat/presentation/widgets/chat_toast_overlay.dart';
+import '../../../features/productivity/presentation/widgets/add_reminder_dialog.dart';
+import '../../../features/productivity/presentation/widgets/reminder_toast_overlay.dart';
+import '../../../features/productivity/presentation/providers/reminder_provider.dart';
+import '../../services/reminder_sound_service.dart';
+import '../../services/chat_sound_service.dart';
 
-class MainLayout extends StatelessWidget {
+class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
   final String currentPath;
 
   const MainLayout({super.key, required this.child, required this.currentPath});
 
   @override
+  ConsumerState<MainLayout> createState() => _MainLayoutState();
+}
+
+class _MainLayoutState extends ConsumerState<MainLayout> {
+  double _firstPaneWidth = 240;
+  double _secondPaneWidth = 240;
+  final double _minPaneWidth = 180;
+  final double _maxPaneWidth = 400;
+  bool _isTicketPaneOpen = true;
+  Timer? _lastSeenUpdateTimer;
+  bool _isDisposed = false;
+  bool _hasInitialized = false;
+  ProviderSubscription? _chatListenerSubscription;
+  ProviderSubscription? _aroundTallyListenerSubscription;
+  ProviderContainer? _container;
+
+  // Restricted agents check
+  static const _allowedAroundTallyChannelIds = {
+    'd7a9e726-9520-4cc8-95a6-b38a4afd1d7b',
+    'dedce60a-56bd-49fd-bbe2-f88534b8e36f',
+  };
+  bool get _isRestrictedAgent {
+    final currentUser = ref.read(authProvider);
+    return _allowedAroundTallyChannelIds.contains(currentUser?.id ?? '');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen once for the lifetime of the layout widget — never re-registers
+    // on navigation rebuilds, so old messages never re-fire.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_isDisposed && !_hasInitialized) {
+        _hasInitialized = true;
+        _setupChatListener();
+        _startLastSeenUpdates();
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Cache the container so async callbacks never look up an ancestor after deactivation
+    _container = ProviderScope.containerOf(context);
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _hasInitialized = false;
+    _chatListenerSubscription?.close();
+    _chatListenerSubscription = null;
+    _aroundTallyListenerSubscription?.close();
+    _aroundTallyListenerSubscription = null;
+    _lastSeenUpdateTimer?.cancel();
+    _lastSeenUpdateTimer = null;
+    _container = null;
+    super.dispose();
+  }
+
+  void _startLastSeenUpdates() {
+    // Update last_seen immediately on start
+    final container = _container;
+    if (container != null && !_isDisposed) {
+      final currentUser = container.read(authProvider);
+      if (currentUser != null) {
+        _updateLastSeen(currentUser.id);
+      }
+    }
+    // Then update every 2 minutes while user is active
+    _lastSeenUpdateTimer = Timer.periodic(const Duration(minutes: 2), (timer) {
+      final c = _container;
+      if (_isDisposed || c == null || _lastSeenUpdateTimer == null) {
+        timer.cancel();
+        return;
+      }
+      final currentUser = c.read(authProvider);
+      if (currentUser != null) {
+        _updateLastSeen(currentUser.id);
+      }
+      // Also refresh agents list to get updated last_seen from other users
+      if (!_isDisposed && _container != null) {
+        c.invalidate(agentsListProvider);
+      }
+    });
+  }
+
+  Future<void> _updateLastSeen(String agentId) async {
+    if (_isDisposed || _container == null) return;
+    try {
+      final client = Supabase.instance.client;
+      await client
+          .from('agents')
+          .update({'last_seen': DateTime.now().toUtc().toIso8601String()})
+          .eq('id', agentId);
+    } catch (e) {
+      // Silently fail - this is non-critical
+    }
+  }
+
+  void _setupChatListener() {
+    final c = _container;
+    if (c == null) return;
+    // Use ProviderContainer.listen() directly — never touches the widget tree
+    _chatListenerSubscription = c.listen(
+      chatStreamProvider('support-chat'),
+      (previous, next) {
+        if (_isDisposed || _container == null) return;
+        final myId = c.read(authProvider)?.id;
+        if (myId == null) return;
+        if (widget.currentPath.startsWith('/chat')) return;
+
+        // Skip the very first emission (historical data load)
+        if (previous == null) return;
+
+        final prevMessages = previous.value ?? [];
+        final nextMessages = next.value ?? [];
+        if (nextMessages.length <= prevMessages.length) return;
+
+        final prevIds = prevMessages.map((m) => m.id).toSet();
+
+        // Only consider messages that are:
+        //  1. Not in the previous snapshot (truly new this emission)
+        //  2. Not sent by the current user
+        //  3. Newer than the user's last-seen timestamp (not already read)
+        final lastSeen = c.read(chatLastSeenProvider).value;
+        final newMessages = nextMessages
+            .where(
+              (m) =>
+                  !prevIds.contains(m.id) &&
+                  m.senderId.trim().toLowerCase() != myId.trim().toLowerCase() &&
+                  (lastSeen == null || m.createdAt.toUtc().isAfter(lastSeen)),
+            )
+            .toList();
+
+        if (newMessages.isNotEmpty) {
+          ChatSoundService.playPing();
+          if (!_isDisposed && _container != null) {
+            c.read(chatNewMessageEventProvider.notifier).notify(newMessages.last);
+          }
+        }
+      },
+    );
+
+    // All-AroundTally channel listener
+    _aroundTallyListenerSubscription = c.listen(
+      chatStreamProvider('all-aroundtally'),
+      (previous, next) {
+        if (_isDisposed || _container == null) return;
+        final myId = c.read(authProvider)?.id;
+        if (myId == null) return;
+        if (widget.currentPath.startsWith('/channel/all-aroundtally')) return;
+
+        // Skip the very first emission (historical data load)
+        if (previous == null) return;
+
+        final prevMessages = previous.value ?? [];
+        final nextMessages = next.value ?? [];
+        if (nextMessages.length <= prevMessages.length) return;
+
+        final prevIds = prevMessages.map((m) => m.id).toSet();
+
+        // Only consider messages that are:
+        //  1. Not in the previous snapshot (truly new this emission)
+        //  2. Not sent by the current user
+        //  3. Newer than the user's last-seen timestamp (not already read)
+        final lastSeen = c.read(allAroundTallyLastSeenProvider).value;
+        final newMessages = nextMessages
+            .where(
+              (m) =>
+                  !prevIds.contains(m.id) &&
+                  m.senderId.trim().toLowerCase() != myId.trim().toLowerCase() &&
+                  (lastSeen == null || m.createdAt.toUtc().isAfter(lastSeen)),
+            )
+            .toList();
+
+        if (newMessages.isNotEmpty) {
+          ChatSoundService.playPing();
+          if (!_isDisposed && _container != null) {
+            c.read(allAroundTallyNewMessageEventProvider.notifier).notify(newMessages.last);
+          }
+        }
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Responsive check
+    // Keep reminders provider alive for sound notifications
+    ref.watch(remindersProvider);
+    // Note: chatStreamProvider is already listened to in _setupChatListener,
+    // no need to watch it here to avoid unnecessary rebuilds
+
+    // Reminder sound
+    ref.listen(lastTriggeredReminderProvider, (previous, next) {
+      if (!mounted || _isDisposed) return;
+      final prevIds = previous?.map((r) => r.id).toSet() ?? {};
+      final nextIds = next.map((r) => r.id).toSet();
+      if (nextIds.difference(prevIds).isNotEmpty) {
+        ReminderSoundService.playBeep();
+      }
+    });
+
     final isDesktop = MediaQuery.of(context).size.width > 900;
 
     if (isDesktop) {
-      return Scaffold(
-        body: Column(
-          children: [
-            const _OfflineBanner(),
-            Expanded(
-              child: Row(
-                children: [
-                  _Sidebar(currentPath: currentPath),
-                  const VerticalDivider(width: 1, color: AppColors.border),
-                  Expanded(child: child),
-                ],
-              ),
+      return ChatToastOverlay(
+        currentPath: widget.currentPath,
+        child: ReminderToastOverlay(
+          child: Scaffold(
+            body: Row(
+              children: [
+                SizedBox(
+                  width: _firstPaneWidth,
+                  child: _LeftNav(currentPath: widget.currentPath),
+                ),
+                _ResizeHandle(
+                  onDrag: (delta) {
+                    setState(() {
+                      _firstPaneWidth = (_firstPaneWidth + delta).clamp(_minPaneWidth, _maxPaneWidth);
+                    });
+                  },
+                ),
+                if (!_isRestrictedAgent)
+                _CollapsibleTicketPane(
+                  currentPath: widget.currentPath,
+                  isOpen: _isTicketPaneOpen,
+                  onToggle: () => setState(() => _isTicketPaneOpen = !_isTicketPaneOpen),
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      const _OfflineBanner(),
+                      _TopNav(currentPath: widget.currentPath),
+                      const Divider(height: 1, color: AppColors.border),
+                      Expanded(child: widget.child),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       );
     }
 
-    return Scaffold(
-      body: Column(
-        children: [
-          const _OfflineBanner(),
-          Expanded(child: child),
-        ],
+    return ChatToastOverlay(
+      currentPath: widget.currentPath,
+      child: ReminderToastOverlay(
+        child: Scaffold(
+          body: Column(
+            children: [
+              const _OfflineBanner(),
+              Expanded(child: widget.child),
+            ],
+          ),
+          bottomNavigationBar: _BottomNav(currentPath: widget.currentPath),
+        ),
       ),
-      bottomNavigationBar: _BottomNav(currentPath: currentPath),
     );
   }
 }
 
-class _Sidebar extends ConsumerWidget {
+class _TopNav extends ConsumerWidget {
   final String currentPath;
 
-  const _Sidebar({required this.currentPath});
+  const _TopNav({required this.currentPath});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(authProvider);
+
+
     final appSettings = ref
         .watch(appSettingsProvider)
         .maybeWhen(data: (value) => value, orElse: () => null);
     final advSettings = ref
         .watch(advancedSettingsProvider)
         .maybeWhen(data: (value) => value, orElse: () => null);
+    // Alert counts not shown in nav anymore.
 
     final role = currentUser?.role ?? 'Support';
     final isSales = currentUser?.isSales == true;
+    final isTeleCaller = currentUser?.isTeleCaller == true;
     final simplifyNav =
-        currentUser?.isSupport == true || currentUser?.isSupportHead == true;
+        currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isProjectCoordinator == true || currentUser?.isSupportHead == true || isTeleCaller;
+
+    // Restricted agents check
+    const allowedAroundTallyChannelIds = {
+      'd7a9e726-9520-4cc8-95a6-b38a4afd1d7b',
+      'dedce60a-56bd-49fd-bbe2-f88534b8e36f',
+    };
+    final isRestrictedAgent = allowedAroundTallyChannelIds.contains(currentUser?.id ?? '');
 
     // Feature flags (global enable/disable)
     final enableNotifications = appSettings == null
@@ -95,17 +346,21 @@ class _Sidebar extends ConsumerWidget {
     }
 
     final showClaimTicketsLabel =
-        currentUser?.isSupport == true || currentUser?.isSupportHead == true;
+        currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isProjectCoordinator == true || currentUser?.isSupportHead == true;
     final showBillsAsDashboard = currentUser?.isAccountant == true;
 
     final canViewAmcReminder =
         !simplifyNav &&
         (currentUser?.isSupport == true ||
+            currentUser?.isHR == true ||
+            currentUser?.isProjectCoordinator == true ||
             currentUser?.isSupportHead == true ||
             currentUser?.isAgent == true);
     final canViewPastTickets =
         !simplifyNav &&
         (currentUser?.isSupport == true ||
+            currentUser?.isHR == true ||
+            currentUser?.isProjectCoordinator == true ||
             currentUser?.isSupportHead == true ||
             currentUser?.isAgent == true);
     final canViewBills =
@@ -129,293 +384,353 @@ class _Sidebar extends ConsumerWidget {
             currentUser?.isAccountant == true ||
             currentUser?.isSupportHead == true);
 
+    final unreadCount = ref.watch(chatUnreadCountProvider);
+    
+    // Main navigation items (left side)
+    final isSalesChannel = currentPath.startsWith('/sales-channel');
+    final mainNavItems = <Widget>[
+      if (isSalesChannel) ...[
+        _TopNavItem(
+          label: 'Chat',
+          icon: LucideIcons.messageCircle,
+          path: '/sales-channel?tab=0',
+          isActive: currentPath == '/sales-channel' || currentPath.contains('/sales-channel') && (GoRouterState.of(context).uri.queryParameters['tab'] ?? '0') == '0',
+        ),
+        _TopNavItem(
+          label: 'Sales',
+          icon: LucideIcons.shoppingCart,
+          path: '/sales-channel?tab=1',
+          isActive: currentPath.contains('/sales-channel') && (GoRouterState.of(context).uri.queryParameters['tab'] ?? '') == '1',
+        ),
+        _TopNavItem(
+          label: 'Pipeline',
+          icon: LucideIcons.layers,
+          path: '/sales-channel?tab=2',
+          isActive: currentPath.contains('/sales-channel') && (GoRouterState.of(context).uri.queryParameters['tab'] ?? '') == '2',
+        ),
+      ] else ...[
+        _TopNavItem(
+          label: 'Chat',
+          icon: LucideIcons.messageSquare,
+          path: '/chat',
+          isActive: currentPath.startsWith('/chat'),
+          badgeCount: unreadCount,
+        ),
+        if (!isRestrictedAgent)
+        _TopNavItem(
+          label: showBillsAsDashboard
+              ? 'Bills'
+              : (isSales
+                  ? 'Dashboard'
+                  : (showClaimTicketsLabel ? 'Tickets' : 'Dashboard')),
+          icon: showBillsAsDashboard ? LucideIcons.receipt : (showClaimTicketsLabel ? LucideIcons.ticket : LucideIcons.layoutDashboard),
+          path: showBillsAsDashboard 
+              ? '/accountant' 
+              : (isSales 
+                  ? '/sales' 
+                  : (currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isProjectCoordinator == true ? '/support' : '/')),
+          isActive: currentPath == '/' ||
+              currentPath == '/admin' ||
+              currentPath == '/accountant' ||
+              currentPath == '/sales' ||
+              currentPath == '/support' ||
+              (showClaimTicketsLabel && (currentPath.startsWith('/tickets') || currentPath.startsWith('/ticket'))),
+        ),
+        if (!isRestrictedAgent && currentUser?.isAccountant != true &&
+            currentUser?.isSupport != true &&
+            currentUser?.isHR != true &&
+            currentUser?.isProjectCoordinator != true &&
+            currentUser?.isSupportHead != true)
+          _TopNavItem(
+            label: isSales ? 'My Tickets' : (isTeleCaller ? 'My Tickets' : 'Tickets'),
+            icon: LucideIcons.ticket,
+            path: '/tickets',
+            isActive: currentPath.startsWith('/tickets') ||
+                currentPath.startsWith('/ticket'),
+          ),
+        // Support Dashboard for Accountants
+        if (!isRestrictedAgent && currentUser?.isAccountant == true)
+          _TopNavItem(
+            label: 'Support',
+            icon: LucideIcons.headphones,
+            path: '/support',
+            isActive: currentPath == '/support',
+          ),
+      ],
+    ];
+    
+    // Right side utility items (near profile)
+    final useGroupedNav = currentUser?.isAdmin == true || currentUser?.isAccountant == true;
+
+    final rightNavItems = <Widget>[
+      if (enableNotifications)
+        _TopNavButton(
+          label: 'Alerts',
+          icon: LucideIcons.bell,
+          onTap: () {},
+        ),
+      if (enableGlobalSearch)
+        _TopNavButton(
+          label: 'Search',
+          icon: LucideIcons.search,
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) => const _GlobalSearchDialog(),
+            );
+          },
+        ),
+      _TopNavButton(
+        label: 'Reminder',
+        icon: LucideIcons.alarmClock,
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (_) => const AddReminderDialog(),
+          );
+        },
+      ),
+
+      if (!useGroupedNav) ...[
+        if (currentUser?.isTeleCaller != true && !isRestrictedAgent)
+          _TopNavItem(
+            label: 'Customers',
+            icon: LucideIcons.users,
+            path: '/customers',
+            isActive: currentPath.startsWith('/customers') ||
+                currentPath.startsWith('/customer'),
+          ),
+        if (canViewAmcReminder)
+          _TopNavItem(
+            label: 'AMC Reminder',
+            icon: LucideIcons.calendarClock,
+            path: '/amc-reminder',
+            isActive: currentPath.startsWith('/amc-reminder'),
+          ),
+        if (!isRestrictedAgent && currentUser?.isSoftwareDeveloper != true && (canViewBills || currentUser?.isProjectCoordinator == true) && !showBillsAsDashboard)
+          _TopNavItem(
+            label: 'Bills',
+            icon: LucideIcons.receipt,
+            path: '/bills',
+            isActive: currentPath.startsWith('/bills'),
+          ),
+        if (!isRestrictedAgent && canViewPastTickets)
+          _TopNavItem(
+            label: 'Past Tickets',
+            icon: LucideIcons.archive,
+            path: '/past-tickets',
+            isActive: currentPath == '/past-tickets',
+          ),
+        if (currentUser?.isAdmin == true || currentUser?.isAccountant == true)
+          _TopNavItem(
+            label: 'Revenue',
+            icon: LucideIcons.indianRupee,
+            path: '/revenue',
+            isActive: currentPath.startsWith('/revenue'),
+          ),
+        if (canViewSalesOpportunity)
+          _TopNavItem(
+            label: 'Sales Opportunity',
+            icon: LucideIcons.trendingUp,
+            path: '/sales-opportunity',
+            isActive: currentPath.startsWith('/sales-opportunity'),
+          ),
+        if (canViewReports)
+          _TopNavItem(
+            label: 'Reports',
+            icon: LucideIcons.barChart,
+            path: '/reports',
+            isActive: currentPath.startsWith('/reports'),
+          ),
+        if (currentUser?.isAdmin == true || currentUser?.isHR == true || currentUser?.id == '326cf09e-ab94-4dd4-bc90-93c41d626b1d')
+          _TopNavItem(
+            label: 'User Management',
+            icon: LucideIcons.users,
+            path: '/users',
+            isActive: currentPath.startsWith('/users'),
+          ),
+        if (canViewDeals)
+          _TopNavItem(
+            label: 'Deals',
+            icon: LucideIcons.briefcase,
+            path: '/deals',
+            isActive: currentPath.startsWith('/deals'),
+          ),
+        if (currentUser?.isSales == true ||
+            currentUser?.isAccountant == true ||
+            currentUser?.isAdmin == true)
+          _TopNavItem(
+            label: 'Leads',
+            icon: LucideIcons.target,
+            path: '/leads',
+            isActive: currentPath.startsWith('/leads'),
+          ),
+        if (!(currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isSupportHead == true) && currentUser?.isTeleCaller != true && currentUser?.isSoftwareDeveloper != true && currentUser?.isDigitalMarketing != true)
+          _TopNavItem(
+            label: 'Proposals',
+            icon: LucideIcons.fileText,
+            path: '/proposal-generator',
+            isActive: currentPath.startsWith('/proposal-generator'),
+          ),
+        if (currentUser?.isAdmin == true)
+          _TopNavItem(
+            label: 'Settings',
+            icon: LucideIcons.settings,
+            path: '/settings',
+            isActive: currentPath.startsWith('/settings'),
+          ),
+      ] else ...[
+        // Grouped Icon Menus for Admin and Accountant
+        _TopNavHoverMenu(
+          icon: LucideIcons.briefcase,
+          tooltip: 'Sales',
+          isParentActive: currentPath.startsWith('/leads') || currentPath.startsWith('/deals') || currentPath.startsWith('/proposal-generator') || currentPath.startsWith('/customers') || currentPath.startsWith('/customer'),
+          items: [
+            if (currentUser?.isSales == true || currentUser?.isAccountant == true || currentUser?.isAdmin == true)
+              _DropdownItem(label: 'Leads', icon: LucideIcons.target, path: '/leads', isActive: currentPath.startsWith('/leads')),
+            if (canViewDeals)
+              _DropdownItem(label: 'Deals', icon: LucideIcons.briefcase, path: '/deals', isActive: currentPath.startsWith('/deals')),
+            if (!(currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isSupportHead == true) && currentUser?.isSoftwareDeveloper != true && currentUser?.isDigitalMarketing != true)
+              _DropdownItem(label: 'Proposals', icon: LucideIcons.fileText, path: '/proposal-generator', isActive: currentPath.startsWith('/proposal-generator')),
+            if (!isRestrictedAgent)
+              _DropdownItem(label: 'Customers', icon: LucideIcons.users, path: '/customers', isActive: currentPath.startsWith('/customers') || currentPath.startsWith('/customer')),
+          ],
+        ),
+        
+        _TopNavHoverMenu(
+          icon: LucideIcons.indianRupee,
+          tooltip: 'Finance',
+          isParentActive: currentPath.startsWith('/bills') || currentPath.startsWith('/revenue'),
+          items: [
+            if (currentUser?.isSoftwareDeveloper != true && canViewBills && !showBillsAsDashboard)
+              _DropdownItem(label: 'Bills', icon: LucideIcons.receipt, path: '/bills', isActive: currentPath.startsWith('/bills')),
+            if (currentUser?.isAdmin == true || currentUser?.isAccountant == true)
+              _DropdownItem(label: 'Revenue', icon: LucideIcons.indianRupee, path: '/revenue', isActive: currentPath.startsWith('/revenue')),
+            if (currentUser?.isAccountant == true)
+              _DropdownItem(label: 'Support', icon: LucideIcons.headphones, path: '/support', isActive: currentPath == '/support'),
+          ],
+        ),
+        
+        if (canViewReports)
+          _TopNavHoverMenu(
+            icon: LucideIcons.barChart,
+            tooltip: 'Analytics',
+            isParentActive: currentPath.startsWith('/reports'),
+            onDirectTap: () => context.go('/reports'),
+          ),
+        
+        _TopNavHoverMenu(
+          icon: LucideIcons.settings,
+          tooltip: 'Administration',
+          isParentActive: currentPath.startsWith('/users') || currentPath.startsWith('/settings'),
+          items: [
+            if (currentUser?.isAdmin == true || currentUser?.isHR == true)
+              _DropdownItem(label: 'User Management', icon: LucideIcons.users, path: '/users', isActive: currentPath.startsWith('/users')),
+            if (currentUser?.isAdmin == true)
+              _DropdownItem(label: 'Settings', icon: LucideIcons.settings, path: '/settings', isActive: currentPath.startsWith('/settings')),
+          ],
+        ),
+      ],
+    ];
+
     return Container(
-      width: 260,
+      height: 64,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
           colors: [AppColors.primaryDark, AppColors.slate900],
         ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 20,
-            offset: const Offset(4, 0),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Column(
+      child: Row(
         children: [
-          // Logo Area - Enterprise styled
-          Container(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  width: 1,
-                ),
-              ),
-            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [AppColors.primaryLight, AppColors.primary],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.4),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Icon(
                     LucideIcons.checkSquare,
                     color: Colors.white,
-                    size: 20,
+                    size: 16,
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'TallyCare',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 20,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        'Enterprise',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.5),
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
+                const SizedBox(width: 8),
+                const Text(
+                  'TallyCare',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
           ),
-          // Search & Notifications
-          if (enableGlobalSearch || enableNotifications)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Row(
-                children: [
-                  if (enableGlobalSearch)
-                    Expanded(
-                      child: InkWell(
-                        onTap: () {
-                          showDialog(
-                            context: context,
-                            builder: (_) => const _GlobalSearchDialog(),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                LucideIcons.search,
-                                size: 16,
-                                color: Colors.white.withValues(alpha: 0.5),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Search...',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.white.withValues(alpha: 0.4),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (enableNotifications) ...[
-                    const SizedBox(width: 8),
-                    IconTheme(
-                      data: IconThemeData(
-                        color: Colors.white.withValues(alpha: 0.6),
-                      ),
-                      child: const NotificationBell(),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          const SizedBox(height: 8),
+          const VerticalDivider(width: 1, color: Color(0x1AFFFFFF)),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Column(
-                children: [
-                  // Navigation Items
-                  _NavItem(
-                    label: showBillsAsDashboard
-                        ? 'Bills'
-                        : (isSales
-                              ? 'Dashboard'
-                              : (showClaimTicketsLabel
-                                    ? 'Claim Tickets'
-                                    : 'Dashboard')),
-                    icon: showBillsAsDashboard
-                        ? LucideIcons.receipt
-                        : LucideIcons.layoutDashboard,
-                    path: showBillsAsDashboard
-                        ? '/accountant'
-                        : (isSales ? '/sales' : '/'),
-                    isActive:
-                        currentPath == '/' ||
-                        currentPath == '/admin' ||
-                        currentPath == '/support' ||
-                        currentPath == '/accountant' ||
-                        currentPath == '/sales',
-                  ),
-                  if (currentUser?.isAccountant != true)
-                    _NavItem(
-                      label: isSales ? 'My Tickets' : 'Tickets',
-                      icon: LucideIcons.ticket,
-                      path: '/tickets',
-                      isActive:
-                          currentPath.startsWith('/tickets') ||
-                          currentPath.startsWith('/ticket'),
-                    ),
-                  _NavItem(
-                    label: 'Customers',
-                    icon: LucideIcons.users,
-                    path: '/customers',
-                    isActive:
-                        currentPath.startsWith('/customers') ||
-                        currentPath.startsWith('/customer'),
-                  ),
-                  if (canViewAmcReminder)
-                    _NavItem(
-                      label: 'AMC Reminder',
-                      icon: LucideIcons.calendarClock,
-                      path: '/amc-reminder',
-                      isActive: currentPath.startsWith('/amc-reminder'),
-                    ),
-                  if (canViewBills && !showBillsAsDashboard)
-                    _NavItem(
-                      label: 'Bills',
-                      icon: LucideIcons.receipt,
-                      path: '/bills',
-                      isActive: currentPath.startsWith('/bills'),
-                    ),
-                  if (canViewPastTickets)
-                    _NavItem(
-                      label: 'Past Tickets',
-                      icon: LucideIcons.archive,
-                      path: '/past-tickets',
-                      isActive: currentPath == '/past-tickets',
-                    ),
-                  if (currentUser?.isAdmin == true ||
-                      currentUser?.isAccountant == true)
-                    _NavItem(
-                      label: 'Revenue',
-                      icon: LucideIcons.indianRupee,
-                      path: '/revenue',
-                      isActive: currentPath.startsWith('/revenue'),
-                    ),
-                  if (canViewSalesOpportunity)
-                    _NavItem(
-                      label: 'Sales Opportunity',
-                      icon: LucideIcons.trendingUp,
-                      path: '/sales-opportunity',
-                      isActive: currentPath.startsWith('/sales-opportunity'),
-                    ),
-                  if (canViewReports)
-                    _NavItem(
-                      label: 'Reports',
-                      icon: LucideIcons.barChart,
-                      path: '/reports',
-                      isActive: currentPath.startsWith('/reports'),
-                    ),
-                  if (currentUser?.isAdmin == true) ...[
-                    _NavItem(
-                      label: 'User Management',
-                      icon: LucideIcons.users,
-                      path: '/users',
-                      isActive: currentPath.startsWith('/users'),
-                    ),
-                  ],
-                  if (canViewDeals)
-                    _NavItem(
-                      label: 'Deals',
-                      icon: LucideIcons.briefcase,
-                      path: '/deals',
-                      isActive: currentPath.startsWith('/deals'),
-                    ),
-                  if (currentUser?.isSales == true ||
-                      currentUser?.isAccountant == true ||
-                      currentUser?.isAdmin == true)
-                    _NavItem(
-                      label: 'Leads',
-                      icon: LucideIcons.target,
-                      path: '/leads',
-                      isActive: currentPath.startsWith('/leads'),
-                    ),
-                  _NavItem(
-                    label: 'Proposals',
-                    icon: LucideIcons.fileText,
-                    path: '/proposal-generator',
-                    isActive: currentPath.startsWith('/proposal-generator'),
-                  ),
-                  _NavItem(
-                    label: 'Team Chat',
-                    icon: LucideIcons.messageSquare,
-                    path: '/chat',
-                    isActive: currentPath.startsWith('/chat'),
-                    badgeCount: currentPath.startsWith('/chat')
-                        ? 0
-                        : ref.watch(chatUnreadCountProvider),
-                  ),
-                  if (currentUser?.isAdmin == true)
-                    _NavItem(
-                      label: 'Settings',
-                      icon: LucideIcons.settings,
-                      path: '/settings',
-                      isActive: currentPath.startsWith('/settings'),
-                    ),
-
-                  const SizedBox(height: 16),
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: _UserProfile(),
-                  ),
-                ],
-              ),
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(children: mainNavItems),
             ),
+          ),
+
+          // Right side navigation items
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: rightNavItems,
+            ),
+          ),
+
+          // Refresh button - invalidate providers instead of full page reload
+          Consumer(
+            builder: (context, ref, child) {
+              return IconButton(
+                icon: const Icon(LucideIcons.refreshCw, color: Colors.white, size: 18),
+                onPressed: () {
+                  // Invalidate all data providers to refresh without page reload
+                  ref.invalidate(rawTicketsStreamProvider);
+                  ref.invalidate(ticketStatsProvider);
+                  ref.invalidate(customersListProvider);
+                  ref.invalidate(agentsListProvider);
+                  ref.invalidate(chatStreamProvider('support-chat'));
+                  ref.invalidate(dmConversationsProvider);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Data refreshed'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                },
+                tooltip: 'Refresh Data',
+                padding: const EdgeInsets.all(12),
+              );
+            },
+          ),
+
+          const SizedBox(
+            width: 56,
+            child: _UserProfile(),
           ),
         ],
       ),
@@ -638,19 +953,392 @@ class _GlobalSearchDialogState extends ConsumerState<_GlobalSearchDialog> {
   }
 }
 
-class _NavItem extends StatefulWidget {
+class _TopNavItem extends StatefulWidget {
   final String label;
   final IconData icon;
   final String path;
   final bool isActive;
   final int badgeCount;
 
-  const _NavItem({
+  const _TopNavItem({
     required this.label,
     required this.icon,
     required this.path,
     required this.isActive,
     this.badgeCount = 0,
+  });
+
+  @override
+  State<_TopNavItem> createState() => _TopNavItemState();
+}
+
+class _TopNavItemState extends State<_TopNavItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final inactiveColor = Colors.white.withValues(alpha: 0.72);
+    final activeColor = AppColors.primaryLight;
+    final itemColor = widget.isActive
+        ? activeColor.withValues(alpha: 0.16)
+        : (_isHovered
+            ? Colors.white.withValues(alpha: 0.08)
+            : Colors.transparent);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 10),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => context.go(widget.path),
+            borderRadius: BorderRadius.circular(8),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: itemColor,
+                borderRadius: BorderRadius.circular(8),
+                border: widget.isActive
+                    ? Border.all(
+                        color: activeColor.withValues(alpha: 0.32),
+                        width: 1,
+                      )
+                    : null,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    widget.icon,
+                    size: 17,
+                    color: widget.isActive ? activeColor : inactiveColor,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight:
+                          widget.isActive ? FontWeight.w600 : FontWeight.w500,
+                      color: widget.isActive ? Colors.white : inactiveColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (widget.badgeCount > 0) ...[
+                    const SizedBox(width: 5),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.error,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      constraints: const BoxConstraints(minWidth: 16),
+                      child: Text(
+                        widget.badgeCount > 9
+                            ? '9+'
+                            : widget.badgeCount.toString(),
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TopNavButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _TopNavButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 17,
+                  color: Colors.white.withValues(alpha: 0.72),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.72),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DropdownItem {
+  final String label;
+  final IconData icon;
+  final String path;
+  final bool isActive;
+  final VoidCallback? onTap;
+
+  _DropdownItem({
+    required this.label,
+    required this.icon,
+    this.path = '',
+    this.isActive = false,
+    this.onTap,
+  });
+}
+
+class _TopNavHoverMenu extends StatefulWidget {
+  final IconData icon;
+  final String tooltip;
+  final List<_DropdownItem> items;
+  final bool isParentActive;
+  final VoidCallback? onDirectTap;
+
+  const _TopNavHoverMenu({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    this.items = const [],
+    this.isParentActive = false,
+    this.onDirectTap,
+  });
+
+  @override
+  State<_TopNavHoverMenu> createState() => _TopNavHoverMenuState();
+}
+
+class _TopNavHoverMenuState extends State<_TopNavHoverMenu> with SingleTickerProviderStateMixin {
+  bool _isHovered = false;
+  bool _isMenuHovered = false;
+  OverlayEntry? _overlayEntry;
+  final GlobalKey _key = GlobalKey();
+  late AnimationController _animController;
+  late Animation<double> _fadeAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
+    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    _removeOverlay();
+    super.dispose();
+  }
+
+  void _checkAndHide() {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (!_isHovered && !_isMenuHovered && mounted) {
+        _animController.reverse().then((_) {
+          if (mounted && !_isHovered && !_isMenuHovered) {
+            _removeOverlay();
+          }
+        });
+      }
+    });
+  }
+
+  void _showOverlay() {
+    if (widget.items.isEmpty) return;
+    if (_overlayEntry != null) return;
+
+    final RenderBox renderBox = _key.currentContext!.findRenderObject() as RenderBox;
+    final size = renderBox.size;
+    final offset = renderBox.localToGlobal(Offset.zero);
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) {
+        return Positioned(
+          left: offset.dx,
+          top: offset.dy + size.height,
+          child: MouseRegion(
+            onEnter: (_) {
+              _isMenuHovered = true;
+            },
+            onExit: (_) {
+              _isMenuHovered = false;
+              _checkAndHide();
+            },
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.only(top: 8), // Gap bridge
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.slate800,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    width: 200,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: widget.items.map((item) {
+                        return InkWell(
+                          onTap: () {
+                            _removeOverlay();
+                            if (item.onTap != null) {
+                              item.onTap!();
+                            } else if (item.path.isNotEmpty) {
+                              context.go(item.path);
+                            }
+                          },
+                          hoverColor: Colors.white.withValues(alpha: 0.1),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            child: Row(
+                              children: [
+                                Icon(item.icon, size: 16, color: item.isActive ? AppColors.primaryLight : Colors.white.withValues(alpha: 0.72)),
+                                const SizedBox(width: 12),
+                                Text(
+                                  item.label,
+                                  style: TextStyle(
+                                    color: item.isActive ? Colors.white : Colors.white.withValues(alpha: 0.8),
+                                    fontWeight: item.isActive ? FontWeight.w600 : FontWeight.normal,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+    _animController.forward();
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.items.isEmpty && widget.onDirectTap == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      child: MouseRegion(
+        onEnter: (_) {
+          _isHovered = true;
+          if (widget.items.isNotEmpty) {
+            _showOverlay();
+          }
+        },
+        onExit: (_) {
+          _isHovered = false;
+          if (widget.items.isNotEmpty) {
+            _checkAndHide();
+          }
+        },
+        child: InkWell(
+          key: _key,
+          borderRadius: BorderRadius.circular(8),
+          onTap: () {
+            if (widget.items.isEmpty && widget.onDirectTap != null) {
+              widget.onDirectTap!();
+            }
+          },
+          child: Tooltip(
+            message: widget.tooltip,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: widget.isParentActive ? AppColors.primaryLight.withValues(alpha: 0.15) : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                widget.icon,
+                color: widget.isParentActive ? AppColors.primaryLight : Colors.white.withValues(alpha: 0.72),
+                size: 20,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final String path;
+  final bool isActive;
+
+  const _NavItem({
+    required this.label,
+    required this.icon,
+    required this.path,
+    required this.isActive,
   });
 
   @override
@@ -671,23 +1359,23 @@ class _NavItemState extends State<_NavItem> {
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: () => context.go(widget.path),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
             splashColor: Colors.white.withValues(alpha: 0.1),
             highlightColor: Colors.white.withValues(alpha: 0.05),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
               decoration: BoxDecoration(
                 color: widget.isActive
                     ? activeColor.withValues(alpha: 0.15)
                     : (_isHovered ? hoverColor : Colors.transparent),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
                 border: widget.isActive
                     ? Border.all(
                         color: activeColor.withValues(alpha: 0.3),
@@ -695,77 +1383,39 @@ class _NavItemState extends State<_NavItem> {
                       )
                     : null,
               ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: widget.isActive
-                          ? activeColor.withValues(alpha: 0.2)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      widget.icon,
-                      size: 18,
-                      color: widget.isActive ? activeColor : inactiveColor,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          widget.label,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: widget.isActive
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                            color: widget.isActive
-                                ? Colors.white
-                                : inactiveColor,
-                            letterSpacing: -0.2,
+              child: Stack(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            widget.icon,
+                            size: 18,
+                            color: widget.isActive ? activeColor : inactiveColor,
                           ),
-                        ),
-                        if (widget.badgeCount > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.error,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            constraints: const BoxConstraints(minWidth: 18),
+                          const SizedBox(width: 6),
+                          Flexible(
                             child: Text(
-                              widget.badgeCount > 9
-                                  ? '9+'
-                                  : widget.badgeCount.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                              widget.label,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: widget.isActive
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: widget.isActive
+                                    ? Colors.white
+                                    : Colors.white.withValues(alpha: 0.7),
                               ),
-                              textAlign: TextAlign.center,
+                              maxLines: 1,
                             ),
                           ),
-                      ],
-                    ),
-                  ),
-                  if (widget.isActive)
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: activeColor,
-                        shape: BoxShape.circle,
+                        ],
                       ),
                     ),
-                ],
-              ),
+                  ],
+                ),
             ),
           ),
         ),
@@ -782,6 +1432,7 @@ class _BottomNav extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(authProvider);
+
     final appSettings = ref
         .watch(appSettingsProvider)
         .maybeWhen(data: (value) => value, orElse: () => null);
@@ -794,35 +1445,57 @@ class _BottomNav extends ConsumerWidget {
     final isAdmin = currentUser?.isAdmin == true;
     final isSupportHead = currentUser?.isSupportHead == true;
     final simplifyNav =
-        currentUser?.isSupport == true || currentUser?.isSupportHead == true;
+        currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isProjectCoordinator == true || currentUser?.isSupportHead == true;
     final renameDashboard = simplifyNav;
     final canSeeRevenue = isAdmin || isAccountant;
     final canSeeReports =
         (!simplifyNav) && (isAdmin || isSupportHead || isAccountant);
     final showReportsDestination = enableReports && canSeeReports;
 
+    // Restricted agents check
+    const allowedAroundTallyChannelIds = {
+      'd7a9e726-9520-4cc8-95a6-b38a4afd1d7b',
+      'dedce60a-56bd-49fd-bbe2-f88534b8e36f',
+    };
+    final isRestrictedAgent = allowedAroundTallyChannelIds.contains(currentUser?.id ?? '');
+
     // Unified bottom navigation structure
     final destinations = <NavigationDestination>[];
     final navRoutes = <String>[];
 
-    destinations.add(
-      NavigationDestination(
-        icon: Icon(
-          isAccountant ? LucideIcons.receipt : LucideIcons.layoutDashboard,
+    // Dashboard - hidden from restricted agents
+    if (!isRestrictedAgent) {
+      destinations.add(
+        NavigationDestination(
+          icon: Icon(
+            isAccountant ? LucideIcons.receipt : LucideIcons.layoutDashboard,
+          ),
+          selectedIcon: Icon(
+            isAccountant ? LucideIcons.receipt : LucideIcons.layoutDashboard,
+            color: AppColors.primary,
+          ),
+          label: isAccountant
+              ? 'Bills'
+              : (renameDashboard ? 'Claim Tickets' : 'Dashboard'),
         ),
-        selectedIcon: Icon(
-          isAccountant ? LucideIcons.receipt : LucideIcons.layoutDashboard,
-          color: AppColors.primary,
-        ),
-        label: isAccountant
-            ? 'Bills'
-            : (renameDashboard ? 'Claim Tickets' : 'Dashboard'),
-      ),
-    );
-    navRoutes.add('/');
+      );
+      navRoutes.add('/');
+    }
 
-    // Tickets - shown for non-accountants
-    if (!isAccountant) {
+    // Support Dashboard for Accountants
+    if (isAccountant && !isRestrictedAgent) {
+      destinations.add(
+        const NavigationDestination(
+          icon: Icon(LucideIcons.headphones),
+          selectedIcon: Icon(LucideIcons.headphones, color: AppColors.primary),
+          label: 'Support',
+        ),
+      );
+      navRoutes.add('/support');
+    }
+
+    // Tickets - hidden from restricted agents
+    if (!isAccountant && !isRestrictedAgent) {
       destinations.add(
         const NavigationDestination(
           icon: Icon(LucideIcons.ticket),
@@ -833,25 +1506,45 @@ class _BottomNav extends ConsumerWidget {
       navRoutes.add('/tickets');
     }
 
-    // Customers - shown for all
-    destinations.add(
-      const NavigationDestination(
-        icon: Icon(LucideIcons.users),
-        selectedIcon: Icon(LucideIcons.users, color: AppColors.primary),
-        label: 'Customers',
-      ),
-    );
-    navRoutes.add('/customers');
+    // Ticket Alerts - hidden from restricted agents
+    print('DEBUG: User role - isAccountant: $isAccountant, isAdmin: $isAdmin, isSupportHead: $isSupportHead');
+    if (!isAccountant && !isRestrictedAgent) {
+      print('DEBUG: Adding Alerts destination');
+      destinations.add(
+        const NavigationDestination(
+          icon: Icon(LucideIcons.alertTriangle),
+          selectedIcon: Icon(LucideIcons.alertTriangle, color: AppColors.primary),
+          label: 'Alerts',
+        ),
+      );
+      navRoutes.add('/alerts/unclaimed');
+    } else {
+      print('DEBUG: Alerts hidden for accountant or restricted agent');
+    }
 
-    // Proposals
-    destinations.add(
-      const NavigationDestination(
-        icon: Icon(LucideIcons.fileText),
-        selectedIcon: Icon(LucideIcons.fileText, color: AppColors.primary),
-        label: 'Proposals',
-      ),
-    );
-    navRoutes.add('/proposal-generator');
+    // Customers - hidden from restricted agents
+    if (!isRestrictedAgent) {
+      destinations.add(
+        const NavigationDestination(
+          icon: Icon(LucideIcons.users),
+          selectedIcon: Icon(LucideIcons.users, color: AppColors.primary),
+          label: 'Customers',
+        ),
+      );
+      navRoutes.add('/customers');
+    }
+
+    // Proposals - hidden from restricted agents and Digital Marketing Executive
+    if (!(currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isSupportHead == true) && currentUser?.isSoftwareDeveloper != true && currentUser?.isDigitalMarketing != true && !isRestrictedAgent) {
+      destinations.add(
+        const NavigationDestination(
+          icon: Icon(LucideIcons.fileText),
+          selectedIcon: Icon(LucideIcons.fileText, color: AppColors.primary),
+          label: 'Proposals',
+        ),
+      );
+      navRoutes.add('/proposal-generator');
+    }
 
     // Chat
     final rawChatUnread = ref.watch(chatUnreadCountProvider);
@@ -861,12 +1554,14 @@ class _BottomNav extends ConsumerWidget {
         icon: chatUnread > 0
             ? Badge(
                 label: Text(chatUnread > 9 ? '9+' : chatUnread.toString()),
+                backgroundColor: AppColors.error,
                 child: const Icon(LucideIcons.messageSquare),
               )
             : const Icon(LucideIcons.messageSquare),
         selectedIcon: chatUnread > 0
             ? Badge(
                 label: Text(chatUnread > 9 ? '9+' : chatUnread.toString()),
+                backgroundColor: AppColors.error,
                 child: const Icon(
                   LucideIcons.messageSquare,
                   color: AppColors.primary,
@@ -963,6 +1658,11 @@ class _BottomNav extends ConsumerWidget {
       final customerIndex = routes.indexOf('/customers');
       if (customerIndex != -1) return customerIndex;
     }
+    // Handle alerts routes
+    if (current.startsWith('/alerts/')) {
+      final alertsIndex = routes.indexOf('/alerts/unclaimed');
+      if (alertsIndex != -1) return alertsIndex;
+    }
     // Admin, Accountant, Support dashboards map to '/'
     if (current == '/admin' ||
         current == '/support' ||
@@ -988,8 +1688,13 @@ class _BottomNav extends ConsumerWidget {
   }
 
   void _handleNavigation(BuildContext context, int index, List<String> routes) {
+    print('DEBUG: Navigation pressed - index: $index, routes: $routes');
     if (index >= 0 && index < routes.length) {
-      context.go(routes[index]);
+      final route = routes[index];
+      print('DEBUG: Navigating to: $route');
+      context.go(route);
+    } else {
+      print('DEBUG: Invalid navigation index: $index');
     }
   }
 }
@@ -1023,6 +1728,41 @@ class _OfflineBanner extends ConsumerWidget {
   }
 }
 
+class _ThemeModeToggle extends ConsumerWidget {
+  const _ThemeModeToggle();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+    final isDarkMode = themeMode == ThemeMode.dark;
+
+    return Row(
+      children: [
+        Icon(
+          isDarkMode ? Icons.dark_mode : Icons.light_mode,
+          size: 20,
+          color: isDarkMode ? Colors.white : Colors.black,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          isDarkMode ? 'Dark' : 'Light',
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Switch.adaptive(
+          value: isDarkMode,
+          onChanged: (value) {
+            ref.read(themeModeProvider.notifier).setDarkMode(value);
+          },
+        ),
+      ],
+    );
+  }
+}
 class _UserProfile extends ConsumerWidget {
   const _UserProfile();
 
@@ -1030,61 +1770,1243 @@ class _UserProfile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(authProvider);
 
-    return InkWell(
-      onTap: () => context.go('/profile'),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+
+
+    return Tooltip(
+      message: '${currentUser?.fullName ?? 'User'} (${currentUser?.role ?? 'Role'})',
+      child: IconButton(
+        icon: CircleAvatar(
+          radius: 16,
+          backgroundColor: AppColors.primary,
+          backgroundImage: currentUser?.avatarUrl != null
+              ? NetworkImage(currentUser!.avatarUrl!)
+              : null,
+          child: currentUser?.avatarUrl == null
+              ? Text(
+                  currentUser?.fullName.substring(0, 1).toUpperCase() ?? 'U',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                )
+              : null,
         ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: AppColors.primary,
-              child: Text(
-                currentUser?.fullName.substring(0, 1).toUpperCase() ?? 'U',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+        onPressed: () => context.go('/profile'),
+        tooltip: '${currentUser?.fullName ?? 'User'} (${currentUser?.role ?? 'Role'})',
+        padding: const EdgeInsets.all(8),
+      ),
+    );
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// -- Left Navigation (Empty for Support Chat) -------------------------------
+
+class _LeftNav extends ConsumerWidget {
+  final String currentPath;
+
+  const _LeftNav({required this.currentPath});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.primaryDark, AppColors.slate900],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 10,
+            offset: const Offset(2, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Channels and DMs section
+          Expanded(
+            child: _ChannelsList(currentPath: currentPath),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// -- Resize Handle Widget ----------------------------------------------------
+
+class _ResizeHandle extends StatefulWidget {
+  final Function(double) onDrag;
+
+  const _ResizeHandle({required this.onDrag});
+
+  @override
+  State<_ResizeHandle> createState() => _ResizeHandleState();
+}
+
+class _ResizeHandleState extends State<_ResizeHandle> {
+  bool _isHovering = false;
+  bool _isDragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: GestureDetector(
+        onHorizontalDragStart: (_) => setState(() => _isDragging = true),
+        onHorizontalDragUpdate: (details) {
+          widget.onDrag(details.delta.dx);
+        },
+        onHorizontalDragEnd: (_) => setState(() => _isDragging = false),
+        child: Container(
+          width: 4,
+          decoration: BoxDecoration(
+            color: _isHovering || _isDragging
+                ? AppColors.primary.withOpacity(0.5)
+                : Colors.transparent,
+            border: Border(
+              right: BorderSide(
+                color: _isHovering || _isDragging
+                    ? AppColors.primary
+                    : AppColors.border,
+                width: _isHovering || _isDragging ? 2 : 1,
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    currentUser?.fullName ?? 'User',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    currentUser?.role ?? 'Role',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 11,
+          ),
+          child: _isHovering || _isDragging
+              ? Center(
+                  child: Container(
+                    width: 2,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(1),
                     ),
                   ),
-                ],
-              ),
-            ),
-            Icon(
-              LucideIcons.chevronRight,
-              size: 16,
-              color: Colors.white.withValues(alpha: 0.4),
-            ),
-          ],
+                )
+              : null,
         ),
       ),
     );
   }
 }
+
+// -- Collapsible Ticket Pane -------------------------------------------------
+
+class _CollapsibleTicketPane extends ConsumerWidget {
+  final String currentPath;
+  final bool isOpen;
+  final VoidCallback onToggle;
+
+  const _CollapsibleTicketPane({
+    required this.currentPath,
+    required this.isOpen,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ticketsAsync = ref.watch(ticketsStreamProvider);
+
+    final tickets = ticketsAsync.value ?? [];
+    final now = DateTime.now();
+    final twoDaysAgo = now.subtract(const Duration(days: 2));
+    final recentTickets = tickets.where((t) =>
+        t.createdAt != null && t.createdAt!.isAfter(twoDaysAgo)).toList();
+
+    final unclaimedCount = recentTickets
+        .where((t) => t.assignedTo == null || t.assignedTo!.isEmpty)
+        .length;
+    final claimedCount = recentTickets
+        .where((t) => t.assignedTo != null && t.assignedTo!.isNotEmpty)
+        .where((t) => t.status != 'Resolved' && t.status != 'Closed' &&
+            t.status != 'BillRaised' && t.status != 'BillProcessed')
+        .length;
+    final resolvedCount = recentTickets
+        .where((t) =>
+            t.status == 'Resolved' ||
+            t.status == 'Closed' ||
+            t.status == 'BillRaised' ||
+            t.status == 'BillProcessed')
+        .length;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Collapsed arrow strip — only visible when pane is closed
+        if (!isOpen)
+          Container(
+            width: 24,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [AppColors.primaryDark, AppColors.slate900],
+              ),
+              border: Border(
+                right: BorderSide(color: Color(0x1AFFFFFF), width: 1),
+              ),
+            ),
+            child: Center(
+              child: InkWell(
+                onTap: onToggle,
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Icon(
+                    LucideIcons.chevronsRight,
+                    size: 16,
+                    color: Colors.white54,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        // Expanded pane — animated
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeInOut,
+          width: isOpen ? 240 : 0,
+          child: isOpen
+              ? _SecondLeftNav(currentPath: currentPath, onCollapse: onToggle)
+              : const SizedBox.shrink(),
+        ),
+        if (isOpen)
+          const VerticalDivider(width: 1, color: AppColors.border),
+      ],
+    );
+  }
+}
+
+// -- Second Left Navigation (Additional Pane) -------------------------------
+
+class _SecondLeftNav extends ConsumerWidget {
+  final String currentPath;
+  final VoidCallback? onCollapse;
+
+  const _SecondLeftNav({required this.currentPath, this.onCollapse});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isSalesChannel = currentPath.startsWith('/sales-channel');
+    final sectionTitle = isSalesChannel ? 'Recent Sales' : 'Recent Tickets';
+
+    return Container(
+      width: 240,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.primaryDark, AppColors.slate900],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 10,
+            offset: const Offset(2, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Recent tickets/sales section
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    sectionTitle,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (onCollapse != null)
+                  InkWell(
+                    onTap: onCollapse,
+                    borderRadius: BorderRadius.circular(6),
+                    child: const Padding(
+                      padding: EdgeInsets.all(6),
+                      child: Icon(
+                        LucideIcons.chevronsLeft,
+                        size: 16,
+                        color: Colors.white54,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Color(0x1AFFFFFF)),
+          Expanded(
+            child: isSalesChannel
+                ? const _RecentSalesPlaceholder()
+                : _RecentTicketsList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChannelsList extends ConsumerStatefulWidget {
+  final String currentPath;
+
+  const _ChannelsList({required this.currentPath});
+
+  @override
+  ConsumerState<_ChannelsList> createState() => _ChannelsListState();
+}
+
+class _ChannelsListState extends ConsumerState<_ChannelsList> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentPath = widget.currentPath;
+    final isChatActive = currentPath.startsWith('/chat');
+    final agentsAsync = ref.watch(agentsListProvider);
+    final conversationsAsync = ref.watch(dmConversationsProvider);
+    final currentUser = ref.watch(authProvider);
+
+    const allowedSalesChannelIds = {
+      '0a5aeeb8-9544-4dc8-920f-e26c192b0dd3',
+      '1f4d7758-12ba-43eb-9e47-cc0c95b740b8',
+      '14db36db-0cb9-44ef-8032-d9610b3bc797',
+      'b77b3738-4dfc-4515-a1fd-d6fb170423f4',
+      'd8aa6435-9e02-4bab-9acc-ae1f5f3d6a1c',
+      '5a06a8df-97f1-4dbf-bc13-9724a3c779c1',
+    };
+    const allowedAroundTallyChannelIds = {
+      'd7a9e726-9520-4cc8-95a6-b38a4afd1d7b',
+      'dedce60a-56bd-49fd-bbe2-f88534b8e36f',
+    };
+    final isRestrictedAgent = allowedAroundTallyChannelIds.contains(currentUser?.id ?? '');
+    final canAccessSalesChannel = allowedSalesChannelIds.contains(currentUser?.id ?? '') && !isRestrictedAgent;
+    final restrictedFromAroundAi = {
+      'd7a9e726-9520-4cc8-95a6-b38a4afd1d7b',
+      'dedce60a-56bd-49fd-bbe2-f88534b8e36f',
+    }.contains(currentUser?.id ?? '');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+
+        // Companies Header - hidden from restricted agents
+        if (!isRestrictedAgent)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Row(
+            children: [
+              const Icon(LucideIcons.building2, size: 14, color: Colors.white70),
+              const SizedBox(width: 8),
+              const Text(
+                'Companies',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // AroundTally Company - hidden from restricted agents
+        if (!isRestrictedAgent)
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => context.go('/company/aroundtally'),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: currentPath.startsWith('/company/aroundtally') ? Colors.white.withOpacity(0.1) : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.building2,
+                    size: 16,
+                    color: currentPath.startsWith('/company/aroundtally') ? Colors.white : Colors.white54,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'AroundTally',
+                    style: TextStyle(
+                      color: currentPath.startsWith('/company/aroundtally') ? Colors.white : Colors.white70,
+                      fontSize: 13,
+                      fontWeight: currentPath.startsWith('/company/aroundtally') ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // AroundAi Company - hidden from restricted agents
+        if (!isRestrictedAgent)
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: restrictedFromAroundAi
+                ? () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('You do not have access to AroundAi'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                  }
+                : () => context.go('/company/aroundai'),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: currentPath.startsWith('/company/aroundai') ? Colors.white.withOpacity(0.1) : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.building2,
+                    size: 16,
+                    color: currentPath.startsWith('/company/aroundai') ? Colors.white : Colors.white54,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'AroundAi',
+                    style: TextStyle(
+                      color: currentPath.startsWith('/company/aroundai') ? Colors.white : Colors.white70,
+                      fontSize: 13,
+                      fontWeight: currentPath.startsWith('/company/aroundai') ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                  ),
+                  if (restrictedFromAroundAi) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      LucideIcons.lock,
+                      size: 12,
+                      color: Colors.white54,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // Channels Header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Row(
+            children: [
+              const Icon(LucideIcons.hash, size: 14, color: Colors.white70),
+              const SizedBox(width: 8),
+              const Text(
+                'Channels',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Support Chat Channel
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => context.go('/chat'),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: isChatActive ? Colors.white.withOpacity(0.1) : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.hash,
+                    size: 16,
+                    color: isChatActive ? Colors.white : Colors.white54,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'support-chat',
+                    style: TextStyle(
+                      color: isChatActive ? Colors.white : Colors.white70,
+                      fontSize: 13,
+                      fontWeight: isChatActive ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Sales Channel
+        if (canAccessSalesChannel)
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => context.go('/sales-channel'),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: currentPath.startsWith('/sales-channel') ? Colors.white.withOpacity(0.1) : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.hash,
+                    size: 16,
+                    color: currentPath.startsWith('/sales-channel') ? Colors.white : Colors.white54,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'sales',
+                    style: TextStyle(
+                      color: currentPath.startsWith('/sales-channel') ? Colors.white : Colors.white70,
+                      fontSize: 13,
+                      fontWeight: currentPath.startsWith('/sales-channel') ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // All-AroundTally Channel - accessible to all users
+        Consumer(
+          builder: (context, ref, child) {
+            final aroundTallyUnread = ref.watch(allAroundTallyUnreadCountProvider);
+            final isOnChannel = currentPath.startsWith('/channel/all-aroundtally');
+            final displayUnread = isOnChannel ? 0 : aroundTallyUnread;
+
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => context.go('/channel/all-aroundtally'),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isOnChannel ? Colors.white.withOpacity(0.1) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        LucideIcons.hash,
+                        size: 16,
+                        color: isOnChannel ? Colors.white : Colors.white54,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'all-aroundtally',
+                        style: TextStyle(
+                          color: (isOnChannel || displayUnread > 0) ? Colors.white : Colors.white70,
+                          fontSize: 13,
+                          fontWeight: isOnChannel ? FontWeight.w600 : FontWeight.w500,
+                        ),
+                      ),
+                      if (displayUnread > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            displayUnread > 9 ? '9+' : displayUnread.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        if (currentUser?.isTeleCaller != true || isRestrictedAgent) ...[
+        const SizedBox(height: 16),
+        // Direct Messages Header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+          child: Row(
+            children: [
+              const Icon(LucideIcons.messagesSquare, size: 14, color: Colors.white70),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Direct messages',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              // Refresh button
+              InkWell(
+                onTap: () {
+                  ref.invalidate(agentsListProvider);
+                  ref.invalidate(dmConversationsProvider);
+                },
+                borderRadius: BorderRadius.circular(4),
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(Icons.refresh, size: 14, color: Colors.white54),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+        ),
+        // Agents List
+        Expanded(
+          child: agentsAsync.when(
+            data: (agents) {
+              return conversationsAsync.when(
+                data: (conversations) {
+                  // Sort agents: own chat first, then unread, then alphabetical
+                  final sortedAgents = List.from(agents)..sort((a, b) {
+                    final agentAId = a['id']?.toString() ?? '';
+                    final agentBId = b['id']?.toString() ?? '';
+                    
+                    // Own chat pinned to the top
+                    if (currentUser != null) {
+                      if (agentAId == currentUser.id && agentBId != currentUser.id) return -1;
+                      if (agentBId == currentUser.id && agentAId != currentUser.id) return 1;
+                    }
+                    
+                    // Agents with unread messages come before agents without
+                    final unreadA = ref.watch(dmUnreadCountProvider(agentAId));
+                    final unreadB = ref.watch(dmUnreadCountProvider(agentBId));
+                    if (unreadA > 0 && unreadB == 0) return -1;
+                    if (unreadB > 0 && unreadA == 0) return 1;
+                    
+                    // Otherwise alphabetical
+                    final nameA = (a['full_name'] ?? a['username'] ?? '').toString().toLowerCase();
+                    final nameB = (b['full_name'] ?? b['username'] ?? '').toString().toLowerCase();
+                    return nameA.compareTo(nameB);
+                  });
+                  
+                  return ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: sortedAgents.length,
+                    itemBuilder: (context, index) {
+                      final agent = sortedAgents[index];
+                      final agentId = agent['id']?.toString() ?? '';
+                      final currentUser = ref.watch(authProvider);
+                      final isCurrentUser = currentUser?.id == agentId;
+                      final name = isCurrentUser ? 'YOU' : (agent['full_name'] ?? 'Unknown');
+                      final unreadCount = ref.watch(dmUnreadCountProvider(agentId));
+                      
+                      // Determine online status based on last_seen timestamp
+                      final lastSeen = agent['last_seen'] != null 
+                          ? DateTime.tryParse(agent['last_seen'].toString()) 
+                          : null;
+                      final now = DateTime.now();
+                      
+                      // Online: seen within last 5 minutes
+                      final isOnline = lastSeen != null && 
+                          now.difference(lastSeen).inMinutes < 5;
+                      
+                      // Away: seen within last 30 minutes but not online
+                      final isAway = lastSeen != null && 
+                          !isOnline && 
+                          now.difference(lastSeen).inMinutes < 30; 
+                      
+                      // Generate a distinct color based on index
+                      final List<Color> avatarColors = [
+                        Colors.red.shade400,
+                        Colors.blue.shade400,
+                        Colors.green.shade500,
+                        Colors.orange.shade500,
+                        Colors.purple.shade400,
+                        Colors.teal.shade400,
+                        Colors.pink.shade400,
+                        Colors.indigo.shade400,
+                      ];
+                      final avatarColor = avatarColors[index % avatarColors.length];
+                      
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            context.go('/chat/dm/${agent['id']}');
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            child: Row(
+                              children: [
+                                Stack(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 12,
+                                      backgroundColor: avatarColor,
+                                      backgroundImage: agent['avatar_url'] != null
+                                          ? NetworkImage(agent['avatar_url'])
+                                          : null,
+                                      child: agent['avatar_url'] == null
+                                          ? Text(
+                                              name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                              style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+                                            )
+                                          : null,
+                                    ),
+                                    Positioned(
+                                      right: 0,
+                                      bottom: 0,
+                                      child: Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: isOnline 
+                                              ? Colors.green 
+                                              : isAway 
+                                                  ? Colors.orange 
+                                                  : Colors.grey,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: AppColors.slate900, width: 1.5),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    name,
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 13,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (unreadCount > 0)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(
+                  child: SizedBox(
+                    height: 16, width: 16, 
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54)
+                  )
+                ),
+                error: (_, __) => const Center(
+                  child: SizedBox(
+                    height: 16, width: 16, 
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54)
+                  )
+                ),
+              );
+            },
+            loading: () => const Center(
+              child: SizedBox(
+                height: 16, width: 16, 
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54)
+              )
+            ),
+            error: (err, stack) => const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Failed to load agents', style: TextStyle(color: Colors.red, fontSize: 10)),
+            ),
+          ),
+        ),
+        ], // end isTeleCaller check
+      ],
+    );
+  }
+}
+
+
+
+
+
+// -- Recent Sales Placeholder Widget -------------------------------------------
+
+class _RecentSalesPlaceholder extends StatelessWidget {
+  const _RecentSalesPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Text(
+          'Sales history coming soon',
+          style: TextStyle(
+            color: Colors.white54,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// -- Recent Tickets List Widget -------------------------------------------
+
+class _RecentTicketsList extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ticketsAsync = ref.watch(ticketsStreamProvider);
+    
+    return ticketsAsync.when(
+      data: (tickets) {
+        print('DEBUG: Total tickets: ${tickets.length}');
+        
+        // Filter tickets from last 2 days
+        final now = DateTime.now();
+        final twoDaysAgo = now.subtract(const Duration(days: 2));
+        
+        final recentTickets = tickets.where((ticket) {
+          if (ticket.createdAt == null) return false;
+          final isUnclaimed = ticket.assignedTo == null || ticket.assignedTo!.isEmpty;
+          return ticket.createdAt!.isAfter(twoDaysAgo) || isUnclaimed;
+        }).toList();
+        
+        print('DEBUG: Recent tickets (last 2 days): ${recentTickets.length}');
+
+        // Sort: unclaimed first, then by created date (newest first)
+        recentTickets.sort((a, b) {
+          final aClaimed = a.assignedTo != null && a.assignedTo!.isNotEmpty;
+          final bClaimed = b.assignedTo != null && b.assignedTo!.isNotEmpty;
+          
+          if (aClaimed != bClaimed) {
+            return aClaimed ? 1 : -1; // Unclaimed first
+          }
+          
+          // Both have same claim status, sort by date
+          return (b.createdAt ?? DateTime.now()).compareTo(a.createdAt ?? DateTime.now());
+        });
+
+        if (recentTickets.isEmpty) {
+          // If no recent tickets, show some older unclaimed tickets
+          final olderUnclaimed = tickets.where((ticket) {
+            if (ticket.createdAt == null) return false;
+            final isClaimed = ticket.assignedTo != null && ticket.assignedTo!.isNotEmpty;
+            return !isClaimed; // Show unclaimed tickets regardless of age
+          }).take(5).toList();
+          
+          if (olderUnclaimed.isNotEmpty) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    'No recent tickets. Showing older unclaimed:',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    itemCount: olderUnclaimed.length,
+                    itemBuilder: (context, index) {
+                      final ticket = olderUnclaimed[index];
+                      return _TicketTile(ticket: ticket);
+                    },
+                  ),
+                ),
+              ],
+            );
+          }
+          
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'No tickets found',
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          itemCount: recentTickets.length,
+          itemBuilder: (context, index) {
+            final ticket = recentTickets[index];
+            return _TicketTile(ticket: ticket);
+          },
+        );
+      },
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
+          ),
+        ),
+      ),
+      error: (error, _) => Center(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text(
+            'Error: $error',
+            style: const TextStyle(
+              color: Colors.red,
+              fontSize: 11,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// -- Ticket Tile Widget -----------------------------------------------------
+
+class _TicketTile extends ConsumerWidget {
+  final Ticket ticket;
+
+  const _TicketTile({required this.ticket});
+
+  String _formatTime(DateTime? dateTime) {
+    if (dateTime == null) return 'Unknown';
+    
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 2) {
+      return '${difference.inDays}d ago';
+    } else {
+      return '${difference.inDays}d ago';
+    }
+  }
+
+  String _getTicketDescription(Ticket ticket) {
+    // Use title as primary issue description
+    String description = ticket.title;
+    
+    // Add description if available and different from title
+    if (ticket.description != null && 
+        ticket.description!.isNotEmpty && 
+        ticket.description != ticket.title) {
+      description += '\n\n${ticket.description}';
+    }
+    
+    // Add category if available
+    if (ticket.category != null && ticket.category!.isNotEmpty) {
+      description += '\n\nCategory: ${ticket.category}';
+    }
+    
+    // Add priority if available
+    if (ticket.priority != null && ticket.priority!.isNotEmpty) {
+      description += '\nPriority: ${ticket.priority}';
+    }
+    
+    // Limit length for tooltip display
+    if (description.length > 200) {
+      description = '${description.substring(0, 197)}...';
+    }
+    
+    return description.isNotEmpty ? description : 'No description available';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isClaimed = ticket.assignedTo != null && ticket.assignedTo!.isNotEmpty;
+    final customerAsync = ref.watch(ticketCustomerProvider(ticket.customerId));
+    final agentsAsync = ref.watch(agentsListProvider);
+    final timeAgo = _formatTime(ticket.createdAt);
+
+    // Resolve assigned agent name
+    String? assignedAgentName;
+    if (isClaimed) {
+      final agents = agentsAsync.value ?? [];
+      final agent = agents.firstWhere(
+        (a) => a['id']?.toString() == ticket.assignedTo,
+        orElse: () => <String, dynamic>{},
+      );
+      final name = agent['full_name']?.toString().trim() ?? agent['username']?.toString().trim() ?? '';
+      if (name.isNotEmpty) assignedAgentName = name;
+    }
+
+    // Determine badge label and color based on status
+    final String badgeLabel;
+    final Color badgeColor;
+    final status = ticket.status;
+
+    if (status == 'BillProcessed' || status == 'BillRaised') {
+      badgeLabel = 'Billed';
+      badgeColor = const Color(0xFF7C3AED); // purple
+    } else if (status == 'Resolved' || status == 'Closed') {
+      badgeLabel = 'Resolved';
+      badgeColor = AppColors.success;
+    } else if (isClaimed) {
+      badgeLabel = 'Claimed';
+      badgeColor = Colors.grey.shade600;
+    } else {
+      badgeLabel = 'Unclaimed';
+      badgeColor = AppColors.error;
+    }
+
+    // Card background/border also reflects status
+    final Color cardColor;
+    final Color cardBorderColor;
+    if (status == 'BillProcessed' || status == 'BillRaised') {
+      cardColor = const Color(0xFF7C3AED).withOpacity(0.08);
+      cardBorderColor = const Color(0xFF7C3AED).withOpacity(0.3);
+    } else if (status == 'Resolved' || status == 'Closed') {
+      cardColor = AppColors.success.withOpacity(0.07);
+      cardBorderColor = AppColors.success.withOpacity(0.3);
+    } else if (isClaimed) {
+      cardColor = Colors.white.withOpacity(0.05);
+      cardBorderColor = Colors.white.withOpacity(0.1);
+    } else {
+      cardColor = AppColors.error.withOpacity(0.1);
+      cardBorderColor = AppColors.error.withOpacity(0.3);
+    }
+
+    return customerAsync.when(
+      data: (customerData) {
+        final companyName = customerData?['company_name']?.toString().trim() ?? '';
+        final contactPerson = customerData?['contact_person']?.toString().trim() ?? '';
+        
+        // Use company name as primary, fallback to contact person
+        final customerName = companyName.isNotEmpty ? companyName : (contactPerson.isNotEmpty ? contactPerson : 'Unknown Customer');
+        final customerEmail = customerData?['contact_email'] ?? '';
+        
+        return Tooltip(
+      message: _getTicketDescription(ticket),
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      textStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        height: 1.4,
+      ),
+      waitDuration: const Duration(milliseconds: 500),
+      showDuration: const Duration(seconds: 3),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: cardBorderColor),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              // Navigate to ticket detail
+              context.push('/ticket/${ticket.ticketId}');
+            },
+            borderRadius: BorderRadius.circular(6),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Customer name and claim status
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Left: customer name + time
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              customerName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              timeAgo,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.6),
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      // Right: claimed badge + agent name stacked
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: badgeColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              badgeLabel,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          if (isClaimed && assignedAgentName != null) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              assignedAgentName!,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+      },
+      loading: () => Container(
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 1,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Loading...',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.6),
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+      error: (_, __) => Container(
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Text(
+          'Customer not found',
+          style: TextStyle(
+            color: Colors.red.withOpacity(0.7),
+            fontSize: 10,
+          ),
+        ),
+      ),
+    );
+  }
+}
+

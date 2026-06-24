@@ -215,8 +215,8 @@ class _TicketRemarksSectionState extends ConsumerState<TicketRemarksSection> {
           'duration_seconds': _recordingDuration,
           'remark':
               'Voice note (${_formatDuration(_recordingDuration)})', // Provide default text for voice notes
-          'created_at': DateTime.now().toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
         });
 
         if (mounted) {
@@ -234,8 +234,8 @@ class _TicketRemarksSectionState extends ConsumerState<TicketRemarksSection> {
           'agent_id': currentUser.id, // Fixed: was missing agent_id
           'remark_type': 'text',
           'remark': text,
-          'created_at': DateTime.now().toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
         });
       }
     } catch (e) {
@@ -467,7 +467,19 @@ class _RemarkCardState extends ConsumerState<_RemarkCard> {
     final agentAsync = widget.agentId != null
         ? ref.watch(ticketAssignedAgentProvider(widget.agentId!))
         : null;
-    final createdAt = DateTime.parse(widget.remark['created_at'] as String);
+    final createdAtRaw = DateTime.parse(widget.remark['created_at'] as String);
+    final createdAt = createdAtRaw.isUtc 
+        ? createdAtRaw 
+        : DateTime.utc(
+            createdAtRaw.year,
+            createdAtRaw.month,
+            createdAtRaw.day,
+            createdAtRaw.hour,
+            createdAtRaw.minute,
+            createdAtRaw.second,
+            createdAtRaw.millisecond,
+            createdAtRaw.microsecond,
+          );
     final remarkType = widget.remark['remark_type'] as String? ?? 'text';
 
     return Align(
@@ -541,7 +553,7 @@ class _RemarkCardState extends ConsumerState<_RemarkCard> {
             Align(
               alignment: Alignment.bottomRight,
               child: Text(
-                timeago.format(createdAt, locale: 'en_short'),
+                timeago.format(createdAt.toLocal(), locale: 'en_short'),
                 style: TextStyle(
                   fontSize: 10,
                   color: widget.isMe

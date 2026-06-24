@@ -82,7 +82,7 @@ class _CustomerNotesSectionState extends ConsumerState<CustomerNotesSection> {
           .from('customer_notes')
           .update({
             'is_pinned': !isPinned,
-            'updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', noteId);
 

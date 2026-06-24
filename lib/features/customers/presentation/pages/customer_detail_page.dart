@@ -1157,7 +1157,7 @@ class _CustomerActivityFormState extends ConsumerState<CustomerActivityForm> {
         'description': _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
-        'occurred_at': DateTime.now().toIso8601String(),
+        'occurred_at': DateTime.now().toUtc().toIso8601String(),
       });
 
       // Ensure recent activities streams pick up this new entry immediately

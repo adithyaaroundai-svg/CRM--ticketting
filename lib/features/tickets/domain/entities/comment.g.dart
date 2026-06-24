@@ -13,9 +13,9 @@ _TicketComment _$TicketCommentFromJson(Map<String, dynamic> json) =>
       author: json['author'] as String? ?? 'Unknown',
       body: json['body'] as String? ?? '',
       isInternal: json['internal'] as bool? ?? false,
-      createdAt: json['created_at'] == null
-          ? null
-          : DateTime.parse(json['created_at'] as String),
+      createdAt: const UtcDateTimeConverter().fromJson(
+        json['created_at'] as String?,
+      ),
     );
 
 Map<String, dynamic> _$TicketCommentToJson(_TicketComment instance) =>
@@ -25,5 +25,5 @@ Map<String, dynamic> _$TicketCommentToJson(_TicketComment instance) =>
       'author': instance.author,
       'body': instance.body,
       'internal': instance.isInternal,
-      'created_at': instance.createdAt?.toIso8601String(),
+      'created_at': const UtcDateTimeConverter().toJson(instance.createdAt),
     };

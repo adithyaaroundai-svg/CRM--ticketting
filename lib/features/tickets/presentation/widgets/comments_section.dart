@@ -114,22 +114,93 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // Header with potential ticket description
           Padding(
             padding: const EdgeInsets.all(20),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.chat_bubble_outline,
-                  color: Theme.of(context).primaryColor,
+                Row(
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_outline,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Comments',
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  'Comments',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+                // Show first comment (ticket description) here if it exists
+                Consumer(
+                  builder: (context, ref, child) {
+                    final commentsAsync = ref.watch(commentsStreamProvider(widget.ticketId));
+                    return commentsAsync.when(
+                      data: (comments) {
+                        if (comments.isNotEmpty) {
+                          final firstComment = comments.first;
+                          // Check if this might be the ticket description (usually the first comment)
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        firstComment.author,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        firstComment.createdAt != null 
+                                            ? timeago.format(firstComment.createdAt!.toLocal())
+                                            : 'Unknown time',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 11,
+                                          color: Colors.grey.shade500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  MarkdownBody(
+                                    data: firstComment.body,
+                                    styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                                      p: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        height: 1.4,
+                                        color: Colors.grey.shade800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    );
+                  },
                 ),
               ],
             ),
@@ -140,7 +211,10 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
           Expanded(
             child: commentsAsync.when(
               data: (comments) {
-                if (comments.isEmpty) {
+                // Check if there are no comments or only the first comment (which is shown in header)
+                final remainingComments = comments.length > 1 ? comments.skip(1).toList() : <TicketComment>[];
+                
+                if (remainingComments.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -152,12 +226,12 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'No comments yet',
+                          comments.length <= 1 ? 'No comments yet' : 'No additional comments',
                           style: TextStyle(color: Colors.grey.shade600),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Be the first to comment',
+                          comments.length <= 1 ? 'Be the first to comment' : 'Add a comment below',
                           style: TextStyle(
                             color: Colors.grey.shade400,
                             fontSize: 12,
@@ -168,12 +242,13 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                   );
                 }
 
+                // Skip the first comment since it's shown in the header
                 return ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: comments.length,
+                  itemCount: comments.length > 1 ? comments.length - 1 : 0,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    final comment = comments[index];
+                    final comment = comments[index + 1]; // Skip first comment
                     final isCurrentUser =
                         comment.author == widget.currentUserName;
 
@@ -354,7 +429,7 @@ class _CommentBubble extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   comment.createdAt != null
-                      ? timeago.format(comment.createdAt!)
+                      ? timeago.format(comment.createdAt!.toLocal())
                       : 'Unknown',
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),

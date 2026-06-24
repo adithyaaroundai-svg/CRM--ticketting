@@ -346,7 +346,7 @@ class _WikiPageState extends ConsumerState<WikiPage> {
                                       ],
                                       const SizedBox(height: 6),
                                       Text(
-                                        'Updated ${timeago.format(article.updatedAt)}',
+                                        'Updated ${timeago.format(article.updatedAt.toLocal())}',
                                         style: const TextStyle(
                                           fontSize: 10,
                                           color: AppColors.slate400,
@@ -466,7 +466,7 @@ class _WikiPageState extends ConsumerState<WikiPage> {
             const SizedBox(height: 16),
           ],
           Text(
-            'Last updated ${timeago.format(article.updatedAt)}',
+            'Last updated ${timeago.format(article.updatedAt.toLocal())}',
             style: const TextStyle(fontSize: 12, color: AppColors.slate500),
           ),
           const SizedBox(height: 24),

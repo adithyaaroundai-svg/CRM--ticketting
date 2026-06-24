@@ -10,11 +10,172 @@ import '../../domain/entities/ticket.dart';
 
 part 'ticket_provider.g.dart';
 
+// ── Realtime stream helper (same pattern as supabase_ticket_repository) ───────
+Stream<List<Map<String, dynamic>>> _realtimeQuery({
+  required SupabaseClient supabase,
+  required String table,
+  required String channelSuffix,
+  required Future<List<Map<String, dynamic>>> Function() fetcher,
+}) {
+  final controller = StreamController<List<Map<String, dynamic>>>.broadcast();
+
+  Future<void> fetch() async {
+    try {
+      final data = await fetcher();
+      if (!controller.isClosed) controller.add(data);
+    } catch (e) {
+      if (!controller.isClosed) controller.addError(e);
+    }
+  }
+
+  fetch();
+
+  final channel = supabase
+      .channel('tp_realtime_${table}_$channelSuffix')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: table,
+        callback: (_) => fetch(),
+      )
+      .subscribe();
+
+  controller.onCancel = () => supabase.removeChannel(channel);
+  return controller.stream;
+}
+
 // Repository provider
 @riverpod
 TicketRepository ticketRepository(Ref ref) {
   return SupabaseTicketRepository(Supabase.instance.client);
 }
+
+class TicketAlertEntry {
+  final Ticket ticket;
+  final DateTime referenceTime;
+  final Duration elapsed;
+  final Duration threshold;
+
+  const TicketAlertEntry({
+    required this.ticket,
+    required this.referenceTime,
+    required this.elapsed,
+    required this.threshold,
+  });
+
+  Duration get overdue => elapsed - threshold;
+}
+
+const _claimedOverdueThreshold = Duration(hours: 12);
+const _unclaimedOverdueThreshold = Duration(hours: 1);
+
+DateTime? _parseDate(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value.toUtc();
+  if (value is String) {
+    return DateTime.tryParse(value)?.toUtc();
+  }
+  return null;
+}
+
+DateTime? _extractLastAssignmentAt(dynamic rawHistory) {
+  if (rawHistory is List && rawHistory.isNotEmpty) {
+    for (final entry in rawHistory.reversed) {
+      if (entry is Map && entry['assigned_at'] != null) {
+        final ts = _parseDate(entry['assigned_at']);
+        if (ts != null) {
+          return ts;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+bool _isResolvedOrBilled(String? status) {
+  if (status == null) return false;
+  final normalized = status.trim().toLowerCase();
+  return const {
+    'resolved',
+    'closed',
+    'billprocessed',
+    'billraised',
+  }.contains(normalized);
+}
+
+final overdueClaimedTicketsProvider =
+    fr.StreamProvider<List<TicketAlertEntry>>((ref) {
+  final supabase = Supabase.instance.client;
+  return _realtimeQuery(
+    supabase: supabase,
+    table: 'tickets',
+    channelSuffix: 'overdue_claimed',
+    fetcher: () => supabase
+        .from('tickets')
+        .select()
+        .order('updated_at', ascending: false),
+  ).map((rows) {
+    final now = DateTime.now().toUtc();
+    final entries = <TicketAlertEntry>[];
+    for (final raw in rows) {
+      final assignedTo = raw['assigned_to'];
+      if (assignedTo == null || assignedTo.toString().isEmpty) continue;
+      final status = raw['status']?.toString();
+      if (_isResolvedOrBilled(status)) continue;
+      final assignmentAt = _extractLastAssignmentAt(raw['assignment_history']) ??
+          _parseDate(raw['updated_at']) ??
+          _parseDate(raw['created_at']);
+      if (assignmentAt == null) continue;
+      final elapsed = now.difference(assignmentAt);
+      if (elapsed >= _claimedOverdueThreshold) {
+        entries.add(TicketAlertEntry(
+          ticket: Ticket.fromJson(Map<String, dynamic>.from(raw)),
+          referenceTime: assignmentAt,
+          elapsed: elapsed,
+          threshold: _claimedOverdueThreshold,
+        ));
+      }
+    }
+    entries.sort((a, b) => b.elapsed.compareTo(a.elapsed));
+    return entries;
+  });
+});
+
+final staleUnclaimedTicketsProvider =
+    fr.StreamProvider<List<TicketAlertEntry>>((ref) {
+  final supabase = Supabase.instance.client;
+  return _realtimeQuery(
+    supabase: supabase,
+    table: 'tickets',
+    channelSuffix: 'stale_unclaimed',
+    fetcher: () => supabase
+        .from('tickets')
+        .select()
+        .order('created_at', ascending: false),
+  ).map((rows) {
+    final now = DateTime.now().toUtc();
+    final entries = <TicketAlertEntry>[];
+    for (final raw in rows) {
+      final assignedTo = raw['assigned_to'];
+      if (assignedTo != null && assignedTo.toString().isNotEmpty) continue;
+      final status = raw['status']?.toString();
+      if (_isResolvedOrBilled(status)) continue;
+      final createdAt = _parseDate(raw['created_at']);
+      if (createdAt == null) continue;
+      final elapsed = now.difference(createdAt);
+      if (elapsed >= _unclaimedOverdueThreshold) {
+        entries.add(TicketAlertEntry(
+          ticket: Ticket.fromJson(Map<String, dynamic>.from(raw)),
+          referenceTime: createdAt,
+          elapsed: elapsed,
+          threshold: _unclaimedOverdueThreshold,
+        ));
+      }
+    }
+    entries.sort((a, b) => b.elapsed.compareTo(a.elapsed));
+    return entries;
+  });
+});
 
 // Filter state provider (null = all, 'Open', 'Closed')
 @riverpod
@@ -123,18 +284,26 @@ class _TicketOptimisticAssigneeOverrides
   }
 }
 
-// Tickets stream with filtering (status only; search is applied client-side)
+// Raw Tickets stream with filtering (status only; search is applied client-side)
 @riverpod
-Stream<List<Ticket>> ticketsStream(Ref ref) {
+Stream<List<Ticket>> rawTicketsStream(Ref ref) {
   final repository = ref.watch(ticketRepositoryProvider);
   final filter = ref.watch(ticketFilterProvider);
+  return repository.getTickets(statusFilter: filter);
+}
+
+// Tickets stream with filtering
+@riverpod
+AsyncValue<List<Ticket>> ticketsStream(Ref ref) {
+  final rawAsync = ref.watch(rawTicketsStreamProvider);
   final overrides = ref.watch(ticketOptimisticStatusOverridesProvider);
   final assigneeOverrides = ref.watch(
     ticketOptimisticAssigneeOverridesProvider,
   );
-  return repository.getTickets(statusFilter: filter).map((tickets) {
-    if (overrides.isEmpty && assigneeOverrides.isEmpty) return tickets;
-    return tickets.map((t) {
+  final currentUser = ref.watch(authProvider);
+
+  return rawAsync.whenData((tickets) {
+    var result = tickets.map((t) {
       final status = overrides[t.ticketId];
       final assigneeId = assigneeOverrides[t.ticketId];
       if (status == null && assigneeId == null) return t;
@@ -144,19 +313,35 @@ Stream<List<Ticket>> ticketsStream(Ref ref) {
         updatedAt: DateTime.now(),
       );
     }).toList();
+
+    // Tele Caller can only see tickets they created
+    if (currentUser?.isTeleCaller == true) {
+      result = result
+          .where((t) => t.createdBy == currentUser!.id)
+          .toList();
+    }
+
+    return result;
   });
+}
+
+// Unfiltered raw tickets stream
+@riverpod
+Stream<List<Ticket>> rawAllTicketsStream(Ref ref) {
+  final repository = ref.watch(ticketRepositoryProvider);
+  return repository.getTickets(statusFilter: null);
 }
 
 // Unfiltered tickets stream (for Revenue page etc)
 @riverpod
-Stream<List<Ticket>> allTicketsStream(Ref ref) {
-  final repository = ref.watch(ticketRepositoryProvider);
+AsyncValue<List<Ticket>> allTicketsStream(Ref ref) {
+  final rawAsync = ref.watch(rawAllTicketsStreamProvider);
   final overrides = ref.watch(ticketOptimisticStatusOverridesProvider);
   final assigneeOverrides = ref.watch(
     ticketOptimisticAssigneeOverridesProvider,
   );
-  // Pass null to get all tickets regardless of filter
-  return repository.getTickets(statusFilter: null).map((tickets) {
+
+  return rawAsync.whenData((tickets) {
     if (overrides.isEmpty && assigneeOverrides.isEmpty) return tickets;
     return tickets.map((t) {
       final status = overrides[t.ticketId];
@@ -177,6 +362,23 @@ Future<Map<String, dynamic>?> ticketCustomer(Ref ref, String customerId) async {
   final repository = ref.watch(ticketRepositoryProvider);
   return repository.getCustomer(customerId);
 }
+
+// Stream for a single ticket by its UUID
+final singleTicketStreamProvider =
+    fr.StreamProvider.autoDispose.family<Ticket?, String>((ref, ticketId) {
+  final supabase = Supabase.instance.client;
+  return _realtimeQuery(
+    supabase: supabase,
+    table: 'tickets',
+    channelSuffix: 'single_$ticketId',
+    fetcher: () => supabase
+        .from('tickets')
+        .select()
+        .eq('id', ticketId)
+        .limit(1),
+  ).map((rows) =>
+      rows.isEmpty ? null : Ticket.fromJson(Map<String, dynamic>.from(rows.first)));
+});
 
 // Stats stream
 @riverpod
@@ -216,7 +418,11 @@ class TicketStatusUpdater extends _$TicketStatusUpdater {
     try {
       if (!ref.mounted) return 'Component not mounted';
       final currentUser = ref.read(authProvider);
-      final canProcessBilling = currentUser?.isAccountant == true;
+      final canProcessBilling = currentUser?.isAccountant == true ||
+          currentUser?.isSupport == true ||
+          currentUser?.isHR == true ||
+          currentUser?.isProjectCoordinator == true ||
+          currentUser?.isSupportHead == true;
       final supabase = Supabase.instance.client;
       String? previousStatus;
       try {
@@ -230,7 +436,7 @@ class TicketStatusUpdater extends _$TicketStatusUpdater {
 
       if (status == 'BillProcessed') {
         if (!canProcessBilling) {
-          return 'Only accountants can mark tickets as billed';
+          return 'Only accountants and support heads can mark tickets as billed';
         }
         if (previousStatus != 'Closed') {
           return 'Complete the ticket before billing it';
@@ -265,7 +471,8 @@ class TicketStatusUpdater extends _$TicketStatusUpdater {
       }
 
       if (result.isRight() && ref.mounted) {
-        ref.invalidate(ticketsStreamProvider);
+        ref.invalidate(rawTicketsStreamProvider);
+        ref.invalidate(rawAllTicketsStreamProvider);
         ref.invalidate(ticketStatsProvider);
         Timer(const Duration(seconds: 10), () {
           if (!ref.mounted) return;
@@ -299,7 +506,8 @@ class TicketStatusUpdater extends _$TicketStatusUpdater {
     final result = await repository.resolveAndBillTicket(ticketId, amount);
 
     if (result.isRight() && ref.mounted) {
-      ref.invalidate(ticketsStreamProvider);
+      ref.invalidate(rawTicketsStreamProvider);
+      ref.invalidate(rawAllTicketsStreamProvider);
       ref.invalidate(ticketStatsProvider);
       final currentUser = ref.read(authProvider);
       if (currentUser != null) {
@@ -385,28 +593,26 @@ class TicketAssigner extends _$TicketAssigner {
 }
 
 final ticketAssignmentHistoryProvider =
-    fr.StreamProvider.family<List<Map<String, dynamic>>, String>((
-      ref,
-      ticketId,
-    ) {
-      final supabase = Supabase.instance.client;
-      return supabase
-          .from('tickets')
-          .stream(primaryKey: ['id'])
-          .eq('id', ticketId)
-          .limit(1)
-          .map((rows) {
-            if (rows.isEmpty) return <Map<String, dynamic>>[];
-            final raw = rows.first['assignment_history'];
-            if (raw is List) {
-              return raw
-                  .whereType<Map>()
-                  .map((e) => Map<String, dynamic>.from(e))
-                  .toList();
-            }
-            return <Map<String, dynamic>>[];
-          });
-    });
+    fr.StreamProvider.family<List<Map<String, dynamic>>, String>((ref, ticketId) {
+  final supabase = Supabase.instance.client;
+  return _realtimeQuery(
+    supabase: supabase,
+    table: 'tickets',
+    channelSuffix: 'assignment_history_$ticketId',
+    fetcher: () => supabase
+        .from('tickets')
+        .select('assignment_history')
+        .eq('id', ticketId)
+        .limit(1),
+  ).map((rows) {
+    if (rows.isEmpty) return <Map<String, dynamic>>[];
+    final raw = rows.first['assignment_history'];
+    if (raw is List) {
+      return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    }
+    return <Map<String, dynamic>>[];
+  });
+});
 
 final ticketFirstAssignedToProvider = fr.FutureProvider.family<String?, String>(
   (ref, ticketId) async {
@@ -430,10 +636,23 @@ class TicketCreator extends _$TicketCreator {
   @override
   bool build() => false;
 
-  Future<bool> createTicket(Ticket ticket) async {
+  Future<Ticket?> createTicket(Ticket ticket) async {
     final repository = ref.read(ticketRepositoryProvider);
     final result = await repository.createTicket(ticket);
-    return result.isRight();
+    return result.fold((failure) {
+      print('=== TicketCreator.createTicket Failed ===');
+      print('Failure message: ${failure.message}');
+      return null;
+    }, (createdTicket) {
+      // Immediately refresh ticket streams so Recent Tickets sidebar and Tickets
+      // tab update without waiting for the 3-minute periodic timer.
+      if (ref.mounted) {
+        ref.invalidate(rawTicketsStreamProvider);
+        ref.invalidate(rawAllTicketsStreamProvider);
+        ref.invalidate(ticketStatsProvider);
+      }
+      return createdTicket;
+    });
   }
 }
 
@@ -448,9 +667,12 @@ class TicketUpdater extends _$TicketUpdater {
     final result = await repository.updateTicket(ticket);
 
     return result.fold((l) => l.message, (r) {
-      ref.invalidate(ticketsStreamProvider);
-      ref.invalidate(allTicketsStreamProvider);
+      ref.invalidate(rawTicketsStreamProvider);
+      ref.invalidate(rawAllTicketsStreamProvider);
       return null;
     });
   }
 }
+
+
+

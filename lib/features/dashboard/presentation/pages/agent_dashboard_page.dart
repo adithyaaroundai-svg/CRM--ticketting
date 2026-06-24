@@ -7,30 +7,78 @@ import '../../../../core/design_system/design_system.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../tickets/presentation/providers/ticket_provider.dart';
+import '../../../tickets/domain/entities/ticket.dart';
 import '../../../customers/presentation/providers/customer_provider.dart';
+import '../../../chat/data/repositories/chat_repository.dart';
+import '../../../chat/presentation/providers/chat_provider.dart';
 import '../widgets/create_ticket_dialog.dart';
 import '../widgets/animated_create_ticket_fab.dart';
 
-class AgentDashboardPage extends ConsumerWidget {
+class AgentDashboardPage extends ConsumerStatefulWidget {
   final String currentPath;
   const AgentDashboardPage({super.key, this.currentPath = '/'});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AgentDashboardPage> createState() => _AgentDashboardPageState();
+}
+
+class _AgentDashboardPageState extends ConsumerState<AgentDashboardPage> {
+  // Restricted agents check
+  static const _allowedAroundTallyChannelIds = {
+    'd7a9e726-9520-4cc8-95a6-b38a4afd1d7b',
+    'dedce60a-56bd-49fd-bbe2-f88534b8e36f',
+  };
+  bool get _isRestrictedAgent {
+    final currentUser = ref.read(authProvider);
+    return _allowedAroundTallyChannelIds.contains(currentUser?.id ?? '');
+  }
+
+  Future<void> _showCreateTicketDialog() async {
+    final createdTicket = await showDialog<Ticket>(
+      context: context,
+      builder: (context) => const CreateTicketDialog(
+        isSupport: true,
+        postToChat: false,
+      ),
+    );
+
+    if (createdTicket == null) return;
+
+    await _sendCreatedTicketMessage(createdTicket);
+    ref.invalidate(chatStreamProvider('support-chat'));
+    ref.invalidate(chatUnreadCountProvider);
+  }
+
+  Future<void> _sendCreatedTicketMessage(Ticket ticket) async {
+    final agent = ref.read(authProvider);
+    if (agent == null) return;
+
+    final chatContent = [
+      'Company: ${ticket.customerId}',
+      'Issue: ${ticket.title}',
+      'TicketID: ${ticket.ticketId}',
+    ].join('\n');
+
+    await ref.read(chatRepositoryProvider).sendMessage(
+          senderId: agent.id,
+          senderName: agent.fullName ?? agent.username,
+          senderRole: agent.role,
+          content: chatContent,
+          senderAvatarUrl: agent.avatarUrl,
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(authProvider);
     final ticketsAsync = ref.watch(ticketsStreamProvider);
 
     return MainLayout(
-      currentPath: currentPath,
+      currentPath: widget.currentPath,
       child: Scaffold(
         backgroundColor: AppColors.slate50,
         floatingActionButton: AnimatedCreateTicketFab(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) => const CreateTicketDialog(isSupport: true),
-            );
-          },
+          onPressed: _showCreateTicketDialog,
         ),
         body: Column(
           children: [
@@ -43,11 +91,31 @@ class AgentDashboardPage extends ConsumerWidget {
                 trailing: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.end,
+                      children: [
+                        if (!_isRestrictedAgent)
+                        OutlinedButton.icon(
+                          icon: const Icon(LucideIcons.hourglass, size: 16),
+                          label: const Text('Unclaimed > 1h'),
+                          onPressed: () => context.push('/tickets?view=stale_unclaimed'),
+                        ),
+                        if (!_isRestrictedAgent)
+                        OutlinedButton.icon(
+                          icon: const Icon(LucideIcons.alertTriangle, size: 16),
+                          label: const Text('Claimed > 12h'),
+                          onPressed: () => context.push('/tickets?view=claimed_overdue'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     AppButton.ghost(
                       label: 'Refresh',
                       icon: Icons.refresh,
                       onPressed: () {
-                        ref.invalidate(ticketsStreamProvider);
+                        ref.invalidate(rawTicketsStreamProvider);
                         ref.invalidate(customersListProvider);
                       },
                     ),
@@ -141,7 +209,7 @@ class AgentDashboardPage extends ConsumerWidget {
   }
 }
 
-class _UnclaimedTicketsListView extends StatelessWidget {
+class _UnclaimedTicketsListView extends ConsumerWidget {
   final List<dynamic> tickets;
   final Map<String, dynamic> customerMap;
   final String title;
@@ -155,7 +223,7 @@ class _UnclaimedTicketsListView extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
         // Header
@@ -192,13 +260,13 @@ class _UnclaimedTicketsListView extends StatelessWidget {
         const SizedBox(height: 16),
         // List Content
         Expanded(
-          child: _buildTicketsList(context),
+          child: _buildTicketsList(context, ref),
         ),
       ],
     );
   }
 
-  Widget _buildTicketsList(BuildContext context) {
+  Widget _buildTicketsList(BuildContext context, WidgetRef ref) {
     if (tickets.isEmpty) {
       return Center(
         child: Column(
@@ -357,10 +425,14 @@ class _UnclaimedTicketsListView extends StatelessWidget {
                           ),
                         ),
                         onPressed: () {
-                          context.go(
-                            '/ticket/${ticket.ticketId}',
-                            extra: {'autoClaim': true},
-                          );
+                          final currentUser = ref.read(authProvider);
+                          if (currentUser == null) return;
+
+                          ref
+                              .read(ticketAssignerProvider.notifier)
+                              .assignTicket(ticket.ticketId, currentUser.id);
+
+                          context.go('/ticket/${ticket.ticketId}');
                         },
                       ),
                     ),
@@ -438,8 +510,11 @@ class _EmptyListPlaceholder extends StatelessWidget {
   }
 }
 
-/// Returns the DateTime as-is for display.
-/// Timestamps are stored and retrieved as local time (no timezone conversion needed).
+/// Normalises timestamps for display by converting any UTC values to local time.
 DateTime _toLocalTime(DateTime dateTime) {
+  if (dateTime.isUtc) {
+    return dateTime.toLocal();
+  }
+
   return dateTime;
 }

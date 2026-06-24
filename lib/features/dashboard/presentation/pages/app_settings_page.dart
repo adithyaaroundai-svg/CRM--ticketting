@@ -139,7 +139,7 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage>
     try {
       final currentUser = ref.read(authProvider);
       final previousEnabled = _settings[key];
-      final nowIso = DateTime.now().toIso8601String();
+      final nowIso = DateTime.now().toUtc().toIso8601String();
       await _supabase
           .from('app_settings')
           .update({
@@ -208,7 +208,7 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage>
       await _supabase.from('app_settings').upsert({
         'setting_key': 'role_permissions',
         'setting_value': rolePermsJson,
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
         'updated_by': currentUser?.id,
       }, onConflict: 'setting_key');
 
@@ -259,7 +259,7 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage>
       await _supabase.from('app_settings').upsert({
         'setting_key': 'workflow_config',
         'setting_value': {'sla': sla, 'visible_statuses': statuses},
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
         'updated_by': currentUser?.id,
       }, onConflict: 'setting_key');
 

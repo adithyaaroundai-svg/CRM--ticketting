@@ -11,10 +11,11 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../dashboard/presentation/widgets/animated_create_ticket_fab.dart';
 import '../../../dashboard/presentation/widgets/create_ticket_dialog.dart';
 
-/// Returns the DateTime as-is for display.
-/// Timestamps are stored and retrieved as local time (no timezone conversion needed).
+/// Converts a DateTime to local time for display
 DateTime _toLocalTime(DateTime dateTime) {
-  // Timestamps are already in local time - no conversion needed
+  if (dateTime.isUtc) {
+    return dateTime.toLocal();
+  }
   return dateTime;
 }
 
@@ -50,7 +51,7 @@ class SalesDashboardPage extends ConsumerWidget {
         ),
         body: RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(allTicketsStreamProvider);
+            ref.invalidate(rawAllTicketsStreamProvider);
             ref.invalidate(customersListProvider);
           },
           child: SingleChildScrollView(

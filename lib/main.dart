@@ -5,6 +5,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/design_system/theme/app_theme.dart';
 import 'features/dashboard/presentation/pages/agent_dashboard_page.dart';
 import 'features/dashboard/presentation/pages/admin_dashboard_page.dart';
+import 'features/chat/presentation/pages/global_chat_page.dart';
+import 'features/chat/presentation/pages/sales_chat_page.dart';
+import 'features/chat/presentation/pages/all_aroundtally_chat_page.dart';
+import 'features/sales/presentation/pages/leads_page.dart';
+import 'features/chat/presentation/pages/direct_message_page.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/profile_page.dart';
 import 'features/auth/presentation/pages/add_user_page.dart';
@@ -34,8 +39,6 @@ import 'features/productivity/presentation/pages/notifications_page.dart';
 import 'features/productivity/presentation/pages/deals_page.dart';
 import 'features/dashboard/presentation/providers/app_settings_provider.dart';
 import 'features/sales/presentation/pages/proposal_generator_page.dart';
-import 'features/chat/presentation/pages/global_chat_page.dart';
-import 'features/sales/presentation/pages/leads_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -89,7 +92,11 @@ class TallyCareApp extends ConsumerWidget {
         final isSupportHead = authState?.isSupportHead ?? false;
         final isAccountant = authState?.isAccountant ?? false;
         final isSupport = authState?.isSupport ?? false;
+        final isHR = authState?.isHR ?? false;
+        final isProjectCoordinator = authState?.isProjectCoordinator ?? false;
         final isSales = authState?.isSales ?? false;
+        // HR and Project Coordinator have same access as Support
+        final hasSupportAccess = isSupport || isHR || isProjectCoordinator;
 
         // Redirect to login if not authenticated
         if (!isLoggedIn &&
@@ -103,7 +110,7 @@ class TallyCareApp extends ConsumerWidget {
         if (isLoggedIn && isLoggingIn) {
           if (isAdmin) return '/admin';
           if (isAccountant) return '/accountant';
-          if (isSupport) return '/support';
+          if (isSupport || isHR || isProjectCoordinator) return '/chat';
           if (isSales) return '/sales';
           if (isSupportHead) return '/';
           return '/';
@@ -114,8 +121,8 @@ class TallyCareApp extends ConsumerWidget {
         if (isAccountant && state.matchedLocation == '/') {
           return '/accountant';
         }
-        if (isSupport && state.matchedLocation == '/') {
-          return '/support';
+        if ((isSupport || isHR || isProjectCoordinator) && state.matchedLocation == '/') {
+          return '/chat';
         }
         if (isSales && state.matchedLocation == '/') {
           return '/sales';
@@ -137,7 +144,7 @@ class TallyCareApp extends ConsumerWidget {
             if (!isLoggedIn) return '/login';
             if (isAdmin) return '/admin';
             if (isAccountant) return '/accountant';
-            if (isSupport) return '/support';
+            if (isSupport) return '/chat';
             if (isSupportHead) return '/';
             return '/';
           }
@@ -165,7 +172,7 @@ class TallyCareApp extends ConsumerWidget {
             if (!canSee) {
               if (isAdmin) return '/admin';
               if (isAccountant) return '/accountant';
-              if (isSupport) return '/support';
+              if (isSupport) return '/chat';
               if (isSupportHead) return '/';
               return '/';
             }
@@ -174,7 +181,7 @@ class TallyCareApp extends ConsumerWidget {
 
         if (!isAdmin && !isAccountant && location.startsWith('/revenue')) {
           if (!isLoggedIn) return '/login';
-          if (isSupport) return '/support';
+          if (isSupport || isHR || isProjectCoordinator) return '/chat';
           if (isSupportHead) return '/';
           return '/';
         }
@@ -189,7 +196,7 @@ class TallyCareApp extends ConsumerWidget {
         if (!isAccountant && state.matchedLocation.startsWith('/accountant')) {
           return '/login';
         }
-        if (!isSupport && state.matchedLocation.startsWith('/support')) {
+        if (!isSupport && !isHR && !isProjectCoordinator && !isAccountant && !isAdmin && state.matchedLocation.startsWith('/support')) {
           return '/login';
         }
         if (!isAdmin && state.matchedLocation.startsWith('/settings')) {
@@ -198,9 +205,32 @@ class TallyCareApp extends ConsumerWidget {
         if (!isAdmin &&
             !isAccountant &&
             !isSupport &&
+            !isHR &&
+            !isProjectCoordinator &&
             !isSupportHead &&
             state.matchedLocation.startsWith('/reports')) {
           return '/login';
+        }
+
+        // Sales channel access: only specific agent IDs are allowed
+        if (state.matchedLocation.startsWith('/sales-channel')) {
+          const allowedSalesChannelIds = {
+            '0a5aeeb8-9544-4dc8-920f-e26c192b0dd3',
+            '1f4d7758-12ba-43eb-9e47-cc0c95b740b8',
+            '14db36db-0cb9-44ef-8032-d9610b3bc797',
+            'b77b3738-4dfc-4515-a1fd-d6fb170423f4',
+            'd8aa6435-9e02-4bab-9acc-ae1f5f3d6a1c',
+            '5a06a8df-97f1-4dbf-bc13-9724a3c779c1',
+          };
+          final userId = authState?.id ?? '';
+          if (!allowedSalesChannelIds.contains(userId)) {
+            if (!isLoggedIn) return '/login';
+            if (isAdmin) return '/admin';
+            if (isAccountant) return '/accountant';
+            if (isSupport) return '/chat';
+            if (isSales) return '/sales';
+            return '/';
+          }
         }
 
         return null;
@@ -280,13 +310,7 @@ class TallyCareApp extends ConsumerWidget {
           path: '/ticket/:id',
           builder: (context, state) {
             final id = state.pathParameters['id']!;
-            final extra = state.extra;
-            bool autoClaim = false;
-            if (extra is Map) {
-              final v = extra['autoClaim'];
-              if (v is bool) autoClaim = v;
-            }
-            return TicketDetailPage(ticketId: id, autoClaim: autoClaim);
+            return TicketDetailPage(ticketId: id);
           },
         ),
         GoRoute(
@@ -364,6 +388,22 @@ class TallyCareApp extends ConsumerWidget {
           path: '/chat',
           builder: (context, state) => const GlobalChatPage(),
         ),
+        GoRoute(
+          path: '/sales-channel',
+          builder: (context, state) => const SalesChatPage(),
+        ),
+        GoRoute(
+          path: '/channel/all-aroundtally',
+          builder: (context, state) => const AllAroundTallyChatPage(),
+        ),
+        GoRoute(
+          path: '/chat/dm/:userId',
+          builder: (context, state) {
+            final userId = state.pathParameters['userId']!;
+            return DirectMessagePage(partnerId: userId);
+          },
+        ),
+
       ],
     );
 

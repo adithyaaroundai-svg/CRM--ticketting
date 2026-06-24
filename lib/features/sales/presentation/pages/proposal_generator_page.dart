@@ -133,6 +133,46 @@ class _PaymentBullet extends StatelessWidget {
   }
 }
 
+class ProposalHistoryItem {
+  final String id;
+  final String clientName;
+  final String clientPhone;
+  final String clientEmail;
+  final String docNumber;
+  final double totalAmount;
+  final DateTime downloadedAt;
+
+  ProposalHistoryItem({
+    required this.id,
+    required this.clientName,
+    required this.clientPhone,
+    required this.clientEmail,
+    required this.docNumber,
+    required this.totalAmount,
+    required this.downloadedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'clientName': clientName,
+    'clientPhone': clientPhone,
+    'clientEmail': clientEmail,
+    'docNumber': docNumber,
+    'totalAmount': totalAmount,
+    'downloadedAt': downloadedAt.toIso8601String(),
+  };
+
+  factory ProposalHistoryItem.fromJson(Map<String, dynamic> json) => ProposalHistoryItem(
+    id: json['id'],
+    clientName: json['clientName'],
+    clientPhone: json['clientPhone'],
+    clientEmail: json['clientEmail'] ?? '',
+    docNumber: json['docNumber'],
+    totalAmount: json['totalAmount'].toDouble(),
+    downloadedAt: DateTime.parse(json['downloadedAt']),
+  );
+}
+
 class ProposalCustomPage {
   const ProposalCustomPage({
     required this.title,
@@ -173,16 +213,17 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
   // Strict A4 Dimensions
   static const double _pageWidth = 794;
   static const double _pageHeight = 1000;
-  static const String _proposalBucket = 'proposal_pdfs';
+  static const String _proposalBucket = 'voice_notes';
 
   bool isEditing = true;
   List<GlobalKey> _pageKeys = [];
 
   final clientNameCtrl = TextEditingController(text: 'ABZ BUILDERS');
   final clientPhoneCtrl = TextEditingController(text: '90374 73301');
+  final clientEmailCtrl = TextEditingController(text: '');
   final docNumberCtrl = TextEditingController(text: '183/25-26');
   final licensePriceCtrl = TextEditingController(text: '22500');
-  final discountPercentCtrl = TextEditingController(text: '5');
+  final discountPercentCtrl = TextEditingController(text: '0');
   final installationPriceCtrl = TextEditingController(text: '1000');
   final mobileAppPriceCtrl = TextEditingController(text: '4500');
   final supportDaysCtrl = TextEditingController(text: '45');
@@ -200,6 +241,8 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
   ];
   final List<ProposalProduct> _companyProducts = [];
   final List<ProposalCustomPage> _customPages = [];
+  List<ProposalHistoryItem> _proposalHistory = [];
+  bool _isLoadingHistory = false;
 
   final List<String> industries = [
     'Manufacturing',
@@ -622,6 +665,161 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
     };
   }
 
+  // PROPOSAL HISTORY
+  Future<void> _loadHistory() async {
+    if (_isLoadingHistory) return;
+    setState(() => _isLoadingHistory = true);
+    try {
+      final response = await Supabase.instance.client
+          .from('history')
+          .select()
+          .order('downloaded_at', ascending: false)
+          .limit(50);
+      
+      setState(() {
+        _proposalHistory = (response as List)
+            .map((e) => ProposalHistoryItem(
+                  id: e['id'],
+                  clientName: e['company_name'] ?? '',
+                  clientPhone: e['phone_number'] ?? '',
+                  clientEmail: e['email'] ?? '',
+                  docNumber: e['document_number'] ?? '',
+                  totalAmount: (e['total_amount'] as num?)?.toDouble() ?? 0,
+                  downloadedAt: DateTime.parse(e['downloaded_at']),
+                ))
+            .toList();
+      });
+    } catch (e) {
+      debugPrint('Error loading history: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingHistory = false);
+    }
+  }
+
+  Future<void> _saveToHistory() async {
+    final pricing = calculatePricing();
+    try {
+      await Supabase.instance.client.from('history').insert({
+        'company_name': clientNameCtrl.text,
+        'phone_number': clientPhoneCtrl.text,
+        'email': clientEmailCtrl.text,
+        'document_number': docNumberCtrl.text,
+        'total_amount': pricing['total'] ?? 0,
+      });
+      // Refresh history after saving
+      await _loadHistory();
+    } catch (e) {
+      debugPrint('Error saving to history: $e');
+    }
+  }
+
+  void _showHistoryDialog() {
+    // Refresh history when opening dialog
+    _loadHistory();
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                const Icon(LucideIcons.history, size: 24),
+                const SizedBox(width: 8),
+                const Text('Proposal History'),
+                const Spacer(),
+                if (_isLoadingHistory)
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  IconButton(
+                    icon: const Icon(LucideIcons.refreshCw, size: 18),
+                    onPressed: () async {
+                      await _loadHistory();
+                      setDialogState(() {});
+                    },
+                  ),
+              ],
+            ),
+            content: SizedBox(
+              width: 500,
+              height: 400,
+              child: _proposalHistory.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No proposals downloaded yet',
+                        style: TextStyle(color: cGray500),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _proposalHistory.length,
+                      itemBuilder: (context, index) {
+                        final item = _proposalHistory[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: cBlue600,
+                              child: Text(
+                                item.clientName.isNotEmpty
+                                    ? item.clientName.substring(0, 1).toUpperCase()
+                                    : '?',
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            title: Text(item.clientName),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item.clientPhone),
+                                if (item.clientEmail.isNotEmpty)
+                                  Text(item.clientEmail),
+                                Text(
+                                  'Doc: ${item.docNumber}',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                            trailing: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '₹${item.totalAmount.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: cGreen600,
+                                  ),
+                                ),
+                                Text(
+                                  DateFormat('d/M/yyyy h:mm a').format(item.downloadedAt),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: cGray500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   // PDF GENERATION: All pages are pre-rendered, capture is instant
   bool _isGeneratingPdf = false;
   bool _isSharingWhatsApp = false;
@@ -801,17 +999,15 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
       final client = Supabase.instance.client;
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final sanitizedClient = clientNameCtrl.text.trim().replaceAll(' ', '_');
-      final path = 'proposals/${sanitizedClient}_$timestamp.pdf';
+      final fileName = 'proposal_${sanitizedClient}_$timestamp.pdf';
 
-      await client.storage
-          .from(_proposalBucket)
-          .uploadBinary(
-            path,
+      await client.storage.from(_proposalBucket).uploadBinary(
+            fileName,
             pdfBytes,
-            fileOptions: const FileOptions(upsert: true),
           );
 
-      final publicUrl = client.storage.from(_proposalBucket).getPublicUrl(path);
+      final publicUrl =
+          client.storage.from(_proposalBucket).getPublicUrl(fileName);
       if (publicUrl.isEmpty || !publicUrl.startsWith('http')) {
         return null;
       }
@@ -831,6 +1027,8 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
       final pdfData = await _getPdfBytes();
       final filename = 'Proposal_${clientNameCtrl.text}.pdf';
       await Printing.sharePdf(bytes: pdfData, filename: filename);
+      // Save to history after successful download
+      await _saveToHistory();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -847,38 +1045,46 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
     setState(() => _isSharingWhatsApp = true);
     try {
       final pdfData = await _getPdfBytes();
-      final pdfKey = _cachedPdfKey ?? _currentPdfFingerprint();
-      final pdfUrl = await _uploadProposalPdf(pdfData, pdfKey);
-      if (pdfUrl == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Unable to upload proposal PDF')),
-          );
-        }
-        return;
-      }
       final pricing = calculatePricing();
       final bonusDate = DateFormat(
         'd/M/yyyy',
       ).format(DateTime.now().add(const Duration(days: 5)));
       final message =
-          '''Hi ${clientNameCtrl.text},\n\nHere is your TallyPrime proposal from Sidharth IT Solutions:\n- Package Price (before GST): ₹${pricing['packagePrice']!.toStringAsFixed(0)}\n- GST (18%): ₹${pricing['gst']!.toStringAsFixed(0)}\n- Total Investment: ₹${pricing['total']!.toStringAsFixed(0)}\n- Savings vs individual services: ₹${pricing['savings']!.toStringAsFixed(0)}\n\nDownload full proposal PDF: $pdfUrl\n\nConfirm by $bonusDate to reserve priority installation and extended support.\n--\nSidharth IT Solutions''';
-      final uri = Uri.parse(
-        'https://wa.me/?text=${Uri.encodeComponent(message)}',
-      );
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.platformDefault,
-        webOnlyWindowName: '_blank',
-      );
+          '''Hi ${clientNameCtrl.text},
+
+Here is your TallyPrime proposal from Sidharth IT Solutions:
+- Package Price (before GST): ₹${pricing['packagePrice']!.toStringAsFixed(0)}
+- GST (18%): ₹${pricing['gst']!.toStringAsFixed(0)}
+- Total Investment: ₹${pricing['total']!.toStringAsFixed(0)}
+- Savings vs individual services: ₹${pricing['savings']!.toStringAsFixed(0)}
+
+Confirm by $bonusDate to reserve priority installation and extended support.
+
+--
+Sidharth IT Solutions''';
+
+      // 1. Open WhatsApp Web IMMEDIATELY
+      final uri = Uri.parse('https://web.whatsapp.com/send?text=${Uri.encodeComponent(message)}');
+      final launched = await launchUrl(uri, webOnlyWindowName: '_blank');
+
       if (!launched && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to open WhatsApp')),
+          const SnackBar(content: Text('Unable to open WhatsApp. Please check your browser settings.')),
         );
       }
+      
+      // 2. Trigger PDF Download (Non-blocking)
+      final filename = 'Proposal_${clientNameCtrl.text}.pdf';
+      Printing.sharePdf(bytes: pdfData, filename: filename);
     } finally {
       if (mounted) setState(() => _isSharingWhatsApp = false);
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
   }
 
   @override
@@ -964,6 +1170,19 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
                       ),
                     ),
                     onPressed: () => setState(() => isEditing = !isEditing),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    icon: const Icon(LucideIcons.history, size: 16),
+                    label: const Text('History'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: cGray100,
+                      foregroundColor: cGray700,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: _showHistoryDialog,
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton.icon(
@@ -1133,6 +1352,7 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
                                   const SizedBox(height: 20),
                                   _buildInput('Client Name', clientNameCtrl),
                                   _buildInput('Client Phone', clientPhoneCtrl),
+                                  _buildInput('Client Email', clientEmailCtrl),
                                   _buildInput('Doc Number', docNumberCtrl),
                                   const Divider(height: 30),
                                   _buildInput(
@@ -1245,7 +1465,7 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeaderBlock(today, theme),
+          _buildHeaderBlock(today, clientEmailCtrl.text, theme),
           const SizedBox(height: 40),
 
           // --- HERO SECTION ---
@@ -1322,7 +1542,7 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
                 child: Column(
                   children: [
                     const Text(
-                      'TOTAL SAVINGS',
+                      'TOTAL PAYABLE',
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 11,
@@ -1331,7 +1551,7 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '₹${pricing['savings']!.toStringAsFixed(0)}',
+                      '₹${pricing['total']!.toStringAsFixed(0)}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 28,
@@ -1340,7 +1560,7 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
                     ),
                     const Divider(color: Colors.white24, height: 20),
                     const Text(
-                      'Special Bundle Price',
+                      'All-inclusive Implementation',
                       style: TextStyle(color: Colors.white70, fontSize: 10),
                     ),
                   ],
@@ -1403,6 +1623,16 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
                     ),
                     _buildCheckListTile(
                       'Priority 4-hour on-call support response',
+                      customColor: theme['accent'],
+                      size: 15,
+                    ),
+                    _buildCheckListTile(
+                      'Tally features walkthrough & best practices',
+                      customColor: theme['accent'],
+                      size: 15,
+                    ),
+                    _buildCheckListTile(
+                      'Basic training for staff & system handover',
                       customColor: theme['accent'],
                       size: 15,
                     ),
@@ -1612,16 +1842,6 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
           ),
           const SizedBox(height: 24),
 
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 1, child: _buildImplementationTimeline(theme)),
-              const SizedBox(width: 32),
-              Expanded(flex: 1, child: _buildPaymentInfo(theme)),
-            ],
-          ),
-
-          const SizedBox(height: 32),
           _buildTrustSection(theme),
 
           const Spacer(),
@@ -1734,7 +1954,7 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
     );
   }
 
-  Widget _buildHeaderBlock(String today, Map<String, dynamic> theme) {
+  Widget _buildHeaderBlock(String today, String email, Map<String, dynamic> theme) {
     return Container(
       padding: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
@@ -1791,6 +2011,17 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
                   color: cGray900,
                 ),
               ),
+              if (email.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  email,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: cGray600,
+                  ),
+                ),
+              ],
             ],
           ),
         ],
@@ -1961,14 +2192,6 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
               ],
             ),
           ),
-          Text(
-            '₹${product.price.toStringAsFixed(0)}',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: textCol,
-            ),
-          ),
         ],
       ),
     );
@@ -2041,28 +2264,6 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                "₹${pricing['mPrice']!.toStringAsFixed(0)}",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: cGray400,
-                  decoration: TextDecoration.lineThrough,
-                ),
-              ),
-              const Text(
-                'Included',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: cGreen600,
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -2092,15 +2293,15 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
           ),
           const SizedBox(height: 16),
           _buildRow(
-            'Software License (MRP)',
+            'Package Base Price',
             "₹${pricing['lPrice']!.toStringAsFixed(0)}",
-            isStrikeout: true,
           ),
-          _buildRow(
-            'Special Package Discount',
-            "- ₹${pricing['discount']!.toStringAsFixed(0)}",
-            isGreen: true,
-          ),
+          if (pricing['discount']! > 0)
+            _buildRow(
+              'Special Package Discount',
+              "- ₹${pricing['discount']!.toStringAsFixed(0)}",
+              isGreen: true,
+            ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
             child: Divider(),

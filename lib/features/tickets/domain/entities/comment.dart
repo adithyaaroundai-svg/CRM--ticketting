@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import '../../../../core/utils/json_converters.dart';
 
 // Freezed uses JsonKey on constructor parameters; ignore analyzer complaining
 // about invalid annotation targets.
@@ -15,7 +16,7 @@ abstract class TicketComment with _$TicketComment {
     @Default('Unknown') String author,
     @Default('') String body,
     @JsonKey(name: 'internal') @Default(false) bool isInternal,
-    @JsonKey(name: 'created_at') DateTime? createdAt,
+    @JsonKey(name: 'created_at') @UtcDateTimeConverter() DateTime? createdAt,
   }) = _TicketComment;
 
   factory TicketComment.fromJson(Map<String, dynamic> json) =>

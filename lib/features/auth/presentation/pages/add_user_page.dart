@@ -31,6 +31,11 @@ class _AddUserPageState extends ConsumerState<AddUserPage> {
     'Support',
     'Accountant',
     'Sales',
+    'Tele Caller',
+    'Software Developer',
+    'Digital Marketing Executive',
+    'HR',
+    'Project Coordinator',
   ];
 
   @override
@@ -67,7 +72,7 @@ class _AddUserPageState extends ConsumerState<AddUserPage> {
         'password': _passwordController.text,
         'full_name': _fullNameController.text.trim(),
         'role': _selectedRole,
-        'created_at': DateTime.now().toIso8601String(),
+        'created_at': DateTime.now().toUtc().toIso8601String(),
       });
 
       if (mounted) {
@@ -358,6 +363,14 @@ class _AddUserPageState extends ConsumerState<AddUserPage> {
         return LucideIcons.calculator;
       case 'Sales':
         return LucideIcons.badgeDollarSign;
+      case 'Tele Caller':
+        return LucideIcons.phone;
+      case 'Software Developer':
+        return LucideIcons.code;
+      case 'Digital Marketing Executive':
+        return LucideIcons.megaphone;
+      case 'Project Coordinator':
+        return LucideIcons.clipboardList;
       default:
         return LucideIcons.user;
     }
@@ -375,6 +388,14 @@ class _AddUserPageState extends ConsumerState<AddUserPage> {
         return 'Accountant';
       case 'Sales':
         return 'Sales';
+      case 'Tele Caller':
+        return 'Tele Caller';
+      case 'Software Developer':
+        return 'Software Developer';
+      case 'Digital Marketing Executive':
+        return 'Digital Marketing Executive';
+      case 'Project Coordinator':
+        return 'Project Coordinator';
       default:
         return role;
     }

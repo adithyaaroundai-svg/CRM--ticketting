@@ -6,6 +6,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/logging/app_logger.dart';
+import '../../../chat/presentation/providers/chat_provider.dart'
+    show ChatNewMessageEvent;
 
 part 'auth_provider.g.dart';
 
@@ -15,20 +17,29 @@ class Agent {
   final String username;
   final String fullName;
   final String role;
+  final String? displayColor;
+  final String? avatarUrl;
+  final String? teamsUserId;
 
   Agent({
     required this.id,
     required this.username,
     required this.fullName,
     required this.role,
+    this.displayColor,
+    this.avatarUrl,
+    this.teamsUserId,
   });
 
   factory Agent.fromJson(Map<String, dynamic> json) {
     return Agent(
       id: json['id'],
       username: json['username'],
-      fullName: json['full_name'],
+      fullName: json['full_name'] ?? json['full_name'],
       role: json['role'],
+      displayColor: json['display_color'],
+      avatarUrl: json['avatar_url'],
+      teamsUserId: json['teams_user_id'],
     );
   }
 
@@ -38,6 +49,9 @@ class Agent {
       'username': username,
       'full_name': fullName,
       'role': role,
+      'display_color': displayColor,
+      'avatar_url': avatarUrl,
+      'teams_user_id': teamsUserId,
     };
   }
   String get _roleLower => role.trim().toLowerCase();
@@ -52,6 +66,11 @@ class Agent {
   bool get isSupport => _roleLower == 'support';
   bool get isAgent => _roleLower == 'agent';
   bool get isSales => _roleLower == 'sales' || _roleLower == 'salesperson';
+  bool get isTeleCaller => _roleLower == 'tele caller' || _roleLower == 'telecaller';
+  bool get isSoftwareDeveloper => _roleLower == 'software developer' || _roleLower == 'softwaredeveloper';
+  bool get isHR => _roleLower == 'hr' || _roleLower == 'human resource' || _roleLower == 'human_resource' || _roleLower == 'human-resource';
+  bool get isProjectCoordinator => _roleLower == 'project coordinator' || _roleLower == 'project_coordinator' || _roleLower == 'projectcoordinator';
+  bool get isDigitalMarketing => _roleLower == 'digital marketing' || _roleLower == 'digital_marketing' || _roleLower == 'digitalmarketing' || _roleLower == 'digital marketing executive';
 }
 
 // Auth state notifier
@@ -112,7 +131,7 @@ class AuthNotifier extends _$AuthNotifier {
     try {
       agentRow = await client
           .from('agents')
-          .select('id, username, full_name, role')
+          .select('id, username, full_name, role, display_color, avatar_url')
           .eq('username', username)
           .eq('password', password)
           .limit(1)
@@ -129,6 +148,7 @@ class AuthNotifier extends _$AuthNotifier {
     if (agentRow != null) {
       state = Agent.fromJson(agentRow);
       await _persistAgent(state!);
+      await _updateLastSeen(state!.id);
       return true;
     }
 
@@ -158,6 +178,7 @@ class AuthNotifier extends _$AuthNotifier {
         Map<String, dynamic>.from(response['agent'] as Map),
       );
       await _persistAgent(state!);
+      await _updateLastSeen(state!.id);
       return true;
     }
 
@@ -169,6 +190,9 @@ class AuthNotifier extends _$AuthNotifier {
   }
 
   void logout() {
+    // Clear the in-memory set of notified message IDs so the next user
+    // doesn't inherit the previous user's notification history.
+    ChatNewMessageEvent.resetSession();
     state = null;
     _clearPersistedAgent();
   }
@@ -219,6 +243,188 @@ class AuthNotifier extends _$AuthNotifier {
         error: e,
         stackTrace: stackTrace,
       );
+    }
+  }
+
+  Future<void> _updateLastSeen(String agentId) async {
+    try {
+      final client = Supabase.instance.client;
+      await client
+          .from('agents')
+          .update({'last_seen': DateTime.now().toUtc().toIso8601String()})
+          .eq('id', agentId);
+    } catch (e, stackTrace) {
+      appLogger.error(
+        'Failed to update last_seen timestamp',
+        error: e,
+        stackTrace: stackTrace,
+        context: {'agentId': agentId},
+      );
+    }
+  }
+
+  Future<bool> updateDisplayColor(String colorHex) async {
+    final currentAgent = state;
+    if (currentAgent == null) return false;
+
+    try {
+      final client = Supabase.instance.client;
+      await client
+          .from('agents')
+          .update({'display_color': colorHex})
+          .eq('id', currentAgent.id);
+
+      final updatedAgent = Agent(
+        id: currentAgent.id,
+        username: currentAgent.username,
+        fullName: currentAgent.fullName,
+        role: currentAgent.role,
+        displayColor: colorHex,
+        avatarUrl: currentAgent.avatarUrl,
+        teamsUserId: currentAgent.teamsUserId,
+      );
+      state = updatedAgent;
+      await _persistAgent(updatedAgent);
+      return true;
+    } catch (e, stackTrace) {
+      appLogger.error(
+        'Failed to update display color',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  Future<bool> updateAvatarUrl(String avatarUrl) async {
+    final currentAgent = state;
+    if (currentAgent == null) return false;
+
+    try {
+      final client = Supabase.instance.client;
+      await client
+          .from('agents')
+          .update({'avatar_url': avatarUrl})
+          .eq('id', currentAgent.id);
+
+      final updatedAgent = Agent(
+        id: currentAgent.id,
+        username: currentAgent.username,
+        fullName: currentAgent.fullName,
+        role: currentAgent.role,
+        displayColor: currentAgent.displayColor,
+        avatarUrl: avatarUrl,
+        teamsUserId: currentAgent.teamsUserId,
+      );
+      state = updatedAgent;
+      await _persistAgent(updatedAgent);
+      return true;
+    } catch (e, stackTrace) {
+      appLogger.error(
+        'Failed to update avatar URL',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  Future<bool> updateUsername(String username) async {
+    final currentAgent = state;
+    if (currentAgent == null) return false;
+
+    try {
+      final client = Supabase.instance.client;
+      await client
+          .from('agents')
+          .update({'username': username.trim()})
+          .eq('id', currentAgent.id);
+
+      final updatedAgent = Agent(
+        id: currentAgent.id,
+        username: username.trim(),
+        fullName: currentAgent.fullName,
+        role: currentAgent.role,
+        displayColor: currentAgent.displayColor,
+        avatarUrl: currentAgent.avatarUrl,
+        teamsUserId: currentAgent.teamsUserId,
+      );
+      state = updatedAgent;
+      await _persistAgent(updatedAgent);
+      return true;
+    } catch (e, stackTrace) {
+      appLogger.error(
+        'Failed to update username',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  Future<bool> updateFullName(String fullName) async {
+    final currentAgent = state;
+    if (currentAgent == null) return false;
+
+    try {
+      final client = Supabase.instance.client;
+      await client
+          .from('agents')
+          .update({'full_name': fullName.trim()})
+          .eq('id', currentAgent.id);
+
+      final updatedAgent = Agent(
+        id: currentAgent.id,
+        username: currentAgent.username,
+        fullName: fullName.trim(),
+        role: currentAgent.role,
+        displayColor: currentAgent.displayColor,
+        avatarUrl: currentAgent.avatarUrl,
+        teamsUserId: currentAgent.teamsUserId,
+      );
+      state = updatedAgent;
+      await _persistAgent(updatedAgent);
+      return true;
+    } catch (e, stackTrace) {
+      appLogger.error(
+        'Failed to update full name',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  Future<bool> updateTeamsUserId(String teamsUserId) async {
+    final currentAgent = state;
+    if (currentAgent == null) return false;
+
+    try {
+      final client = Supabase.instance.client;
+      await client
+          .from('agents')
+          .update({'teams_user_id': teamsUserId.trim()})
+          .eq('id', currentAgent.id);
+
+      final updatedAgent = Agent(
+        id: currentAgent.id,
+        username: currentAgent.username,
+        fullName: currentAgent.fullName,
+        role: currentAgent.role,
+        displayColor: currentAgent.displayColor,
+        avatarUrl: currentAgent.avatarUrl,
+        teamsUserId: teamsUserId.trim(),
+      );
+      state = updatedAgent;
+      await _persistAgent(updatedAgent);
+      return true;
+    } catch (e, stackTrace) {
+      appLogger.error(
+        'Failed to update Teams user ID',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 }

@@ -174,7 +174,7 @@ class ArticleController extends _$ArticleController {
             'title': title,
             'content': content,
             'tags': tags,
-            'updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', id);
       if (!ref.mounted) return;
@@ -261,7 +261,7 @@ class DealController extends _$DealController {
           .from('deals')
           .update({
             'stage': newStage,
-            'updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', dealId);
       if (ref.mounted) {
@@ -296,7 +296,7 @@ class DealController extends _$DealController {
                 ?.toIso8601String()
                 .split('T')
                 .first,
-            'updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', id);
       if (!ref.mounted) return;

@@ -45,3 +45,45 @@ app.*.map.json
 /android/app/release
 .vercel
 .env*.local
+
+# Environment / secrets
+.env
+.env.local
+.env.development
+.env.production
+*.env
+
+# Supabase local secrets
+supabase/.temp/
+supabase/config.toml.local
+
+# Flutter generated files
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# Web build output
+/web/build/
+
+# macOS
+__MACOSX/
+*.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Node (if any tooling used)
+node_modules/
+npm-debug.log*
+
+# Python (for any local scripts)
+__pycache__/
+*.pyo
+
+# Key/cert files
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore

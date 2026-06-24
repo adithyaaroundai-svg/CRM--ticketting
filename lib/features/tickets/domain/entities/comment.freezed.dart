@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TicketComment {
 
- String get id;@JsonKey(name: 'ticket_id') String get ticketId; String get author; String get body;@JsonKey(name: 'internal') bool get isInternal;@JsonKey(name: 'created_at') DateTime? get createdAt;
+ String get id;@JsonKey(name: 'ticket_id') String get ticketId; String get author; String get body;@JsonKey(name: 'internal') bool get isInternal;@JsonKey(name: 'created_at')@UtcDateTimeConverter() DateTime? get createdAt;
 /// Create a copy of TicketComment
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $TicketCommentCopyWith<$Res>  {
   factory $TicketCommentCopyWith(TicketComment value, $Res Function(TicketComment) _then) = _$TicketCommentCopyWithImpl;
 @useResult
 $Res call({
- String id,@JsonKey(name: 'ticket_id') String ticketId, String author, String body,@JsonKey(name: 'internal') bool isInternal,@JsonKey(name: 'created_at') DateTime? createdAt
+ String id,@JsonKey(name: 'ticket_id') String ticketId, String author, String body,@JsonKey(name: 'internal') bool isInternal,@JsonKey(name: 'created_at')@UtcDateTimeConverter() DateTime? createdAt
 });
 
 
@@ -158,7 +158,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'ticket_id')  String ticketId,  String author,  String body, @JsonKey(name: 'internal')  bool isInternal, @JsonKey(name: 'created_at')  DateTime? createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'ticket_id')  String ticketId,  String author,  String body, @JsonKey(name: 'internal')  bool isInternal, @JsonKey(name: 'created_at')@UtcDateTimeConverter()  DateTime? createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TicketComment() when $default != null:
 return $default(_that.id,_that.ticketId,_that.author,_that.body,_that.isInternal,_that.createdAt);case _:
@@ -179,7 +179,7 @@ return $default(_that.id,_that.ticketId,_that.author,_that.body,_that.isInternal
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'ticket_id')  String ticketId,  String author,  String body, @JsonKey(name: 'internal')  bool isInternal, @JsonKey(name: 'created_at')  DateTime? createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'ticket_id')  String ticketId,  String author,  String body, @JsonKey(name: 'internal')  bool isInternal, @JsonKey(name: 'created_at')@UtcDateTimeConverter()  DateTime? createdAt)  $default,) {final _that = this;
 switch (_that) {
 case _TicketComment():
 return $default(_that.id,_that.ticketId,_that.author,_that.body,_that.isInternal,_that.createdAt);case _:
@@ -199,7 +199,7 @@ return $default(_that.id,_that.ticketId,_that.author,_that.body,_that.isInternal
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id, @JsonKey(name: 'ticket_id')  String ticketId,  String author,  String body, @JsonKey(name: 'internal')  bool isInternal, @JsonKey(name: 'created_at')  DateTime? createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id, @JsonKey(name: 'ticket_id')  String ticketId,  String author,  String body, @JsonKey(name: 'internal')  bool isInternal, @JsonKey(name: 'created_at')@UtcDateTimeConverter()  DateTime? createdAt)?  $default,) {final _that = this;
 switch (_that) {
 case _TicketComment() when $default != null:
 return $default(_that.id,_that.ticketId,_that.author,_that.body,_that.isInternal,_that.createdAt);case _:
@@ -214,7 +214,7 @@ return $default(_that.id,_that.ticketId,_that.author,_that.body,_that.isInternal
 @JsonSerializable()
 
 class _TicketComment implements TicketComment {
-  const _TicketComment({required this.id, @JsonKey(name: 'ticket_id') required this.ticketId, this.author = 'Unknown', this.body = '', @JsonKey(name: 'internal') this.isInternal = false, @JsonKey(name: 'created_at') this.createdAt});
+  const _TicketComment({required this.id, @JsonKey(name: 'ticket_id') required this.ticketId, this.author = 'Unknown', this.body = '', @JsonKey(name: 'internal') this.isInternal = false, @JsonKey(name: 'created_at')@UtcDateTimeConverter() this.createdAt});
   factory _TicketComment.fromJson(Map<String, dynamic> json) => _$TicketCommentFromJson(json);
 
 @override final  String id;
@@ -222,7 +222,7 @@ class _TicketComment implements TicketComment {
 @override@JsonKey() final  String author;
 @override@JsonKey() final  String body;
 @override@JsonKey(name: 'internal') final  bool isInternal;
-@override@JsonKey(name: 'created_at') final  DateTime? createdAt;
+@override@JsonKey(name: 'created_at')@UtcDateTimeConverter() final  DateTime? createdAt;
 
 /// Create a copy of TicketComment
 /// with the given fields replaced by the non-null parameter values.
@@ -257,7 +257,7 @@ abstract mixin class _$TicketCommentCopyWith<$Res> implements $TicketCommentCopy
   factory _$TicketCommentCopyWith(_TicketComment value, $Res Function(_TicketComment) _then) = __$TicketCommentCopyWithImpl;
 @override @useResult
 $Res call({
- String id,@JsonKey(name: 'ticket_id') String ticketId, String author, String body,@JsonKey(name: 'internal') bool isInternal,@JsonKey(name: 'created_at') DateTime? createdAt
+ String id,@JsonKey(name: 'ticket_id') String ticketId, String author, String body,@JsonKey(name: 'internal') bool isInternal,@JsonKey(name: 'created_at')@UtcDateTimeConverter() DateTime? createdAt
 });
 
 

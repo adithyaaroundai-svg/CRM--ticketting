@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dartz/dartz.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/error/failures.dart';
@@ -6,6 +7,50 @@ import '../../domain/entities/ticket.dart';
 import '../../domain/entities/comment.dart';
 import '../../domain/repositories/ticket_repository.dart';
 
+/// Creates a realtime stream for a Supabase table that fires on ANY change
+/// (INSERT, UPDATE, DELETE) — not just inserts like .stream() does.
+Stream<List<Map<String, dynamic>>> _realtimeStream({
+  required SupabaseClient supabase,
+  required String table,
+  required String channelSuffix,
+  required Future<List<Map<String, dynamic>>> Function() fetcher,
+}) {
+  final controller = StreamController<List<Map<String, dynamic>>>.broadcast();
+
+  Future<void> fetch() async {
+    try {
+      final data = await fetcher();
+      if (!controller.isClosed) controller.add(data);
+    } catch (e) {
+      if (!controller.isClosed) controller.addError(e);
+    }
+  }
+
+  // Initial load
+  fetch();
+
+  // Fallback polling every 10 seconds in case realtime events are missed
+  final fallbackTimer = Timer.periodic(const Duration(seconds: 10), (_) => fetch());
+
+  // Subscribe to all changes
+  final channel = supabase
+      .channel('realtime_${table}_$channelSuffix')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: table,
+        callback: (_) => fetch(),
+      )
+      .subscribe();
+
+  controller.onCancel = () {
+    fallbackTimer.cancel();
+    supabase.removeChannel(channel);
+  };
+
+  return controller.stream;
+}
+
 class SupabaseTicketRepository implements TicketRepository {
   final SupabaseClient _supabase;
 
@@ -13,45 +58,30 @@ class SupabaseTicketRepository implements TicketRepository {
 
   @override
   Stream<List<Ticket>> getTickets({String? statusFilter}) {
-    // Note: Supabase stream doesn't support select with joins well
-    // We'll fetch tickets and customer data separately for now
-    // In production, consider using a view or RPC function
-    return _supabase
-        .from('tickets')
-        .stream(primaryKey: ['id'])
-        .order('created_at', ascending: false)
-        .map((list) {
-          var tickets = list.map((map) => Ticket.fromJson(map)).toList();
-
-          // Apply client-side filtering if needed
-          if (statusFilter != null) {
-            if (statusFilter == 'Open') {
-              tickets = tickets
-                  .where(
-                    (t) => [
-                      'New',
-                      'Open',
-                      'In Progress',
-                      'Waiting for Customer',
-                      'BillRaised',
-                    ].contains(t.status),
-                  )
-                  .toList();
-            } else if (statusFilter == 'Closed') {
-              tickets = tickets
-                  .where(
-                    (t) => [
-                      'Resolved',
-                      'Closed',
-                      'BillProcessed',
-                    ].contains(t.status),
-                  )
-                  .toList();
-            }
-          }
-
-          return tickets;
-        });
+    return _realtimeStream(
+      supabase: _supabase,
+      table: 'tickets',
+      channelSuffix: 'all_${statusFilter ?? 'none'}',
+      fetcher: () => _supabase
+          .from('tickets')
+          .select()
+          .order('created_at', ascending: false),
+    ).map((list) {
+      var tickets = list.map((map) => Ticket.fromJson(map)).toList();
+      if (statusFilter == 'Open') {
+        tickets = tickets
+            .where((t) => [
+                  'New', 'Open', 'In Progress',
+                  'Waiting for Customer', 'BillRaised',
+                ].contains(t.status))
+            .toList();
+      } else if (statusFilter == 'Closed') {
+        tickets = tickets
+            .where((t) => ['Resolved', 'Closed', 'BillProcessed'].contains(t.status))
+            .toList();
+      }
+      return tickets;
+    });
   }
 
   // New method to get tickets with customer data (for detail view)
@@ -66,7 +96,7 @@ class SupabaseTicketRepository implements TicketRepository {
     } catch (e) {
       return null;
     }
-  }
+  }  
 
   // Get customer by ID
   @override
@@ -85,20 +115,22 @@ class SupabaseTicketRepository implements TicketRepository {
 
   @override
   Stream<List<Ticket>> getTicketsByStatuses(List<String> statuses) {
-    if (statuses.isEmpty) {
-      return getTickets(statusFilter: null);
-    }
+    if (statuses.isEmpty) return getTickets(statusFilter: null);
 
-    return _supabase
-        .from('tickets')
-        .stream(primaryKey: ['id'])
-        .inFilter('status', statuses)
-        .order('created_at', ascending: false)
-        .map((list) => list.map(Ticket.fromJson).toList());
+    return _realtimeStream(
+      supabase: _supabase,
+      table: 'tickets',
+      channelSuffix: 'byStatuses_${statuses.join('_')}',
+      fetcher: () => _supabase
+          .from('tickets')
+          .select()
+          .inFilter('status', statuses)
+          .order('created_at', ascending: false),
+    ).map((list) => list.map(Ticket.fromJson).toList());
   }
 
   @override
-  Future<Either<Failure, Unit>> createTicket(Ticket ticket) async {
+  Future<Either<Failure, Ticket>> createTicket(Ticket ticket) async {
     try {
       final data = ticket.toJson();
       final id = data['id'];
@@ -106,9 +138,24 @@ class SupabaseTicketRepository implements TicketRepository {
         data.remove('id');
       }
 
-      await _supabase.from('tickets').insert(data);
-      return const Right(unit);
+      // Remove UI-only fields that might not be in the database yet
+      data.remove('bill_amount');
+      data.remove('billing_procedure');
+      data.remove('payment_collected');
+
+      print('=== Supabase Insert Ticket Payload ===');
+      print(data);
+
+      final response = await _supabase
+          .from('tickets')
+          .insert(data)
+          .select()
+          .single();
+      return Right(Ticket.fromJson(response));
     } catch (e, stackTrace) {
+      print('=== Supabase Insert Ticket Error ===');
+      print('Error: $e');
+      print('StackTrace: $stackTrace');
       appLogger.error(
         'Failed to create ticket',
         error: e,
@@ -146,14 +193,20 @@ class SupabaseTicketRepository implements TicketRepository {
 
       final previousStatus = ticketExists['status'] as String?;
 
+      final updateData = {
+        'status': status,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
+
+      if (status == 'Resolved' || status == 'Closed' || status == 'BillRaised' || status == 'BillProcessed') {
+        updateData['completed_at'] = DateTime.now().toUtc().toIso8601String();
+      }
+
       // Perform the update and get the updated row in one call
       // Using .select() ensures we get an error if the update fails
       final updatedRow = await _supabase
           .from('tickets')
-          .update({
-            'status': status,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
+          .update(updateData)
           .eq('id', ticketId)
           .select('status')
           .single();
@@ -220,6 +273,8 @@ class SupabaseTicketRepository implements TicketRepository {
         'description': ticket.description,
         'category': ticket.category,
         'priority': ticket.priority,
+        'contact_phone': ticket.contactPhone,
+        'payment_collected': ticket.paymentCollected,
         'updated_at': DateTime.now().toIso8601String(),
       };
 
@@ -302,7 +357,7 @@ class SupabaseTicketRepository implements TicketRepository {
     try {
       final response = await _supabase
           .from('agents')
-          .select('id, username, full_name, role')
+          .select('id, username, full_name, role, display_color, last_seen, avatar_url')
           .order('username');
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
@@ -326,18 +381,15 @@ class SupabaseTicketRepository implements TicketRepository {
 
   @override
   Stream<Map<String, int>> getTicketStats() {
-    // Supabase doesn't support aggregate streams directly easily.
-    // For MVP, we stream all tickets and count locally (inefficient for millions, fine for thousands).
-    return _supabase.from('tickets').stream(primaryKey: ['id']).map((list) {
+    return _realtimeStream(
+      supabase: _supabase,
+      table: 'tickets',
+      channelSuffix: 'stats',
+      fetcher: () => _supabase.from('tickets').select('status'),
+    ).map((list) {
       final stats = <String, int>{'Open': 0, 'In Progress': 0, 'Resolved': 0};
-
       for (var map in list) {
         final status = map['status'] as String? ?? 'New';
-        // Map DB statuses to our Chart categories
-        // 'New', 'Open', 'Waiting for Customer' -> Open
-        // 'In Progress' -> In Progress
-        // 'Resolved', 'Closed' -> Resolved
-
         if (['New', 'Open', 'Waiting for Customer'].contains(status)) {
           stats['Open'] = (stats['Open'] ?? 0) + 1;
         } else if (status == 'In Progress') {
@@ -352,12 +404,16 @@ class SupabaseTicketRepository implements TicketRepository {
 
   @override
   Stream<List<TicketComment>> getComments(String ticketId) {
-    return _supabase
-        .from('ticket_comments')
-        .stream(primaryKey: ['id'])
-        .eq('ticket_id', ticketId)
-        .order('created_at', ascending: true)
-        .map((list) => list.map((map) => TicketComment.fromJson(map)).toList());
+    return _realtimeStream(
+      supabase: _supabase,
+      table: 'ticket_comments',
+      channelSuffix: 'ticket_$ticketId',
+      fetcher: () => _supabase
+          .from('ticket_comments')
+          .select()
+          .eq('ticket_id', ticketId)
+          .order('created_at', ascending: true),
+    ).map((list) => list.map((map) => TicketComment.fromJson(map)).toList());
   }
 
   @override
@@ -396,12 +452,14 @@ class SupabaseTicketRepository implements TicketRepository {
     double amount,
   ) async {
     try {
+      final nowUtc = DateTime.now().toUtc().toIso8601String();
       final updatedRow = await _supabase
           .from('tickets')
           .update({
             'status': 'BillRaised',
             'bill_amount': amount,
-            'updated_at': DateTime.now().toIso8601String(),
+            'completed_at': nowUtc,
+            'updated_at': nowUtc,
           })
           .eq('id', ticketId)
           .select('status, bill_amount')
@@ -447,3 +505,4 @@ class SupabaseTicketRepository implements TicketRepository {
     }
   }
 }
+

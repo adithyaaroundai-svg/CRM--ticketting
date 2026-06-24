@@ -1,0 +1,45 @@
+
+
+// ── Starred messages stream ─────────────────────────────────────────────────────
+@Riverpod(keepAlive: true)
+class StarredMessagesStream extends _$StarredMessagesStream {
+  @override
+  Stream<List<ChatMessage>> build() {
+    final repository = ref.watch(chatRepositoryProvider);
+    final myId = ref.watch(authProvider)?.id;
+    if (myId == null) return const Stream.empty();
+    return repository.getStarredMessages(myId);
+  }
+
+  void refresh() {
+    ref.invalidateSelf();
+  }
+}
+
+// ── Thread replies stream ───────────────────────────────────────────────────────
+@Riverpod(keepAlive: true)
+class ThreadRepliesStream extends _$ThreadRepliesStream {
+  @override
+  Stream<List<ChatMessage>> build(String parentMessageId) {
+    final repository = ref.watch(chatRepositoryProvider);
+    return repository.getThreadReplies(parentMessageId);
+  }
+
+  void refresh() {
+    ref.invalidateSelf();
+  }
+}
+
+// ── Threaded messages stream (all parent messages with threads) ───────────────────
+@Riverpod(keepAlive: true)
+class ThreadedMessagesStream extends _$ThreadedMessagesStream {
+  @override
+  Stream<List<ChatMessage>> build() {
+    final repository = ref.watch(chatRepositoryProvider);
+    return repository.getThreadedMessages();
+  }
+
+  void refresh() {
+    ref.invalidateSelf();
+  }
+}

@@ -16,15 +16,11 @@ const Set<String> _stageBilledStatuses = {
   'closed',
 };
 
-const Set<String> _autoStartStatuses = {
-  'New',
-  'Open',
-  'Waiting for Customer',
-};
-
 /// Converts a DateTime to local time for display
-/// Timestamps are stored and retrieved as local time (no timezone conversion needed).
 DateTime _toLocalTime(DateTime dateTime) {
+  if (dateTime.isUtc) {
+    return dateTime.toLocal();
+  }
   return dateTime;
 }
 
@@ -38,6 +34,8 @@ class TicketCardWithAmc extends ConsumerWidget {
   final bool highlightPriorityCustomer;
   final TicketCardLayout layout;
   final bool forceClaimButton;
+  final bool showRaisedByBubble;
+  final bool emphasizeUnclaimedEdge;
 
   const TicketCardWithAmc({
     super.key,
@@ -45,11 +43,14 @@ class TicketCardWithAmc extends ConsumerWidget {
     this.highlightPriorityCustomer = false,
     this.layout = TicketCardLayout.standard,
     this.forceClaimButton = false,
+    this.showRaisedByBubble = false,
+    this.emphasizeUnclaimedEdge = false,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final customerAsync = ref.watch(ticketCustomerProvider(ticket.customerId));
+    final agentsAsync = ref.watch(agentsListProvider);
     final isCustomerLoading = customerAsync.isLoading;
     final advancedSettings = ref
         .watch(advancedSettingsProvider)
@@ -124,10 +125,42 @@ class TicketCardWithAmc extends ConsumerWidget {
         ticket.assignedTo == null || ticket.assignedTo!.isEmpty;
     final disableCardTap = canClaimTicket && isUnassigned;
 
-    return Container(
+    final raisedBy = ticket.createdBy.trim();
+    String raisedByDisplay = raisedBy;
+    String? raisedByColorHex;
+
+    if (raisedBy.isNotEmpty && raisedBy.toLowerCase() != 'unknown') {
+      final agents = agentsAsync.value ?? [];
+      final agent = agents.where((a) => a['id'] == raisedBy).firstOrNull;
+      if (agent != null) {
+        raisedByDisplay = agent['full_name'] ?? agent['username'] ?? raisedBy;
+        raisedByColorHex = agent['display_color'];
+      } else {
+        final customer = customerAsync.value;
+        if (customer != null) {
+          raisedByDisplay = customer['company_name'] ?? customer['contact_name'] ?? raisedBy;
+          raisedByColorHex = customer['display_color'];
+        }
+      }
+    }
+
+    final shouldShowRaisedBy = showRaisedByBubble &&
+        raisedByDisplay.isNotEmpty &&
+        raisedByDisplay.toLowerCase() != 'unknown';
+    final shouldShowUnclaimedGlow = emphasizeUnclaimedEdge && isUnassigned;
+
+    Color _hexToColor(String hex) {
+      final buffer = StringBuffer();
+      if (hex.length == 6 || hex.length == 7) buffer.write('ff');
+      buffer.write(hex.replaceFirst('#', ''));
+      return Color(int.parse(buffer.toString(), radix: 16));
+    }
+
+    final card = Container(
+      margin: EdgeInsets.only(right: shouldShowUnclaimedGlow ? 110 : 0),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: borderColor ?? AppColors.border,
           width: borderColor != null ? 1.5 : 1,
@@ -137,13 +170,13 @@ class TicketCardWithAmc extends ConsumerWidget {
             color: isDarkSurface
                 ? Colors.black.withValues(alpha: 0.25)
                 : AppColors.shadowLight,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 3,
+            offset: const Offset(0, 1),
           ),
           if (!isDarkSurface)
             BoxShadow(
               color: AppColors.shadowLight,
-              blurRadius: 4,
+              blurRadius: 2,
               offset: const Offset(0, 1),
             ),
         ],
@@ -155,8 +188,8 @@ class TicketCardWithAmc extends ConsumerWidget {
               disableCardTap
                   ? Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+                        horizontal: 6,
+                        vertical: 4,
                       ),
                       child: isCompactLayout
                           ? _buildCompactContent(
@@ -167,6 +200,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                               canClaimTicket: canClaimTicket,
                               isMyTicket: isMyTicket,
                               hasRibbon: hasRibbon,
+                              agents: agentsAsync.value ?? [],
                             )
                           : _buildStandardContent(
                               context: context,
@@ -176,15 +210,16 @@ class TicketCardWithAmc extends ConsumerWidget {
                               canClaimTicket: canClaimTicket,
                               isMyTicket: isMyTicket,
                               hasRibbon: hasRibbon,
+                              agents: agentsAsync.value ?? [],
                             ),
                     )
                   : InkWell(
                       onTap: () => context.push('/ticket/${ticket.ticketId}'),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(9),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+                          horizontal: 6,
+                          vertical: 4,
                         ),
                         child: isCompactLayout
                             ? _buildCompactContent(
@@ -195,6 +230,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                                 canClaimTicket: canClaimTicket,
                                 isMyTicket: isMyTicket,
                                 hasRibbon: hasRibbon,
+                                agents: agentsAsync.value ?? [],
                               )
                             : _buildStandardContent(
                                 context: context,
@@ -204,13 +240,14 @@ class TicketCardWithAmc extends ConsumerWidget {
                                 canClaimTicket: canClaimTicket,
                                 isMyTicket: isMyTicket,
                                 hasRibbon: hasRibbon,
+                                agents: agentsAsync.value ?? [],
                               ),
                       ),
                     ),
               if (ribbonLabel != null)
                 Positioned(
-                  right: 12,
-                  bottom: 12,
+                  right: 8,
+                  bottom: 8,
                   child: _buildRibbon(
                     label: ribbonLabel,
                     color: ribbonColor ?? Colors.white,
@@ -222,6 +259,41 @@ class TicketCardWithAmc extends ConsumerWidget {
           ),
         ],
       ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (shouldShowRaisedBy)
+          Padding(
+            padding: const EdgeInsets.only(left: 12, bottom: 6),
+            child: Text(
+              raisedByDisplay,
+              style: TextStyle(
+                fontSize: 9.75,
+                fontWeight: FontWeight.w600,
+                color: raisedByColorHex != null ? _hexToColor(raisedByColorHex) : AppColors.slate600,
+              ),
+            ),
+          ),
+        SizedBox(
+          width: double.infinity,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              if (shouldShowUnclaimedGlow)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: const _UnclaimedGlassTag(),
+                ),
+              card,
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -249,7 +321,7 @@ class TicketCardWithAmc extends ConsumerWidget {
             label,
             style: TextStyle(
               color: textColor,
-              fontSize: 11,
+              fontSize: 8.25,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -329,6 +401,7 @@ class TicketCardWithAmc extends ConsumerWidget {
     required bool canClaimTicket,
     required bool isMyTicket,
     required bool hasRibbon,
+    required List<Map<String, dynamic>> agents,
   }) {
     final customer = customerAsync.maybeWhen(
       data: (data) => data == null ? null : Customer.fromJson(data),
@@ -355,7 +428,7 @@ class TicketCardWithAmc extends ConsumerWidget {
       ref: ref,
       canClaimTicket: canClaimTicket,
       isMyTicket: isMyTicket,
-      
+
     );
     final isUnassigned =
         ticket.assignedTo == null || ticket.assignedTo!.isEmpty;
@@ -364,6 +437,7 @@ class TicketCardWithAmc extends ConsumerWidget {
       status: ticket.status,
       isUnassigned: isUnassigned,
       isMyTicket: isMyTicket,
+      agents: agents,
     );
 
     return Column(
@@ -388,7 +462,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                             child: Text(
                               companyName,
                               style: TextStyle(
-                                fontSize: 19,
+                                fontSize: 14.25,
                                 fontWeight: FontWeight.w800,
                                 color: headingColor,
                                 height: 1.2,
@@ -402,7 +476,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                     : Text(
                         'No company linked',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 10.5,
                           fontWeight: FontWeight.w600,
                           color: AppColors.slate500,
                         ),
@@ -416,7 +490,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                     Text(
                       createdTimestamp,
                       style: TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 10.125,
                         fontWeight: FontWeight.w700,
                         color: AppColors.slate900,
                       ),
@@ -426,7 +500,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                       Text(
                         createdRelative,
                         style: TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 8.625,
                           color: AppColors.slate600,
                           fontWeight: FontWeight.w600,
                         ),
@@ -451,7 +525,7 @@ class TicketCardWithAmc extends ConsumerWidget {
               child: Text(
                 ticket.title,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 11.25,
                   fontWeight: FontWeight.w600,
                   color: headingColor,
                 ),
@@ -462,6 +536,23 @@ class TicketCardWithAmc extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 8),
+        if (ticket.contactPhone != null && ticket.contactPhone!.trim().isNotEmpty) ...[
+          Row(
+            children: [
+              Icon(LucideIcons.phone, size: 13, color: AppColors.slate500),
+              const SizedBox(width: 5),
+              Text(
+                ticket.contactPhone!.trim(),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.slate600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+        ],
         if (statusPill != null) statusPill,
         if (actionButton != null) ...[
           const SizedBox(height: 12),
@@ -479,6 +570,7 @@ class TicketCardWithAmc extends ConsumerWidget {
     required bool canClaimTicket,
     required bool isMyTicket,
     required bool hasRibbon,
+    required List<Map<String, dynamic>> agents,
   }) {
     final customer = customerAsync.maybeWhen(
       data: (data) => data == null ? null : Customer.fromJson(data),
@@ -505,7 +597,7 @@ class TicketCardWithAmc extends ConsumerWidget {
       ref: ref,
       canClaimTicket: canClaimTicket,
       isMyTicket: isMyTicket,
-      
+
     );
     final isUnassigned =
         ticket.assignedTo == null || ticket.assignedTo!.isEmpty;
@@ -513,6 +605,7 @@ class TicketCardWithAmc extends ConsumerWidget {
       status: ticket.status,
       isUnassigned: isUnassigned,
       isMyTicket: isMyTicket,
+      agents: agents,
     );
 
     return Column(
@@ -529,32 +622,32 @@ class TicketCardWithAmc extends ConsumerWidget {
                       ? Text(
                           companyName,
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w800,
                             color: headingColor,
-                            height: 1.2,
+                            height: 1.1,
                           ),
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         )
                       : Text(
                           'No company linked',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 9.75,
                             fontWeight: FontWeight.w600,
                             color: AppColors.slate500,
                           ),
                         ),
                 ),
                 if (createdTimestamp != null) ...[
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
                         createdTimestamp,
                         style: TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 9.375,
                           fontWeight: FontWeight.w700,
                           color: AppColors.slate900,
                         ),
@@ -564,7 +657,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                         Text(
                           createdRelative,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 8.25,
                             color: AppColors.slate600,
                             fontWeight: FontWeight.w600,
                           ),
@@ -575,34 +668,54 @@ class TicketCardWithAmc extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 3),
         ],
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.only(top: 2),
+              padding: const EdgeInsets.only(top: 1),
               child: _buildPriorityIcon(ticket.priority),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             Expanded(
               child: Text(
                 ticket.title,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.w600,
                   color: headingColor,
+                  height: 1.1,
                 ),
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        if (statusPill != null) statusPill,
+        if (ticket.contactPhone != null && ticket.contactPhone!.trim().isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Icon(LucideIcons.phone, size: 10, color: AppColors.slate500),
+              const SizedBox(width: 4),
+              Text(
+                ticket.contactPhone!.trim(),
+                style: TextStyle(
+                  fontSize: 9.75,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.slate600,
+                ),
+              ),
+            ],
+          ),
+        ],
+        if (statusPill != null) ...[
+          const SizedBox(height: 2),
+          statusPill,
+        ],
         if (actionButton != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
           actionButton,
         ],
       ],
@@ -618,7 +731,7 @@ class TicketCardWithAmc extends ConsumerWidget {
     Color? backgroundColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: backgroundColor ?? AppColors.slate100,
         borderRadius: BorderRadius.circular(999),
@@ -626,12 +739,12 @@ class TicketCardWithAmc extends ConsumerWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: iconColor ?? AppColors.slate600),
-          const SizedBox(width: 4),
+          Icon(icon, size: 9, color: iconColor ?? AppColors.slate600),
+          const SizedBox(width: 3),
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 8.25,
               fontWeight: FontWeight.w600,
               color: textColor ?? AppColors.slate700,
             ),
@@ -645,6 +758,7 @@ class TicketCardWithAmc extends ConsumerWidget {
     required String status,
     required bool isUnassigned,
     required bool isMyTicket,
+    required List<Map<String, dynamic>> agents,
   }) {
     final normalized = status.trim().toLowerCase();
 
@@ -679,9 +793,21 @@ class TicketCardWithAmc extends ConsumerWidget {
     }
 
     if (!isUnassigned) {
+      String label = 'Claimed';
+      if (isMyTicket) {
+        label = 'Claimed by you';
+      } else {
+        final assignedAgentId = ticket.assignedTo;
+        if (assignedAgentId != null && assignedAgentId.isNotEmpty) {
+          final agent = agents.where((a) => a['id'] == assignedAgentId).firstOrNull;
+          if (agent != null) {
+            label = agent['full_name'] ?? agent['username'] ?? 'Claimed';
+          }
+        }
+      }
       return _buildInfoPill(
         icon: LucideIcons.userCheck,
-        label: isMyTicket ? 'Claimed by you' : 'Claimed',
+        label: label,
         iconColor: AppColors.info,
         textColor: AppColors.info,
         backgroundColor: AppColors.info.withValues(alpha: 0.12),
@@ -706,19 +832,19 @@ class TicketCardWithAmc extends ConsumerWidget {
       buttons.add(
         SizedBox(
           width: double.infinity,
-          height: 40,
+          height: 26,
           child: OutlinedButton.icon(
-            icon: const Icon(LucideIcons.userCheck, size: 16),
-            label: const Text('Claim ticket'),
+            icon: const Icon(LucideIcons.userCheck, size: 12),
+            label: const Text(
+              'Claim ticket',
+              style: TextStyle(fontSize: 9),
+            ),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.info,
               side: BorderSide(color: AppColors.info.withValues(alpha: 0.6)),
             ),
             onPressed: () async {
-              context.go(
-                '/ticket/${ticket.ticketId}',
-                extra: {'autoClaim': true},
-              );
+              context.go('/ticket/${ticket.ticketId}');
             },
           ),
         ),
@@ -745,30 +871,6 @@ class TicketCardWithAmc extends ConsumerWidget {
     );
   }
 
-  Future<void> _updateTicketStatus(
-    BuildContext context,
-    WidgetRef ref,
-    String status,
-  ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final error = await ref
-        .read(ticketStatusUpdaterProvider.notifier)
-        .updateStatus(ticket.ticketId, status);
-
-    if (!context.mounted) return;
-
-    final success = error == null;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? (status == 'On Hold' ? 'Ticket paused' : 'Ticket resumed')
-              : 'Failed to update status: $error',
-        ),
-        backgroundColor: success ? AppColors.success : AppColors.error,
-      ),
-    );
-  }
 
 
   Widget _buildPriorityIcon(String? priority) {
@@ -803,50 +905,47 @@ class TicketCardWithAmc extends ConsumerWidget {
 
 }
 
-class _AmcBadge extends StatelessWidget {
-  final bool isActive;
 
-  const _AmcBadge({required this.isActive});
+class _UnclaimedGlassTag extends StatelessWidget {
+  const _UnclaimedGlassTag();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      width: 132,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
-        color: isActive
-            ? AppColors.success.withValues(alpha: 0.1)
-            : AppColors.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: isActive
-              ? AppColors.success.withValues(alpha: 0.3)
-              : AppColors.error.withValues(alpha: 0.3),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFF7D1), Color(0xFFFFE495)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.7), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFE495).withValues(alpha: 0.55),
+            blurRadius: 24,
+            offset: const Offset(6, 10),
+          ),
+        ],
       ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerLeft,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isActive ? LucideIcons.checkCircle : LucideIcons.alertCircle,
-              size: 10,
-              color: isActive ? AppColors.success : AppColors.error,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: const [
+          Text(
+            'Unclaimed',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF7A4A00),
+              letterSpacing: 0.3,
             ),
-            const SizedBox(width: 4),
-            Text(
-              isActive ? 'AMC' : 'AMC Expired',
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-                color: isActive ? AppColors.success : AppColors.error,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
-
 }
+

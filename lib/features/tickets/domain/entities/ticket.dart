@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:flutter/foundation.dart';
+import '../../../../core/utils/json_converters.dart';
 
 // Freezed uses JsonKey on constructor parameters; ignore analyzer complaining
 // about invalid annotation targets and enum naming style.
@@ -32,18 +33,21 @@ abstract class Ticket with _$Ticket {
     @JsonKey(name: 'client_ticket_uuid') String? clientTicketUuid,
     @JsonKey(name: 'title') @Default('') String title,
     @JsonKey(name: 'description') String? description,
+    @JsonKey(name: 'contact_phone') String? contactPhone,
     @JsonKey(name: 'screenshot_url') String? screenshotUrl,
     @JsonKey(name: 'category') String? category,
     @JsonKey(name: 'status') @Default('New') String status,
     @JsonKey(name: 'priority') String? priority,
     @JsonKey(name: 'created_by') @Default('Unknown') String createdBy,
     @JsonKey(name: 'assigned_to') String? assignedTo,
-    @JsonKey(name: 'created_at') DateTime? createdAt,
-    @JsonKey(name: 'updated_at') DateTime? updatedAt,
-    @JsonKey(name: 'sla_due') DateTime? slaDue,
+    @JsonKey(name: 'created_at') @UtcDateTimeConverter() DateTime? createdAt,
+    @JsonKey(name: 'updated_at') @UtcDateTimeConverter() DateTime? updatedAt,
+    @JsonKey(name: 'sla_due') @UtcDateTimeConverter() DateTime? slaDue,
     @JsonKey(name: 'bill_amount') double? billAmount,
+    @JsonKey(name: 'billing_procedure') String? billingProcedure,
+    @JsonKey(name: 'payment_collected') bool? paymentCollected,
+    @JsonKey(name: 'completed_at') @UtcDateTimeConverter() DateTime? completedDate,
   }) = _Ticket;
 
   factory Ticket.fromJson(Map<String, dynamic> json) => _$TicketFromJson(json);
 }
- 

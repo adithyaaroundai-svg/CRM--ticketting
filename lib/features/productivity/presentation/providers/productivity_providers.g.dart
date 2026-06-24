@@ -316,7 +316,7 @@ final class ArticleControllerProvider
   ArticleController create() => ArticleController();
 }
 
-String _$articleControllerHash() => r'dd434a72f8aad12c4003ad75fe60b784176b8e0b';
+String _$articleControllerHash() => r'3fb48f7b7ff4034f2befd2256f65489862a484f4';
 
 abstract class _$ArticleController extends $AsyncNotifier<void> {
   FutureOr<void> build();
@@ -399,7 +399,7 @@ final class DealControllerProvider
   DealController create() => DealController();
 }
 
-String _$dealControllerHash() => r'5ea7e5429a1486e34ffa770c622902c38923f1be';
+String _$dealControllerHash() => r'39463fb545b1504fcb009447d0474669dc55e646';
 
 abstract class _$DealController extends $AsyncNotifier<void> {
   FutureOr<void> build();

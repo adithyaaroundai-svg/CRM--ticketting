@@ -66,7 +66,7 @@ final class TicketRemarksProvider
   }
 }
 
-String _$ticketRemarksHash() => r'1ea8bdc5afb0170973e27ee5cb891cd1ac9f7076';
+String _$ticketRemarksHash() => r'9edd4f1f9aecc72d3e6353924069b11876c08c90';
 
 final class TicketRemarksFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<Map<String, dynamic>>>, String> {

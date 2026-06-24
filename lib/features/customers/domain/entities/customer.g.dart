@@ -12,21 +12,19 @@ _Customer _$CustomerFromJson(Map<String, dynamic> json) => _Customer(
   tallyLicense: json['tally_license'] as String?,
   tallySerialNo: json['tally_serial_no'] as String?,
   apiKey: json['api_key'] as String? ?? '',
-  amcExpiryDate: json['amc_expiry_date'] == null
-      ? null
-      : DateTime.parse(json['amc_expiry_date'] as String),
-  tssExpiryDate: json['tss_expiry_date'] == null
-      ? null
-      : DateTime.parse(json['tss_expiry_date'] as String),
+  amcExpiryDate: const UtcDateTimeConverter().fromJson(
+    json['amc_expiry_date'] as String?,
+  ),
+  tssExpiryDate: const UtcDateTimeConverter().fromJson(
+    json['tss_expiry_date'] as String?,
+  ),
   contactPerson: json['contact_person'] as String?,
   contactPhone: json['contact_phone'] as String?,
-  contactPhoneNumbers: (json['contact_phone_numbers'] as List<dynamic>?)
-      ?.map((e) => e as String)
-      .toList(),
+  contactPhoneNumbers: _phoneNumbersFromJson(json['contact_phone_numbers']),
   contactEmail: json['contact_email'] as String?,
-  createdAt: json['created_at'] == null
-      ? null
-      : DateTime.parse(json['created_at'] as String),
+  createdAt: const UtcDateTimeConverter().fromJson(
+    json['created_at'] as String?,
+  ),
   pinnedNote: json['pinned_note'] as String?,
   tallyCustomizations: (json['tally_customizations'] as List<dynamic>?)
       ?.map((e) => e as Map<String, dynamic>)
@@ -46,13 +44,17 @@ Map<String, dynamic> _$CustomerToJson(_Customer instance) => <String, dynamic>{
   'tally_license': instance.tallyLicense,
   'tally_serial_no': instance.tallySerialNo,
   'api_key': instance.apiKey,
-  'amc_expiry_date': instance.amcExpiryDate?.toIso8601String(),
-  'tss_expiry_date': instance.tssExpiryDate?.toIso8601String(),
+  'amc_expiry_date': const UtcDateTimeConverter().toJson(
+    instance.amcExpiryDate,
+  ),
+  'tss_expiry_date': const UtcDateTimeConverter().toJson(
+    instance.tssExpiryDate,
+  ),
   'contact_person': instance.contactPerson,
   'contact_phone': instance.contactPhone,
-  'contact_phone_numbers': instance.contactPhoneNumbers,
+  'contact_phone_numbers': _phoneNumbersToJson(instance.contactPhoneNumbers),
   'contact_email': instance.contactEmail,
-  'created_at': instance.createdAt?.toIso8601String(),
+  'created_at': const UtcDateTimeConverter().toJson(instance.createdAt),
   'pinned_note': instance.pinnedNote,
   'tally_customizations': instance.tallyCustomizations,
   'secret_email': instance.secretEmail,

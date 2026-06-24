@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TicketRemark {
 
- String get id;@JsonKey(name: 'ticket_id') String get ticketId;@JsonKey(name: 'agent_id') String? get agentId;@JsonKey(name: 'customer_id') String? get customerId; String? get remark;@JsonKey(name: 'remark_type') String get remarkType;@JsonKey(name: 'voice_url') String? get voiceUrl;@JsonKey(name: 'duration_seconds') int? get durationSeconds; String? get stage;@JsonKey(name: 'created_at') DateTime? get createdAt;@JsonKey(name: 'updated_at') DateTime? get updatedAt;
+ String get id;@JsonKey(name: 'ticket_id') String get ticketId;@JsonKey(name: 'agent_id') String? get agentId;@JsonKey(name: 'customer_id') String? get customerId; String? get remark;@JsonKey(name: 'remark_type') String get remarkType;@JsonKey(name: 'voice_url') String? get voiceUrl;@JsonKey(name: 'duration_seconds') int? get durationSeconds; String? get stage;@JsonKey(name: 'created_at')@UtcDateTimeConverter() DateTime? get createdAt;@JsonKey(name: 'updated_at')@UtcDateTimeConverter() DateTime? get updatedAt;
 /// Create a copy of TicketRemark
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $TicketRemarkCopyWith<$Res>  {
   factory $TicketRemarkCopyWith(TicketRemark value, $Res Function(TicketRemark) _then) = _$TicketRemarkCopyWithImpl;
 @useResult
 $Res call({
- String id,@JsonKey(name: 'ticket_id') String ticketId,@JsonKey(name: 'agent_id') String? agentId,@JsonKey(name: 'customer_id') String? customerId, String? remark,@JsonKey(name: 'remark_type') String remarkType,@JsonKey(name: 'voice_url') String? voiceUrl,@JsonKey(name: 'duration_seconds') int? durationSeconds, String? stage,@JsonKey(name: 'created_at') DateTime? createdAt,@JsonKey(name: 'updated_at') DateTime? updatedAt
+ String id,@JsonKey(name: 'ticket_id') String ticketId,@JsonKey(name: 'agent_id') String? agentId,@JsonKey(name: 'customer_id') String? customerId, String? remark,@JsonKey(name: 'remark_type') String remarkType,@JsonKey(name: 'voice_url') String? voiceUrl,@JsonKey(name: 'duration_seconds') int? durationSeconds, String? stage,@JsonKey(name: 'created_at')@UtcDateTimeConverter() DateTime? createdAt,@JsonKey(name: 'updated_at')@UtcDateTimeConverter() DateTime? updatedAt
 });
 
 
@@ -163,7 +163,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'ticket_id')  String ticketId, @JsonKey(name: 'agent_id')  String? agentId, @JsonKey(name: 'customer_id')  String? customerId,  String? remark, @JsonKey(name: 'remark_type')  String remarkType, @JsonKey(name: 'voice_url')  String? voiceUrl, @JsonKey(name: 'duration_seconds')  int? durationSeconds,  String? stage, @JsonKey(name: 'created_at')  DateTime? createdAt, @JsonKey(name: 'updated_at')  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'ticket_id')  String ticketId, @JsonKey(name: 'agent_id')  String? agentId, @JsonKey(name: 'customer_id')  String? customerId,  String? remark, @JsonKey(name: 'remark_type')  String remarkType, @JsonKey(name: 'voice_url')  String? voiceUrl, @JsonKey(name: 'duration_seconds')  int? durationSeconds,  String? stage, @JsonKey(name: 'created_at')@UtcDateTimeConverter()  DateTime? createdAt, @JsonKey(name: 'updated_at')@UtcDateTimeConverter()  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TicketRemark() when $default != null:
 return $default(_that.id,_that.ticketId,_that.agentId,_that.customerId,_that.remark,_that.remarkType,_that.voiceUrl,_that.durationSeconds,_that.stage,_that.createdAt,_that.updatedAt);case _:
@@ -184,7 +184,7 @@ return $default(_that.id,_that.ticketId,_that.agentId,_that.customerId,_that.rem
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'ticket_id')  String ticketId, @JsonKey(name: 'agent_id')  String? agentId, @JsonKey(name: 'customer_id')  String? customerId,  String? remark, @JsonKey(name: 'remark_type')  String remarkType, @JsonKey(name: 'voice_url')  String? voiceUrl, @JsonKey(name: 'duration_seconds')  int? durationSeconds,  String? stage, @JsonKey(name: 'created_at')  DateTime? createdAt, @JsonKey(name: 'updated_at')  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'ticket_id')  String ticketId, @JsonKey(name: 'agent_id')  String? agentId, @JsonKey(name: 'customer_id')  String? customerId,  String? remark, @JsonKey(name: 'remark_type')  String remarkType, @JsonKey(name: 'voice_url')  String? voiceUrl, @JsonKey(name: 'duration_seconds')  int? durationSeconds,  String? stage, @JsonKey(name: 'created_at')@UtcDateTimeConverter()  DateTime? createdAt, @JsonKey(name: 'updated_at')@UtcDateTimeConverter()  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _TicketRemark():
 return $default(_that.id,_that.ticketId,_that.agentId,_that.customerId,_that.remark,_that.remarkType,_that.voiceUrl,_that.durationSeconds,_that.stage,_that.createdAt,_that.updatedAt);case _:
@@ -204,7 +204,7 @@ return $default(_that.id,_that.ticketId,_that.agentId,_that.customerId,_that.rem
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id, @JsonKey(name: 'ticket_id')  String ticketId, @JsonKey(name: 'agent_id')  String? agentId, @JsonKey(name: 'customer_id')  String? customerId,  String? remark, @JsonKey(name: 'remark_type')  String remarkType, @JsonKey(name: 'voice_url')  String? voiceUrl, @JsonKey(name: 'duration_seconds')  int? durationSeconds,  String? stage, @JsonKey(name: 'created_at')  DateTime? createdAt, @JsonKey(name: 'updated_at')  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id, @JsonKey(name: 'ticket_id')  String ticketId, @JsonKey(name: 'agent_id')  String? agentId, @JsonKey(name: 'customer_id')  String? customerId,  String? remark, @JsonKey(name: 'remark_type')  String remarkType, @JsonKey(name: 'voice_url')  String? voiceUrl, @JsonKey(name: 'duration_seconds')  int? durationSeconds,  String? stage, @JsonKey(name: 'created_at')@UtcDateTimeConverter()  DateTime? createdAt, @JsonKey(name: 'updated_at')@UtcDateTimeConverter()  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _TicketRemark() when $default != null:
 return $default(_that.id,_that.ticketId,_that.agentId,_that.customerId,_that.remark,_that.remarkType,_that.voiceUrl,_that.durationSeconds,_that.stage,_that.createdAt,_that.updatedAt);case _:
@@ -219,7 +219,7 @@ return $default(_that.id,_that.ticketId,_that.agentId,_that.customerId,_that.rem
 @JsonSerializable()
 
 class _TicketRemark implements TicketRemark {
-  const _TicketRemark({required this.id, @JsonKey(name: 'ticket_id') required this.ticketId, @JsonKey(name: 'agent_id') this.agentId, @JsonKey(name: 'customer_id') this.customerId, this.remark, @JsonKey(name: 'remark_type') this.remarkType = 'text', @JsonKey(name: 'voice_url') this.voiceUrl, @JsonKey(name: 'duration_seconds') this.durationSeconds, this.stage, @JsonKey(name: 'created_at') this.createdAt, @JsonKey(name: 'updated_at') this.updatedAt});
+  const _TicketRemark({required this.id, @JsonKey(name: 'ticket_id') required this.ticketId, @JsonKey(name: 'agent_id') this.agentId, @JsonKey(name: 'customer_id') this.customerId, this.remark, @JsonKey(name: 'remark_type') this.remarkType = 'text', @JsonKey(name: 'voice_url') this.voiceUrl, @JsonKey(name: 'duration_seconds') this.durationSeconds, this.stage, @JsonKey(name: 'created_at')@UtcDateTimeConverter() this.createdAt, @JsonKey(name: 'updated_at')@UtcDateTimeConverter() this.updatedAt});
   factory _TicketRemark.fromJson(Map<String, dynamic> json) => _$TicketRemarkFromJson(json);
 
 @override final  String id;
@@ -231,8 +231,8 @@ class _TicketRemark implements TicketRemark {
 @override@JsonKey(name: 'voice_url') final  String? voiceUrl;
 @override@JsonKey(name: 'duration_seconds') final  int? durationSeconds;
 @override final  String? stage;
-@override@JsonKey(name: 'created_at') final  DateTime? createdAt;
-@override@JsonKey(name: 'updated_at') final  DateTime? updatedAt;
+@override@JsonKey(name: 'created_at')@UtcDateTimeConverter() final  DateTime? createdAt;
+@override@JsonKey(name: 'updated_at')@UtcDateTimeConverter() final  DateTime? updatedAt;
 
 /// Create a copy of TicketRemark
 /// with the given fields replaced by the non-null parameter values.
@@ -267,7 +267,7 @@ abstract mixin class _$TicketRemarkCopyWith<$Res> implements $TicketRemarkCopyWi
   factory _$TicketRemarkCopyWith(_TicketRemark value, $Res Function(_TicketRemark) _then) = __$TicketRemarkCopyWithImpl;
 @override @useResult
 $Res call({
- String id,@JsonKey(name: 'ticket_id') String ticketId,@JsonKey(name: 'agent_id') String? agentId,@JsonKey(name: 'customer_id') String? customerId, String? remark,@JsonKey(name: 'remark_type') String remarkType,@JsonKey(name: 'voice_url') String? voiceUrl,@JsonKey(name: 'duration_seconds') int? durationSeconds, String? stage,@JsonKey(name: 'created_at') DateTime? createdAt,@JsonKey(name: 'updated_at') DateTime? updatedAt
+ String id,@JsonKey(name: 'ticket_id') String ticketId,@JsonKey(name: 'agent_id') String? agentId,@JsonKey(name: 'customer_id') String? customerId, String? remark,@JsonKey(name: 'remark_type') String remarkType,@JsonKey(name: 'voice_url') String? voiceUrl,@JsonKey(name: 'duration_seconds') int? durationSeconds, String? stage,@JsonKey(name: 'created_at')@UtcDateTimeConverter() DateTime? createdAt,@JsonKey(name: 'updated_at')@UtcDateTimeConverter() DateTime? updatedAt
 });
 
 

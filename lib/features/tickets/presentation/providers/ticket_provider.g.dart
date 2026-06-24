@@ -321,10 +321,10 @@ abstract class _$TicketSort extends $Notifier<String> {
   }
 }
 
-@ProviderFor(ticketsStream)
-const ticketsStreamProvider = TicketsStreamProvider._();
+@ProviderFor(rawTicketsStream)
+const rawTicketsStreamProvider = RawTicketsStreamProvider._();
 
-final class TicketsStreamProvider
+final class RawTicketsStreamProvider
     extends
         $FunctionalProvider<
           fr.AsyncValue<List<Ticket>>,
@@ -332,6 +332,45 @@ final class TicketsStreamProvider
           Stream<List<Ticket>>
         >
     with $FutureModifier<List<Ticket>>, $StreamProvider<List<Ticket>> {
+  const RawTicketsStreamProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'rawTicketsStreamProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$rawTicketsStreamHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Ticket>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Ticket>> create(Ref ref) {
+    return rawTicketsStream(ref);
+  }
+}
+
+String _$rawTicketsStreamHash() => r'24e04c18b455e97af3fc0d48ed8cfddc8c496e36';
+
+@ProviderFor(ticketsStream)
+const ticketsStreamProvider = TicketsStreamProvider._();
+
+final class TicketsStreamProvider
+    extends
+        $FunctionalProvider<
+          fr.AsyncValue<List<Ticket>>,
+          fr.AsyncValue<List<Ticket>>,
+          fr.AsyncValue<List<Ticket>>
+        >
+    with $Provider<fr.AsyncValue<List<Ticket>>> {
   const TicketsStreamProvider._()
     : super(
         from: null,
@@ -348,17 +387,65 @@ final class TicketsStreamProvider
 
   @$internal
   @override
+  $ProviderElement<fr.AsyncValue<List<Ticket>>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  fr.AsyncValue<List<Ticket>> create(Ref ref) {
+    return ticketsStream(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(fr.AsyncValue<List<Ticket>> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<fr.AsyncValue<List<Ticket>>>(value),
+    );
+  }
+}
+
+String _$ticketsStreamHash() => r'214cffe57b82e2685ebb34424d6a2c307713d187';
+
+@ProviderFor(rawAllTicketsStream)
+const rawAllTicketsStreamProvider = RawAllTicketsStreamProvider._();
+
+final class RawAllTicketsStreamProvider
+    extends
+        $FunctionalProvider<
+          fr.AsyncValue<List<Ticket>>,
+          List<Ticket>,
+          Stream<List<Ticket>>
+        >
+    with $FutureModifier<List<Ticket>>, $StreamProvider<List<Ticket>> {
+  const RawAllTicketsStreamProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'rawAllTicketsStreamProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$rawAllTicketsStreamHash();
+
+  @$internal
+  @override
   $StreamProviderElement<List<Ticket>> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
   Stream<List<Ticket>> create(Ref ref) {
-    return ticketsStream(ref);
+    return rawAllTicketsStream(ref);
   }
 }
 
-String _$ticketsStreamHash() => r'db61659ec03e3078ca8f414cd73b8146ba58a3ef';
+String _$rawAllTicketsStreamHash() =>
+    r'173088d1ee1525060e854d43ca0e981cc724a077';
 
 @ProviderFor(allTicketsStream)
 const allTicketsStreamProvider = AllTicketsStreamProvider._();
@@ -367,10 +454,10 @@ final class AllTicketsStreamProvider
     extends
         $FunctionalProvider<
           fr.AsyncValue<List<Ticket>>,
-          List<Ticket>,
-          Stream<List<Ticket>>
+          fr.AsyncValue<List<Ticket>>,
+          fr.AsyncValue<List<Ticket>>
         >
-    with $FutureModifier<List<Ticket>>, $StreamProvider<List<Ticket>> {
+    with $Provider<fr.AsyncValue<List<Ticket>>> {
   const AllTicketsStreamProvider._()
     : super(
         from: null,
@@ -387,17 +474,25 @@ final class AllTicketsStreamProvider
 
   @$internal
   @override
-  $StreamProviderElement<List<Ticket>> $createElement(
+  $ProviderElement<fr.AsyncValue<List<Ticket>>> $createElement(
     $ProviderPointer pointer,
-  ) => $StreamProviderElement(pointer);
+  ) => $ProviderElement(pointer);
 
   @override
-  Stream<List<Ticket>> create(Ref ref) {
+  fr.AsyncValue<List<Ticket>> create(Ref ref) {
     return allTicketsStream(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(fr.AsyncValue<List<Ticket>> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<fr.AsyncValue<List<Ticket>>>(value),
+    );
   }
 }
 
-String _$allTicketsStreamHash() => r'a1bc533fd26d78d97f203d75baecb8356fccf2ec';
+String _$allTicketsStreamHash() => r'cc5df8fb97a4994fe6b2e4f6a4fbb689a97eb6dc';
 
 @ProviderFor(ticketCustomer)
 const ticketCustomerProvider = TicketCustomerFamily._();
@@ -667,7 +762,7 @@ final class TicketStatusUpdaterProvider
 }
 
 String _$ticketStatusUpdaterHash() =>
-    r'364207b0cdc03ac02c9122e0c786732b89413834';
+    r'db5e9775a3ae0e5a618f623ff1a9c096dad3baf5';
 
 abstract class _$TicketStatusUpdater extends $Notifier<bool> {
   bool build();
@@ -773,7 +868,7 @@ final class TicketCreatorProvider
   }
 }
 
-String _$ticketCreatorHash() => r'f1bddc7e8528b2a968f12338bca26983dd3e40ef';
+String _$ticketCreatorHash() => r'31d801c9c0bfd519e8d2625c42bd19e2d3bcdd27';
 
 abstract class _$TicketCreator extends $Notifier<bool> {
   bool build();
@@ -826,7 +921,7 @@ final class TicketUpdaterProvider
   }
 }
 
-String _$ticketUpdaterHash() => r'fc5dd03cd194b3cded2b42727bb39fc06586e7b6';
+String _$ticketUpdaterHash() => r'a2d48916a9cbf6e169bff37b5ef299748aa255ef';
 
 abstract class _$TicketUpdater extends $Notifier<bool> {
   bool build();

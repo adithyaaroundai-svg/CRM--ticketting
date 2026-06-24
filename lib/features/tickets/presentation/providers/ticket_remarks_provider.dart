@@ -1,18 +1,42 @@
+import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 part 'ticket_remarks_provider.g.dart';
 
-// Stream of remarks for a ticket
+// Stream of remarks for a ticket — realtime (INSERT + UPDATE + DELETE)
 @riverpod
 Stream<List<Map<String, dynamic>>> ticketRemarks(Ref ref, String ticketId) {
   final supabase = Supabase.instance.client;
-  return supabase
-      .from('ticket_remarks')
-      .stream(primaryKey: ['id'])
-      .eq('ticket_id', ticketId)
-      .order('created_at', ascending: false)
-      .map((list) => List<Map<String, dynamic>>.from(list));
+  final controller = StreamController<List<Map<String, dynamic>>>.broadcast();
+
+  Future<void> fetch() async {
+    try {
+      final data = await supabase
+          .from('ticket_remarks')
+          .select()
+          .eq('ticket_id', ticketId)
+          .order('created_at', ascending: false);
+      if (!controller.isClosed) controller.add(List<Map<String, dynamic>>.from(data));
+    } catch (e) {
+      if (!controller.isClosed) controller.addError(e);
+    }
+  }
+
+  fetch();
+
+  final channel = supabase
+      .channel('realtime_ticket_remarks_$ticketId')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'ticket_remarks',
+        callback: (_) => fetch(),
+      )
+      .subscribe();
+
+  controller.onCancel = () => supabase.removeChannel(channel);
+  return controller.stream;
 }
 
 // Add remark to ticket

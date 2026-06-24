@@ -5,18 +5,151 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/design_system/design_system.dart';
 import '../../../tickets/domain/entities/ticket.dart';
 import '../../../tickets/presentation/providers/ticket_provider.dart';
+import '../../../tickets/presentation/widgets/tickets_table_view.dart';
 import '../../../customers/presentation/providers/customer_provider.dart';
-import '../../../customers/domain/entities/customer.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../widgets/ticket_card_with_amc.dart';
+import '../../../chat/data/repositories/chat_repository.dart';
+import '../../../chat/presentation/providers/chat_provider.dart';
 import '../widgets/animated_create_ticket_fab.dart';
 import '../widgets/create_ticket_dialog.dart';
 
-class SupportDashboardPage extends ConsumerWidget {
+class SupportDashboardPage extends ConsumerStatefulWidget {
   const SupportDashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SupportDashboardPage> createState() => _SupportDashboardPageState();
+}
+
+class _SupportDashboardPageState extends ConsumerState<SupportDashboardPage> {
+  DateTime? _startDate;
+  DateTime? _endDate;
+
+  // Restricted agents check
+  static const _allowedAroundTallyChannelIds = {
+    'd7a9e726-9520-4cc8-95a6-b38a4afd1d7b',
+    'dedce60a-56bd-49fd-bbe2-f88534b8e36f',
+  };
+  bool get _isRestrictedAgent {
+    final currentUser = ref.read(authProvider);
+    return _allowedAroundTallyChannelIds.contains(currentUser?.id ?? '');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  Future<void> _selectDateRange() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: _startDate != null && _endDate != null
+          ? DateTimeRange(start: _startDate!, end: _endDate!)
+          : null,
+    );
+
+    if (picked != null) {
+      setState(() {
+        _startDate = picked.start;
+        _endDate = picked.end;
+      });
+    }
+  }
+
+  void _clearDateFilter() {
+    setState(() {
+      _startDate = null;
+      _endDate = null;
+    });
+  }
+
+  List<Ticket> _filterTicketsByDateRange(List<Ticket> tickets) {
+    if (_startDate == null || _endDate == null) {
+      return tickets;
+    }
+
+    // Normalize dates to start and end of day
+    final startOfDay = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+    final endOfDay = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+
+    return tickets.where((ticket) {
+      final ticketDate = ticket.createdAt ?? DateTime(1970);
+      return ticketDate.isAfter(startOfDay.subtract(const Duration(days: 1))) &&
+          ticketDate.isBefore(endOfDay.add(const Duration(days: 1)));
+    }).toList();
+  }
+
+  Future<void> _showCreateTicketDialog() async {
+    print('=== Show Create Ticket Dialog ===');
+    final createdTicket = await showDialog<Ticket>(
+      context: context,
+      builder: (context) => const CreateTicketDialog(
+        isSupport: true,
+        postToChat: false,
+      ),
+    );
+
+    print('Dialog returned ticket: ${createdTicket != null}');
+    if (createdTicket == null) {
+      print('Ticket creation was cancelled or failed');
+      return;
+    }
+
+    print('Ticket ID: ${createdTicket.ticketId}');
+    await _sendCreatedTicketMessage(createdTicket);
+    ref.invalidate(chatStreamProvider('support-chat'));
+    ref.invalidate(chatUnreadCountProvider);
+  }
+
+  Future<void> _sendCreatedTicketMessage(Ticket ticket) async {
+    print('=== Support Dashboard Chat Post ===');
+    final agent = ref.read(authProvider);
+    print('Agent: ${agent?.fullName}');
+    if (agent == null) {
+      print('Agent is null, skipping chat post');
+      return;
+    }
+
+    // Get customer name from customer ID
+    final customersAsync = ref.read(customersListProvider);
+    String companyName = 'Unknown Company';
+    
+    if (customersAsync.hasValue) {
+      final customers = customersAsync.value ?? [];
+      try {
+        final customer = customers.firstWhere(
+          (c) => c.id == ticket.customerId,
+        );
+        companyName = customer.companyName;
+      } catch (e) {
+        // Customer not found, keep default company name
+      }
+    }
+
+    final chatContent = [
+      'Company: $companyName',
+      'Issue: ${ticket.title}',
+      'TicketID: ${ticket.ticketId}',
+    ].join('\n');
+    print('Chat content: $chatContent');
+
+    try {
+      await ref.read(chatRepositoryProvider).sendMessage(
+            senderId: agent.id,
+            senderName: agent.fullName ?? agent.username,
+            senderRole: agent.role,
+            content: chatContent,
+            senderAvatarUrl: agent.avatarUrl,
+          );
+      print('Chat message sent successfully');
+    } catch (e) {
+      print('Error sending chat message: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ticketsAsync = ref.watch(ticketsStreamProvider);
     final currentUser = ref.watch(authProvider);
     final customersAsync = ref.watch(customersListProvider);
@@ -26,12 +159,7 @@ class SupportDashboardPage extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: AppColors.slate50,
         floatingActionButton: AnimatedCreateTicketFab(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) => const CreateTicketDialog(isSupport: true),
-            );
-          },
+          onPressed: _showCreateTicketDialog,
         ),
         body: ticketsAsync.when(
           data: (allTickets) {
@@ -46,11 +174,6 @@ class SupportDashboardPage extends ConsumerWidget {
                       a.createdAt ?? DateTime(0),
                     ),
                   );
-
-            final customersById = customersAsync.maybeWhen(
-              data: (customers) => {for (final c in customers) c.id: c},
-              orElse: () => const <String, Customer>{},
-            );
 
             final resolvedStatuses = {'Resolved', 'Closed', 'BillProcessed'};
             final myInProgress =
@@ -115,97 +238,109 @@ class SupportDashboardPage extends ConsumerWidget {
               ),
             ];
 
-            List<Ticket> filterTickets(bool isAmc) {
-              return unclaimedTickets.where((ticket) {
-                final customer = customersById[ticket.customerId];
-                final amcActive = customer?.isAmcActive ?? false;
-                return isAmc ? amcActive : !amcActive;
-              }).toList();
-            }
-
-            final normalTickets = filterTickets(false);
-            final amcTickets = filterTickets(true);
             final forceClaimButton = currentUser?.isSupportHead == true;
             final isCustomersLoading = customersAsync.isLoading;
-            final unclaimedSection = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+
+            final resolvedSet = {'Resolved', 'Closed', 'BillProcessed', 'BillRaised'};
+            
+            // Combine all tickets into a single list
+            final allCombinedTickets = _filterTicketsByDateRange(
+              allTickets
+                ..sort((a, b) =>
+                    (b.updatedAt ?? b.createdAt ?? DateTime(0))
+                        .compareTo(a.updatedAt ?? a.createdAt ?? DateTime(0))),
+            );
+
+            return Column(
               children: [
-                SectionHeader(
-                  title: 'Unclaimed Tickets',
-                  subtitle: '${unclaimedTickets.length} tickets waiting',
-                  icon: LucideIcons.inbox,
-                  iconColor: AppColors.warning,
-                ),
-                const SizedBox(height: 16),
+                // Top stats row
                 Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  color: Colors.white,
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      if (isCustomersLoading) ...[
-                        const LinearProgressIndicator(
-                          minHeight: 3,
-                          backgroundColor: AppColors.slate100,
+                      Expanded(
+                        flex: 2,
+                        child: WelcomeHeader(
+                          name: currentUser?.username ?? 'Support',
+                          subtitle: 'Your support dashboard and ticket queue',
                         ),
-                        const SizedBox(height: 16),
-                      ],
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 4,
+                        child: _QueueStatTiles(stats: queueStats),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Expanded(
-                            child: _buildTicketColumn(
-                              context,
-                              title: 'Normal Customers',
-                              subtitle: 'Regular tickets',
-                              tickets: normalTickets,
-                              isAmc: false,
-                              forceClaimButton: forceClaimButton,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              OutlinedButton.icon(
+                                icon: const Icon(LucideIcons.calendar, size: 14),
+                                label: Text(
+                                  _startDate != null && _endDate != null
+                                      ? '${_startDate!.day}/${_startDate!.month} - ${_endDate!.day}/${_endDate!.month}'
+                                      : 'Filter Date',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                                onPressed: _selectDateRange,
+                              ),
+                              if (_startDate != null && _endDate != null)
+                                IconButton(
+                                  icon: const Icon(Icons.close, size: 16),
+                                  onPressed: _clearDateFilter,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                            ],
                           ),
-                          const SizedBox(width: 24),
-                          Expanded(
-                            child: _buildTicketColumn(
-                              context,
-                              title: 'AMC Customers',
-                              subtitle: 'Priority tickets',
-                              tickets: amcTickets,
-                              isAmc: true,
-                              forceClaimButton: forceClaimButton,
-                            ),
+                          const SizedBox(height: 4),
+                          if (!_isRestrictedAgent)
+                          OutlinedButton.icon(
+                            icon: const Icon(LucideIcons.hourglass, size: 14),
+                            label: const Text('Unclaimed > 1h', style: TextStyle(fontSize: 11)),
+                            onPressed: () => context.push('/tickets?view=stale_unclaimed'),
+                          ),
+                          const SizedBox(height: 4),
+                          if (!_isRestrictedAgent)
+                          OutlinedButton.icon(
+                            icon: const Icon(LucideIcons.alertTriangle, size: 14),
+                            label: const Text('Claimed > 12h', style: TextStyle(fontSize: 11)),
+                            onPressed: () => context.push('/tickets?view=claimed_overdue'),
+                          ),
+                          const SizedBox(height: 4),
+                          IconButton(
+                            icon: const Icon(Icons.refresh, size: 20),
+                            onPressed: () => ref.invalidate(rawTicketsStreamProvider),
+                            tooltip: 'Refresh',
                           ),
                         ],
                       ),
                     ],
                   ),
                 ),
-              ],
-            );
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  WelcomeHeader(
-                    name: currentUser?.username ?? 'Support',
-                    subtitle: 'Your support dashboard and ticket queue',
-                    trailing: AppButton.ghost(
-                      label: 'Refresh',
-                      icon: Icons.refresh,
-                      onPressed: () => ref.invalidate(ticketsStreamProvider),
+                const Divider(height: 1, color: AppColors.slate200),
+                // Single Table View
+                Expanded(
+                  child: FocusScope(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: TicketsTableView(
+                        tickets: allCombinedTickets,
+                        showAllTickets: true,
+                        showOnlyMine: false,
+                        showOnlyUnclaimed: false,
+                        groupResolved: false,
+                        isUnclaimedTab: false,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _QueueStatTiles(stats: queueStats),
-                  const SizedBox(height: 24),
-                  unclaimedSection,
-                ],
-              ),
+                ),
+              ],
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -220,72 +355,40 @@ class SupportDashboardPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildTicketColumn(
+  
+  Widget _buildUnifiedClaimList(
     BuildContext context, {
-    required String title,
-    required String subtitle,
     required List<Ticket> tickets,
-    required bool isAmc,
-    required bool forceClaimButton,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(
-          title: title,
-          subtitle: subtitle,
-        ),
-        const SizedBox(height: 12),
-        _buildTicketList(
-          context,
-          tickets,
-          isAmc: isAmc,
-          forceClaimButton: forceClaimButton,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTicketList(
-    BuildContext context,
-    List<Ticket> tickets, {
-    required bool isAmc,
     required bool forceClaimButton,
   }) {
     if (tickets.isEmpty) {
       return EmptyStateCard(
-        icon: isAmc ? LucideIcons.sparkles : LucideIcons.users,
-        title: isAmc ? 'No AMC tickets waiting' : 'No normal tickets waiting',
-        subtitle: isAmc
-            ? 'Priority customers are all covered right now.'
-            : 'Regular customer queue is empty.',
+        icon: LucideIcons.inbox,
+        title: 'All queues are clear',
+        subtitle: 'No unclaimed tickets are waiting right now.',
       );
     }
 
-    final limitedTickets = tickets.take(10).toList();
+    final limitedTickets = tickets.take(12).toList();
     final showViewAll = tickets.length > limitedTickets.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ...limitedTickets.map(
-          (ticket) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: TicketCardWithAmc(
-              ticket: ticket,
-              layout: TicketCardLayout.compact,
-              forceClaimButton: forceClaimButton,
-            ),
-          ),
+        TicketsTableView(
+          tickets: limitedTickets,
+          showAllTickets: false,
+          showOnlyMine: false,
+          showOnlyUnclaimed: true,
+          groupResolved: false,
         ),
         if (showViewAll)
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
+            child: TextButton.icon(
               onPressed: () => context.push('/tickets?view=unclaimed'),
-              child: Text(
-                'View all ${tickets.length} ${isAmc ? 'AMC' : 'normal'} tickets →',
-              ),
+              icon: const Icon(LucideIcons.arrowRight),
+              label: Text('View all ${tickets.length} unclaimed tickets'),
             ),
           ),
       ],
@@ -318,12 +421,16 @@ class _QueueStatTiles extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      children: stats
-          .map((stat) => _QueueStatTile(stat: stat))
-          .toList(growable: false),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: stats
+            .map((stat) => Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: _QueueStatTile(stat: stat),
+            ))
+            .toList(growable: false),
+      ),
     );
   }
 }

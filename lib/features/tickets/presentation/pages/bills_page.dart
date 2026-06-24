@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -123,9 +124,9 @@ class _BillsPageState extends ConsumerState<BillsPage> {
     result.fold(
       (failure) {},
       (_) {
-        ref.invalidate(ticketsStreamProvider);
+        ref.invalidate(rawTicketsStreamProvider);
         ref.invalidate(ticketStatsProvider);
-        ref.invalidate(allTicketsStreamProvider);
+        ref.invalidate(rawAllTicketsStreamProvider);
         _clearSelection();
       },
     );
@@ -165,9 +166,9 @@ class _BillsPageState extends ConsumerState<BillsPage> {
     result.fold(
       (failure) {},
       (_) {
-        ref.invalidate(ticketsStreamProvider);
+        ref.invalidate(rawTicketsStreamProvider);
         ref.invalidate(ticketStatsProvider);
-        ref.invalidate(allTicketsStreamProvider);
+        ref.invalidate(rawAllTicketsStreamProvider);
       },
     );
   }
@@ -377,6 +378,22 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 16,
                                           vertical: 10,
+                                        ),
+                                      ),
+                                    ),
+                                  if (isAccountant)
+                                    TextButton.icon(
+                                      onPressed: () => context.go('/active-claimed'),
+                                      icon: const Icon(LucideIcons.activity, size: 16),
+                                      label: const Text('Active tickets'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: AppColors.error,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                        textStyle: const TextStyle(
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ),
@@ -888,7 +905,7 @@ class _BillListItem extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    ticket.updatedAt != null ? timeago.format(ticket.updatedAt!) : '',
+                    ticket.updatedAt != null ? timeago.format(ticket.updatedAt!.toLocal()) : '',
                     style: const TextStyle(fontSize: 10, color: AppColors.slate400),
                   ),
                 ],

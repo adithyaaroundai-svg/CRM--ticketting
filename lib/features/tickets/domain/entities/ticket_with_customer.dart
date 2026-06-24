@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../../customers/domain/entities/customer.dart';
+import '../../../../core/utils/json_converters.dart';
 
 part 'ticket_with_customer.freezed.dart';
 
@@ -41,11 +42,9 @@ abstract class TicketWithCustomer with _$TicketWithCustomer {
       priority: json['priority'] as String,
       createdBy: json['created_by'] as String,
       assignedTo: json['assigned_to'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
-      slaDue: json['sla_due'] != null
-          ? DateTime.parse(json['sla_due'] as String)
-          : null,
+      createdAt: const UtcDateTimeConverter().fromJson(json['created_at'] as String?)!,
+      updatedAt: const UtcDateTimeConverter().fromJson(json['updated_at'] as String?)!,
+      slaDue: const UtcDateTimeConverter().fromJson(json['sla_due'] as String?),
       customer: customer,
     );
   }

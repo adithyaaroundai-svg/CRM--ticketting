@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/design_system/design_system.dart';
+import '../providers/auth_provider.dart';
 
 class User {
   final String id;
@@ -47,12 +48,29 @@ class UsersPage extends ConsumerStatefulWidget {
 class _UsersPageState extends ConsumerState<UsersPage> {
   String _selectedRole = 'all';
 
+  // Check if current user can manage users (admin or HR)
+  bool get _canManageUsers {
+    final currentUser = ref.read(authProvider);
+    return currentUser?.isAdmin == true || currentUser?.isHR == true;
+  }
+
+  // Check if current user can delete users and change roles (admin only)
+  bool get _canDeleteAndEditRoles {
+    final currentUser = ref.read(authProvider);
+    return currentUser?.isAdmin == true;
+  }
+
   final List<String> _roles = [
     'all',
     'Admin',
     'Support Head',
     'Support',
     'Accountant',
+    'Tele Caller',
+    'Software Developer',
+    'Digital Marketing Executive',
+    'HR',
+    'Project Coordinator',
   ];
 
   Future<List<User>> _fetchUsers() async {
@@ -139,6 +157,91 @@ class _UsersPageState extends ConsumerState<UsersPage> {
     }
   }
 
+  Future<void> _updateUserRole(User user, String newRole) async {
+    final supabase = Supabase.instance.client;
+
+    try {
+      await supabase
+          .from('agents')
+          .update({'role': newRole})
+          .eq('id', user.id);
+
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${user.fullName} role updated to $newRole'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating role: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  void _showEditRoleDialog(User user) {
+    String selectedRole = user.role;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text('Change Role for ${user.fullName}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Select new role:',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 16),
+                ..._roles.where((r) => r != 'all').map((role) {
+                  return RadioListTile<String>(
+                    title: Text(_getRoleDisplayName(role)),
+                    value: role,
+                    groupValue: selectedRole,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedRole = value!;
+                      });
+                    },
+                  );
+                }).toList(),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (selectedRole != user.role) {
+                    _updateUserRole(user, selectedRole);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Update Role'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MainLayout(
@@ -153,26 +256,40 @@ class _UsersPageState extends ConsumerState<UsersPage> {
               PageHeader(
                 title: 'User Management',
                 subtitle: 'Manage system users and permissions',
-                onBack: () => context.go('/admin'),
+                onBack: () {
+                  final currentUser = ref.read(authProvider);
+                  if (currentUser?.isAdmin == true) {
+                    context.go('/admin');
+                  } else if (currentUser?.isAccountant == true) {
+                    context.go('/accountant');
+                  } else if (currentUser?.isSupport == true || currentUser?.isHR == true) {
+                    context.go('/chat');
+                  } else if (currentUser?.isSales == true) {
+                    context.go('/sales');
+                  } else {
+                    context.go('/');
+                  }
+                },
               ),
               const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton.icon(
-                  onPressed: () => context.go('/users/add'),
-                  icon: const Icon(LucideIcons.userPlus, size: 18),
-                  label: const Text('Add User'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+              if (_canManageUsers)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton.icon(
+                    onPressed: () => context.go('/users/add'),
+                    icon: const Icon(LucideIcons.userPlus, size: 18),
+                    label: const Text('Add User'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
+              if (_canManageUsers) const SizedBox(height: 24),
 
               // Filter Section
               Card(
@@ -260,8 +377,8 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                       subtitle: _selectedRole == 'all'
                           ? 'No users in the system yet'
                           : 'No ${_getRoleDisplayName(_selectedRole).toLowerCase()}s found',
-                      actionLabel: 'Add User',
-                      onAction: () => context.go('/users/add'),
+                      actionLabel: _canManageUsers ? 'Add User' : null,
+                      onAction: _canManageUsers ? () => context.go('/users/add') : null,
                     );
                   }
 
@@ -278,7 +395,8 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                         final isLast = index == filteredUsers.length - 1;
                         return _UserTile(
                           user: user,
-                          onDelete: () => _deleteUser(user),
+                          onDelete: _canDeleteAndEditRoles ? () => _deleteUser(user) : null,
+                          onEditRole: _canDeleteAndEditRoles ? () => _showEditRoleDialog(user) : null,
                           isLast: isLast,
                         );
                       }).toList(),
@@ -303,6 +421,8 @@ class _UsersPageState extends ConsumerState<UsersPage> {
         return 'Admin';
       case 'accountant':
         return 'Accountant';
+      case 'project coordinator':
+        return 'Project Coordinator';
       default:
         return role;
     }
@@ -311,12 +431,14 @@ class _UsersPageState extends ConsumerState<UsersPage> {
 
 class _UserTile extends StatelessWidget {
   final User user;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
+  final VoidCallback? onEditRole;
   final bool isLast;
 
   const _UserTile({
     required this.user,
-    required this.onDelete,
+    this.onDelete,
+    this.onEditRole,
     required this.isLast,
   });
 
@@ -369,28 +491,44 @@ class _UserTile extends StatelessWidget {
               ),
             ],
           ),
-          trailing: PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'delete') {
-                onDelete();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(LucideIcons.trash2, color: AppColors.error, size: 16),
-                    SizedBox(width: 8),
-                    Text(
-                      'Delete User',
-                      style: TextStyle(color: AppColors.error),
-                    ),
+          trailing: (onDelete != null || onEditRole != null)
+              ? PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'delete' && onDelete != null) {
+                      onDelete!();
+                    } else if (value == 'editRole' && onEditRole != null) {
+                      onEditRole!();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    if (onEditRole != null)
+                      const PopupMenuItem(
+                        value: 'editRole',
+                        child: Row(
+                          children: [
+                            Icon(LucideIcons.userCog, color: AppColors.primary, size: 16),
+                            SizedBox(width: 8),
+                            Text('Change Role'),
+                          ],
+                        ),
+                      ),
+                    if (onDelete != null)
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(LucideIcons.trash2, color: AppColors.error, size: 16),
+                            SizedBox(width: 8),
+                            Text(
+                              'Delete User',
+                              style: TextStyle(color: AppColors.error),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
-                ),
-              ),
-            ],
-          ),
+                )
+              : null,
         ),
         if (!isLast) const Divider(height: 1),
       ],
@@ -409,6 +547,10 @@ class _UserTile extends StatelessWidget {
         return 'Moderator';
       case 'accountant':
         return 'Accountant';
+      case 'hr':
+        return 'HR';
+      case 'project coordinator':
+        return 'Project Coordinator';
       default:
         return role;
     }
@@ -424,6 +566,10 @@ class _UserTile extends StatelessWidget {
         return LucideIcons.calculator;
       case 'admin':
         return LucideIcons.crown;
+      case 'hr':
+        return LucideIcons.users;
+      case 'project coordinator':
+        return LucideIcons.clipboardList;
       default:
         return LucideIcons.user;
     }
@@ -439,6 +585,10 @@ class _UserTile extends StatelessWidget {
         return AppColors.warning;
       case 'admin':
         return AppColors.primary;
+      case 'hr':
+        return AppColors.success;
+      case 'project coordinator':
+        return AppColors.warning;
       default:
         return AppColors.primary;
     }
