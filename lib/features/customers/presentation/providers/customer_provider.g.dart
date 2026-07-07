@@ -120,7 +120,7 @@ final class AmcStatsProvider
   }
 }
 
-String _$amcStatsHash() => r'5e9bd64c3faf409c09af53d9697624c7a0a1beff';
+String _$amcStatsHash() => r'ff572b78b7115bce43e3b6b41523c692aabe25d8';
 
 @ProviderFor(customersList)
 const customersListProvider = CustomersListProvider._();
