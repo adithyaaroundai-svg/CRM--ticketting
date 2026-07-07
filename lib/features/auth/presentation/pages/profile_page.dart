@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
@@ -37,19 +35,42 @@ class ProfilePage extends ConsumerWidget {
                   children: [
                     Stack(
                       children: [
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundColor: AppColors.slate200,
-                          backgroundImage: user?.avatarUrl != null
-                              ? NetworkImage(user!.avatarUrl!)
+                        GestureDetector(
+                          onTap: user?.avatarUrl != null
+                              ? () => _showAvatarPreview(context, user!.avatarUrl!)
                               : null,
-                          child: user?.avatarUrl == null
-                              ? const Icon(
-                                  LucideIcons.user,
-                                  size: 40,
-                                  color: AppColors.slate500,
-                                )
-                              : null,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(40),
+                            child: user?.avatarUrl != null
+                                ? Image.network(
+                                    user!.avatarUrl!,
+                                    width: 80,
+                                    height: 80,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 80,
+                                        height: 80,
+                                        color: AppColors.slate200,
+                                        child: const Icon(
+                                          LucideIcons.user,
+                                          size: 40,
+                                          color: AppColors.slate500,
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : Container(
+                                    width: 80,
+                                    height: 80,
+                                    color: AppColors.slate200,
+                                    child: const Icon(
+                                      LucideIcons.user,
+                                      size: 40,
+                                      color: AppColors.slate500,
+                                    ),
+                                  ),
+                          ),
                         ),
                         Positioned(
                           bottom: 0,
@@ -332,20 +353,56 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: TextStyle(fontSize: 14, color: AppColors.slate500)),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: AppColors.slate900,
-          ),
+  void _showAvatarPreview(BuildContext context, String avatarUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.9),
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+            Center(
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    avatarUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 300,
+                        height: 300,
+                        color: AppColors.slate200,
+                        child: const Icon(
+                          LucideIcons.imageOff,
+                          size: 48,
+                          color: AppColors.slate500,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 16,
+              right: 16,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -385,13 +442,32 @@ class ProfilePage extends ConsumerWidget {
         return;
       }
 
-      // Resize image to 512x512 while maintaining aspect ratio
-      img.Image resizedImage = img.copyResize(
-        originalImage,
-        width: 512,
-        height: 512,
-        interpolation: img.Interpolation.linear,
-      );
+      // Resize image to max 512px while preserving aspect ratio
+      final maxDimension = 512;
+      final aspectRatio = originalImage.width / originalImage.height;
+      img.Image resizedImage;
+      
+      if (originalImage.width > originalImage.height) {
+        // Landscape: resize width to 512, calculate height
+        final newWidth = maxDimension;
+        final newHeight = (maxDimension / aspectRatio).round();
+        resizedImage = img.copyResize(
+          originalImage,
+          width: newWidth,
+          height: newHeight,
+          interpolation: img.Interpolation.linear,
+        );
+      } else {
+        // Portrait: resize height to 512, calculate width
+        final newHeight = maxDimension;
+        final newWidth = (maxDimension * aspectRatio).round();
+        resizedImage = img.copyResize(
+          originalImage,
+          width: newWidth,
+          height: newHeight,
+          interpolation: img.Interpolation.linear,
+        );
+      }
 
       // Encode as JPEG with 85% quality
       final resizedBytes = img.encodeJpg(resizedImage, quality: 85);
@@ -823,11 +899,24 @@ class _TeamsUserIdEditorState extends ConsumerState<_TeamsUserIdEditor> {
   late final TextEditingController _ctrl;
   bool _editing = false;
   bool _saving = false;
+  late String _displayValue;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = TextEditingController(text: widget.currentTeamsUserId ?? '');
+    _displayValue = widget.currentTeamsUserId ?? '';
+    _ctrl = TextEditingController(text: _displayValue);
+  }
+
+  @override
+  void didUpdateWidget(_TeamsUserIdEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentTeamsUserId != widget.currentTeamsUserId) {
+      _displayValue = widget.currentTeamsUserId ?? '';
+      if (!_editing) {
+        _ctrl.text = _displayValue;
+      }
+    }
   }
 
   @override
@@ -852,7 +941,10 @@ class _TeamsUserIdEditorState extends ConsumerState<_TeamsUserIdEditor> {
     if (!mounted) return;
     setState(() {
       _saving = false;
-      if (success) _editing = false;
+      if (success) {
+        _editing = false;
+        _displayValue = value;
+      }
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -905,7 +997,7 @@ class _TeamsUserIdEditorState extends ConsumerState<_TeamsUserIdEditor> {
                       IconButton(
                         icon: const Icon(LucideIcons.x, size: 18, color: AppColors.slate400),
                         onPressed: () {
-                          _ctrl.text = widget.currentTeamsUserId ?? '';
+                          _ctrl.text = _displayValue;
                           setState(() => _editing = false);
                         },
                         tooltip: 'Cancel',
@@ -920,13 +1012,11 @@ class _TeamsUserIdEditorState extends ConsumerState<_TeamsUserIdEditor> {
                   children: [
                     Flexible(
                       child: Text(
-                        widget.currentTeamsUserId?.isNotEmpty == true
-                            ? widget.currentTeamsUserId!
-                            : 'Not set',
+                        _displayValue.isNotEmpty ? _displayValue : 'Not set',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: widget.currentTeamsUserId?.isNotEmpty == true
+                          color: _displayValue.isNotEmpty
                               ? AppColors.slate900
                               : AppColors.slate400,
                         ),

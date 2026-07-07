@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../../core/utils/json_converters.dart';
 
 @immutable
 class Activity {
@@ -34,12 +35,8 @@ class Activity {
       type: json['type'] as String? ?? 'general',
       subject: json['subject'] as String? ?? '',
       description: json['description'] as String?,
-      occurredAt: json['occurred_at'] != null
-          ? DateTime.parse(json['occurred_at'] as String)
-          : DateTime.now(),
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
-          : DateTime.now(),
+      occurredAt: tryParseUtcDate(json['occurred_at'] as String?) ?? DateTime.now().toUtc(),
+      createdAt: tryParseUtcDate(json['created_at'] as String?) ?? DateTime.now().toUtc(),
     );
   }
 }

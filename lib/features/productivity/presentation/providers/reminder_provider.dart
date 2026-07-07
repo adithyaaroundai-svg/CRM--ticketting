@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/entities/reminder.dart';
+import '../../../../core/services/local_notification_service.dart';
 
 part 'reminder_provider.g.dart';
 
@@ -31,8 +32,19 @@ class Reminders extends _$Reminders {
       try {
         final List<dynamic> jsonList = jsonDecode(jsonString);
         state = jsonList.map((e) => Reminder.fromJson(e as Map<String, dynamic>)).toList();
+        
+        final now = DateTime.now();
+        for (final r in state) {
+          if (!r.isCompleted && !r.isTriggered && r.remindAt.isAfter(now)) {
+            LocalNotificationService.scheduleNotification(
+              id: r.id.hashCode,
+              title: 'Reminder: ${r.companyName}',
+              body: r.notes.isNotEmpty ? r.notes : 'Time for your reminder!',
+              scheduledDate: r.remindAt,
+            );
+          }
+        }
       } catch (e) {
-        // Handle error
         state = [];
       }
     }
@@ -73,18 +85,26 @@ class Reminders extends _$Reminders {
   void addReminder(Reminder reminder) {
     state = [...state, reminder];
     _saveReminders(state);
+    LocalNotificationService.scheduleNotification(
+      id: reminder.id.hashCode,
+      title: 'Reminder: ${reminder.companyName}',
+      body: reminder.notes.isNotEmpty ? reminder.notes : 'Time for your reminder!',
+      scheduledDate: reminder.remindAt,
+    );
   }
 
   void completeReminder(String id) {
     final updatedList = state.map((r) => r.id == id ? r.copyWith(isCompleted: true) : r).toList();
     state = updatedList;
     _saveReminders(state);
+    LocalNotificationService.cancelNotification(id.hashCode);
   }
 
   void removeReminder(String id) {
     final updatedList = state.where((r) => r.id != id).toList();
     state = updatedList;
     _saveReminders(state);
+    LocalNotificationService.cancelNotification(id.hashCode);
   }
 }
 

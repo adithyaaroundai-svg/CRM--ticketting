@@ -1,3 +1,5 @@
+import '../../../../core/utils/json_converters.dart';
+
 class Lead {
   final String id;
   final String companyName;
@@ -21,7 +23,7 @@ class Lead {
       companyName: json['company_name'] as String,
       status: json['status'] as String? ?? 'pending',
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: parseUtcDate(json['created_at'] as String),
       createdBy: json['created_by'] as String?,
     );
   }

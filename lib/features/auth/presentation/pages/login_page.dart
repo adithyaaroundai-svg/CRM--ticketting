@@ -116,7 +116,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         ],
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(40),
+                        padding: EdgeInsets.all(isMobile ? 24 : 40),
                         child: Form(
                           key: _formKey,
                           child: Column(
@@ -217,12 +217,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                       color: AppColors.slate600,
                                     ),
                                     const SizedBox(width: 10),
-                                    Text(
-                                      'Support & Ticketing Portal',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        color: AppColors.slate700,
-                                        fontWeight: FontWeight.w600,
+                                    Flexible(
+                                      child: Text(
+                                        'Support & Ticketing Portal',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          color: AppColors.slate700,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
@@ -454,19 +457,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           color: Colors.white.withValues(alpha: 0.1),
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 24,
+                        runSpacing: 8,
                         children: [
                           _buildContactItem(
                             icon: LucideIcons.phone,
                             text: '+91-93885-13999',
                           ),
-                          const SizedBox(width: 24),
                           _buildContactItem(
                             icon: LucideIcons.mail,
                             text: 'sales@aroundtally.com',
                           ),
-                          const SizedBox(width: 24),
                           _buildContactItem(
                             icon: LucideIcons.mapPin,
                             text: 'Kochi, Kerala',
@@ -511,7 +514,7 @@ class _LoginPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.4)
+      ..color = Colors.white.withValues(alpha: 0.4)
       ..strokeWidth = 0.8;
 
     const double gap = 24;

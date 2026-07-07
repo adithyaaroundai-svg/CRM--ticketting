@@ -45,9 +45,15 @@ class CustomerDetailPage extends ConsumerWidget {
           titleSpacing: 24,
           toolbarHeight: 72,
           leading: IconButton(
-            onPressed: () => context.go('/customers'),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/customers');
+              }
+            },
             icon: const Icon(Icons.arrow_back),
-            tooltip: 'Back to Customers',
+            tooltip: 'Back',
             style: IconButton.styleFrom(
               backgroundColor: AppColors.slate100,
               foregroundColor: AppColors.slate700,
@@ -106,7 +112,7 @@ class CustomerDetailPage extends ConsumerWidget {
                         const Spacer(),
                         TextButton.icon(
                           onPressed: () {
-                            context.go('/customer/${customer.id}/history');
+                            context.push('/customer/${customer.id}/history');
                           },
                           icon: const Icon(LucideIcons.history),
                           label: const Text('Detailed history'),
@@ -620,7 +626,7 @@ class CustomerDetailPage extends ConsumerWidget {
                         const SizedBox(width: 12),
                         TextButton.icon(
                           onPressed: () {
-                            context.go('/customer/${customer.id}/history');
+                            context.push('/customer/${customer.id}/history');
                           },
                           icon: const Icon(LucideIcons.history),
                           label: const Text('Detailed history'),

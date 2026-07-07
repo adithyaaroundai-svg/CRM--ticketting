@@ -1,3 +1,5 @@
+import '../../../../core/utils/json_converters.dart';
+
 class Deal {
   final String id;
   final String customerId;
@@ -33,11 +35,9 @@ class Deal {
       value: (json['value'] as num?)?.toDouble() ?? 0.0,
       description: json['description'] as String?,
       assignedTo: json['assigned_to'] as String?,
-      expectedCloseDate: json['expected_close_date'] != null
-          ? DateTime.parse(json['expected_close_date'] as String)
-          : null,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      expectedCloseDate: tryParseUtcDate(json['expected_close_date'] as String?),
+      createdAt: parseUtcDate(json['created_at'] as String),
+      updatedAt: parseUtcDate(json['updated_at'] as String),
     );
   }
 

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../../core/design_system/theme/app_colors.dart';
 import '../../domain/entities/reminder.dart';
 import '../providers/reminder_provider.dart';
 

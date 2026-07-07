@@ -522,7 +522,7 @@ final class ChatControllerProvider
   ChatController create() => ChatController();
 }
 
-String _$chatControllerHash() => r'7246d07a5f5f0be80befd6a5500cf99324db74d4';
+String _$chatControllerHash() => r'e32f0af4e778a71c048513eb1f9df957fab33757';
 
 abstract class _$ChatController extends $AsyncNotifier<void> {
   FutureOr<void> build();

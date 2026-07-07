@@ -232,25 +232,20 @@ class _AddCustomerPageState extends ConsumerState<AddCustomerPage> {
                           },
                         ),
                         const SizedBox(height: 16),
-                        Row(
+                        ResponsiveFormRow(
                           children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _tallyLicenseController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Tally License',
-                                  prefixIcon: Icon(LucideIcons.key),
-                                ),
+                            TextFormField(
+                              controller: _tallyLicenseController,
+                              decoration: const InputDecoration(
+                                labelText: 'Tally License',
+                                prefixIcon: Icon(LucideIcons.key),
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _tallySerialNoController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Tally Serial Number',
-                                  prefixIcon: Icon(LucideIcons.hash),
-                                ),
+                            TextFormField(
+                              controller: _tallySerialNoController,
+                              decoration: const InputDecoration(
+                                labelText: 'Tally Serial Number',
+                                prefixIcon: Icon(LucideIcons.hash),
                               ),
                             ),
                           ],
@@ -284,89 +279,84 @@ class _AddCustomerPageState extends ConsumerState<AddCustomerPage> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Row(
+                        ResponsiveFormRow(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Phone Numbers',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelLarge
-                                            ?.copyWith(
-                                              color: AppColors.textPrimary,
-                                            ),
-                                      ),
-                                      IconButton(
-                                        onPressed: _addPhoneField,
-                                        icon: const Icon(LucideIcons.plus),
-                                        tooltip: 'Add phone number',
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  for (int i = 0;
-                                      i < _contactPhoneControllers.length;
-                                      i++) ...[
-                                    TextFormField(
-                                      controller: _contactPhoneControllers[i],
-                                      decoration: InputDecoration(
-                                        labelText: _contactPhoneControllers
-                                                    .length ==
-                                                1
-                                            ? 'Phone Number'
-                                            : 'Phone Number ${i + 1}',
-                                        prefixIcon:
-                                            const Icon(LucideIcons.phone),
-                                        suffixIcon:
-                                            _contactPhoneControllers.length > 1
-                                                ? IconButton(
-                                                    onPressed: () =>
-                                                        _removePhoneField(i),
-                                                    icon: const Icon(
-                                                      LucideIcons.x,
-                                                    ),
-                                                    tooltip: 'Remove',
-                                                  )
-                                                : null,
-                                      ),
-                                      keyboardType: TextInputType.phone,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Phone Numbers',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelLarge
+                                          ?.copyWith(
+                                            color: AppColors.textPrimary,
+                                          ),
                                     ),
-                                    if (i !=
-                                        _contactPhoneControllers.length - 1)
-                                      const SizedBox(height: 12),
+                                    IconButton(
+                                      onPressed: _addPhoneField,
+                                      icon: const Icon(LucideIcons.plus),
+                                      tooltip: 'Add phone number',
+                                    ),
                                   ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _contactEmailController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Email',
-                                  prefixIcon: Icon(LucideIcons.mail),
                                 ),
-                                keyboardType: TextInputType.emailAddress,
-                                validator: (value) {
-                                  if (value != null && value.isNotEmpty) {
-                                    final emailRegex = RegExp(
-                                      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-                                    );
-                                    if (!emailRegex.hasMatch(value)) {
-                                      return 'Please enter a valid email';
-                                    }
-                                  }
-                                  return null;
-                                },
+                                const SizedBox(height: 8),
+                                for (int i = 0;
+                                    i < _contactPhoneControllers.length;
+                                    i++) ...[
+                                  TextFormField(
+                                    controller: _contactPhoneControllers[i],
+                                    decoration: InputDecoration(
+                                      labelText: _contactPhoneControllers
+                                                  .length ==
+                                              1
+                                          ? 'Phone Number'
+                                          : 'Phone Number ${i + 1}',
+                                      prefixIcon:
+                                          const Icon(LucideIcons.phone),
+                                      suffixIcon:
+                                          _contactPhoneControllers.length > 1
+                                              ? IconButton(
+                                                  onPressed: () =>
+                                                      _removePhoneField(i),
+                                                  icon: const Icon(
+                                                    LucideIcons.x,
+                                                  ),
+                                                  tooltip: 'Remove',
+                                                )
+                                              : null,
+                                    ),
+                                    keyboardType: TextInputType.phone,
+                                  ),
+                                  if (i !=
+                                      _contactPhoneControllers.length - 1)
+                                    const SizedBox(height: 12),
+                                ],
+                              ],
+                            ),
+                            TextFormField(
+                              controller: _contactEmailController,
+                              decoration: const InputDecoration(
+                                labelText: 'Email',
+                                prefixIcon: Icon(LucideIcons.mail),
                               ),
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (value) {
+                                if (value != null && value.isNotEmpty) {
+                                  final emailRegex = RegExp(
+                                    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                                  );
+                                  if (!emailRegex.hasMatch(value)) {
+                                    return 'Please enter a valid email';
+                                  }
+                                }
+                                return null;
+                              },
                             ),
                           ],
                         ),
@@ -382,49 +372,44 @@ class _AddCustomerPageState extends ConsumerState<AddCustomerPage> {
                               ),
                         ),
                         const SizedBox(height: 16),
-                        Row(
+                        ResponsiveFormRow(
                           children: [
-                            Expanded(
-                              child: InkWell(
-                                onTap: () => _selectDate(context, true),
-                                borderRadius: BorderRadius.circular(8),
-                                child: InputDecorator(
-                                  decoration: const InputDecoration(
-                                    labelText: 'AMC Expiry Date',
-                                    prefixIcon: Icon(LucideIcons.calendar),
-                                  ),
-                                  child: Text(
-                                    _amcExpiryDate != null
-                                        ? '${_amcExpiryDate!.day}/${_amcExpiryDate!.month}/${_amcExpiryDate!.year}'
-                                        : 'Select date',
-                                    style: TextStyle(
-                                      color: _amcExpiryDate != null
-                                          ? AppColors.textPrimary
-                                          : AppColors.textMuted,
-                                    ),
+                            InkWell(
+                              onTap: () => _selectDate(context, true),
+                              borderRadius: BorderRadius.circular(8),
+                              child: InputDecorator(
+                                decoration: const InputDecoration(
+                                  labelText: 'AMC Expiry Date',
+                                  prefixIcon: Icon(LucideIcons.calendar),
+                                ),
+                                child: Text(
+                                  _amcExpiryDate != null
+                                      ? '${_amcExpiryDate!.day}/${_amcExpiryDate!.month}/${_amcExpiryDate!.year}'
+                                      : 'Select date',
+                                  style: TextStyle(
+                                    color: _amcExpiryDate != null
+                                        ? AppColors.textPrimary
+                                        : AppColors.textMuted,
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: InkWell(
-                                onTap: () => _selectDate(context, false),
-                                borderRadius: BorderRadius.circular(8),
-                                child: InputDecorator(
-                                  decoration: const InputDecoration(
-                                    labelText: 'TSS Expiry Date',
-                                    prefixIcon: Icon(LucideIcons.calendar),
-                                  ),
-                                  child: Text(
-                                    _tssExpiryDate != null
-                                        ? '${_tssExpiryDate!.day}/${_tssExpiryDate!.month}/${_tssExpiryDate!.year}'
-                                        : 'Select date',
-                                    style: TextStyle(
-                                      color: _tssExpiryDate != null
-                                          ? AppColors.textPrimary
-                                          : AppColors.textMuted,
-                                    ),
+                            InkWell(
+                              onTap: () => _selectDate(context, false),
+                              borderRadius: BorderRadius.circular(8),
+                              child: InputDecorator(
+                                decoration: const InputDecoration(
+                                  labelText: 'TSS Expiry Date',
+                                  prefixIcon: Icon(LucideIcons.calendar),
+                                ),
+                                child: Text(
+                                  _tssExpiryDate != null
+                                      ? '${_tssExpiryDate!.day}/${_tssExpiryDate!.month}/${_tssExpiryDate!.year}'
+                                      : 'Select date',
+                                  style: TextStyle(
+                                    color: _tssExpiryDate != null
+                                        ? AppColors.textPrimary
+                                        : AppColors.textMuted,
                                   ),
                                 ),
                               ),

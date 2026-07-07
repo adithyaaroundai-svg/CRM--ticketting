@@ -413,7 +413,7 @@ class _TicketCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => context.go('/ticket/${ticket.ticketId}'),
+          onTap: () => context.push('/ticket/${ticket.ticketId}'),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.all(18),
@@ -717,7 +717,7 @@ class _UnclaimedTicketCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => context.go('/ticket/${ticket.ticketId}'),
+          onTap: () => context.push('/ticket/${ticket.ticketId}'),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.all(18),
@@ -838,147 +838,3 @@ class _UnclaimedTicketCard extends StatelessWidget {
   }
 }
 
-class _RaisedTicketsCard extends StatelessWidget {
-  final List<Ticket> tickets;
-  final Map<String, Customer> customersById;
-  final Map<String, Map<String, dynamic>> agentsById;
-  final bool isAgentsLoading;
-
-  const _RaisedTicketsCard({
-    required this.tickets,
-    required this.customersById,
-    required this.agentsById,
-    required this.isAgentsLoading,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(LucideIcons.activity, size: 18, color: AppColors.primary),
-              const SizedBox(width: 8),
-              const Text(
-                'Tickets you raised',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.slate900,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (tickets.isEmpty)
-            Text(
-              'No tickets raised by you yet.',
-              style: TextStyle(color: AppColors.slate500),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: tickets.length,
-              separatorBuilder: (_, __) => const Divider(height: 16),
-              itemBuilder: (context, index) {
-                final ticket = tickets[index];
-                final companyName =
-                    customersById[ticket.customerId]?.companyName ?? 'Unknown customer';
-                final assignedLabel = _assignedText(ticket);
-                return InkWell(
-                  onTap: () => context.go('/ticket/${ticket.ticketId}'),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              ticket.title,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.slate900,
-                              ),
-                            ),
-                          ),
-                          _StatusChip(label: ticket.status),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        companyName,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.slate600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(LucideIcons.userCheck, size: 14, color: AppColors.slate500),
-                          const SizedBox(width: 6),
-                          Text(
-                            assignedLabel,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: assignedLabel == 'Unassigned'
-                                  ? AppColors.slate600
-                                  : AppColors.success,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  String _assignedText(Ticket ticket) {
-    final id = ticket.assignedTo;
-    if (id == null || id.isEmpty) {
-      return 'Unassigned';
-    }
-    final agent = agentsById[id];
-    if (agent == null) {
-      return isAgentsLoading ? 'Checking assignee…' : 'Assigned agent';
-    }
-    return (agent['full_name'] ?? agent['username'] ?? 'Assigned agent').toString();
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  final String label;
-
-  const _StatusChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.slate100,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: AppColors.slate700,
-        ),
-      ),
-    );
-  }
-}

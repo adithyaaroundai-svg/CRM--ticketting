@@ -22,9 +22,8 @@ class _ArticleSearchDialogState extends ConsumerState<ArticleSearchDialog> {
 
     return Dialog(
       insetPadding: const EdgeInsets.all(24),
-      child: SizedBox(
-        width: 500,
-        height: 500,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 500),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

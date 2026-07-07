@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../theme/theme_mode_provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../features/auth/presentation/providers/auth_provider.dart';
 import '../theme/app_colors.dart';
@@ -13,7 +12,6 @@ import '../../../features/tickets/presentation/providers/ticket_provider.dart';
 import '../../../features/customers/presentation/providers/customer_provider.dart';
 import '../../../features/dashboard/presentation/providers/app_settings_provider.dart';
 import '../../network/connectivity_provider.dart';
-import '../../../features/productivity/presentation/widgets/notification_bell.dart';
 import '../../../features/chat/presentation/providers/chat_provider.dart';
 import '../../../features/tickets/domain/entities/ticket.dart';
 import '../../../features/chat/presentation/widgets/chat_toast_overlay.dart';
@@ -35,10 +33,10 @@ class MainLayout extends ConsumerStatefulWidget {
 
 class _MainLayoutState extends ConsumerState<MainLayout> {
   double _firstPaneWidth = 240;
-  double _secondPaneWidth = 240;
   final double _minPaneWidth = 180;
   final double _maxPaneWidth = 400;
   bool _isTicketPaneOpen = true;
+  bool _isMobileSidebarOpen = false;
   Timer? _lastSeenUpdateTimer;
   bool _isDisposed = false;
   bool _hasInitialized = false;
@@ -135,45 +133,54 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     final c = _container;
     if (c == null) return;
     // Use ProviderContainer.listen() directly — never touches the widget tree
-    _chatListenerSubscription = c.listen(
-      chatStreamProvider('support-chat'),
-      (previous, next) {
-        if (_isDisposed || _container == null) return;
-        final myId = c.read(authProvider)?.id;
-        if (myId == null) return;
-        if (widget.currentPath.startsWith('/chat')) return;
+    _chatListenerSubscription = c.listen(chatStreamProvider('support-chat'), (
+      previous,
+      next,
+    ) {
+      if (_isDisposed || _container == null) return;
+      final myId = c.read(authProvider)?.id;
+      if (myId == null) return;
+      if (widget.currentPath.startsWith('/chat')) return;
 
-        // Skip the very first emission (historical data load)
-        if (previous == null) return;
+      // Skip the very first emission (historical data load)
+      if (previous == null) return;
 
-        final prevMessages = previous.value ?? [];
-        final nextMessages = next.value ?? [];
-        if (nextMessages.length <= prevMessages.length) return;
+      final prevMessages = previous.value ?? [];
+      final nextMessages = next.value ?? [];
+      if (nextMessages.length <= prevMessages.length) return;
 
-        final prevIds = prevMessages.map((m) => m.id).toSet();
+      final prevIds = prevMessages.map((m) => m.id).toSet();
 
-        // Only consider messages that are:
-        //  1. Not in the previous snapshot (truly new this emission)
-        //  2. Not sent by the current user
-        //  3. Newer than the user's last-seen timestamp (not already read)
-        final lastSeen = c.read(chatLastSeenProvider).value;
-        final newMessages = nextMessages
-            .where(
-              (m) =>
-                  !prevIds.contains(m.id) &&
-                  m.senderId.trim().toLowerCase() != myId.trim().toLowerCase() &&
-                  (lastSeen == null || m.createdAt.toUtc().isAfter(lastSeen)),
-            )
-            .toList();
+      // Only consider messages that are:
+      //  1. Not in the previous snapshot (truly new this emission)
+      //  2. Not sent by the current user
+      //  3. Newer than the user's last-seen timestamp (not already read)
+      final lastSeen = c.read(chatLastSeenProvider).value;
+      final newMessages = nextMessages
+          .where(
+            (m) =>
+                !prevIds.contains(m.id) &&
+                m.senderId.trim().toLowerCase() != myId.trim().toLowerCase() &&
+                (lastSeen == null || m.createdAt.toUtc().isAfter(lastSeen)),
+          )
+          .toList();
 
-        if (newMessages.isNotEmpty) {
+      if (newMessages.isNotEmpty) {
+        final myFullName = c.read(authProvider)?.fullName ?? '';
+        final hasMention = myFullName.isNotEmpty && 
+            newMessages.any((m) => m.content.contains('@$myFullName') == true);
+            
+        if (hasMention) {
+          ChatSoundService.playMentionPing();
+        } else {
           ChatSoundService.playPing();
-          if (!_isDisposed && _container != null) {
-            c.read(chatNewMessageEventProvider.notifier).notify(newMessages.last);
-          }
         }
-      },
-    );
+        
+        if (!_isDisposed && _container != null) {
+          c.read(chatNewMessageEventProvider.notifier).notify(newMessages.last);
+        }
+      }
+    });
 
     // All-AroundTally channel listener
     _aroundTallyListenerSubscription = c.listen(
@@ -202,15 +209,27 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
             .where(
               (m) =>
                   !prevIds.contains(m.id) &&
-                  m.senderId.trim().toLowerCase() != myId.trim().toLowerCase() &&
+                  m.senderId.trim().toLowerCase() !=
+                      myId.trim().toLowerCase() &&
                   (lastSeen == null || m.createdAt.toUtc().isAfter(lastSeen)),
             )
             .toList();
 
         if (newMessages.isNotEmpty) {
-          ChatSoundService.playPing();
+          final myFullName = c.read(authProvider)?.fullName ?? '';
+          final hasMention = myFullName.isNotEmpty && 
+              newMessages.any((m) => m.content.contains('@$myFullName') == true);
+              
+          if (hasMention) {
+            ChatSoundService.playMentionPing();
+          } else {
+            ChatSoundService.playPing();
+          }
+          
           if (!_isDisposed && _container != null) {
-            c.read(allAroundTallyNewMessageEventProvider.notifier).notify(newMessages.last);
+            c
+                .read(allAroundTallyNewMessageEventProvider.notifier)
+                .notify(newMessages.last);
           }
         }
       },
@@ -250,16 +269,20 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                 _ResizeHandle(
                   onDrag: (delta) {
                     setState(() {
-                      _firstPaneWidth = (_firstPaneWidth + delta).clamp(_minPaneWidth, _maxPaneWidth);
+                      _firstPaneWidth = (_firstPaneWidth + delta).clamp(
+                        _minPaneWidth,
+                        _maxPaneWidth,
+                      );
                     });
                   },
                 ),
-                if (!_isRestrictedAgent)
-                _CollapsibleTicketPane(
-                  currentPath: widget.currentPath,
-                  isOpen: _isTicketPaneOpen,
-                  onToggle: () => setState(() => _isTicketPaneOpen = !_isTicketPaneOpen),
-                ),
+                if (!_isRestrictedAgent && !widget.currentPath.startsWith('/sales-channel'))
+                  _CollapsibleTicketPane(
+                    currentPath: widget.currentPath,
+                    isOpen: _isTicketPaneOpen,
+                    onToggle: () =>
+                        setState(() => _isTicketPaneOpen = !_isTicketPaneOpen),
+                  ),
                 Expanded(
                   child: Column(
                     children: [
@@ -277,14 +300,87 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       );
     }
 
+    final isChatRoute =
+        widget.currentPath.startsWith('/chat') ||
+        widget.currentPath.startsWith('/channel');
+    final double sidebarWidth = 250.0;
+
     return ChatToastOverlay(
       currentPath: widget.currentPath,
       child: ReminderToastOverlay(
         child: Scaffold(
-          body: Column(
+          body: Stack(
             children: [
-              const _OfflineBanner(),
-              Expanded(child: widget.child),
+              // Main Content
+              SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    const _OfflineBanner(),
+                    Expanded(child: widget.child),
+                  ],
+                ),
+              ),
+              // Mobile Chat Sidebar Overlay
+              // Dark background overlay when sidebar is open
+              if (_isMobileSidebarOpen)
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _isMobileSidebarOpen = false),
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.54),
+                    ),
+                  ),
+                ),
+              // The Sidebar itself
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                top: 0,
+                bottom: 0,
+                left: _isMobileSidebarOpen ? 0 : -sidebarWidth,
+                width: sidebarWidth,
+                child: _LeftNav(currentPath: widget.currentPath),
+              ),
+              // Toggle Button
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                top:
+                    MediaQuery.of(context).size.height / 2 -
+                    24, // Vertically centered
+                left: _isMobileSidebarOpen ? sidebarWidth : 0,
+                child: GestureDetector(
+                  onTap: () => setState(
+                    () => _isMobileSidebarOpen = !_isMobileSidebarOpen,
+                  ),
+                  child: Container(
+                    width: 24,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: const BorderRadius.only(
+                        topRight: Radius.circular(8),
+                        bottomRight: Radius.circular(8),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 4,
+                          offset: const Offset(2, 0),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      _isMobileSidebarOpen
+                          ? Icons.chevron_left
+                          : Icons.chevron_right,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
           bottomNavigationBar: _BottomNav(currentPath: widget.currentPath),
@@ -303,7 +399,6 @@ class _TopNav extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(authProvider);
 
-
     final appSettings = ref
         .watch(appSettingsProvider)
         .maybeWhen(data: (value) => value, orElse: () => null);
@@ -316,14 +411,20 @@ class _TopNav extends ConsumerWidget {
     final isSales = currentUser?.isSales == true;
     final isTeleCaller = currentUser?.isTeleCaller == true;
     final simplifyNav =
-        currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isProjectCoordinator == true || currentUser?.isSupportHead == true || isTeleCaller;
+        currentUser?.isSupport == true ||
+        currentUser?.isHR == true ||
+        currentUser?.isProjectCoordinator == true ||
+        currentUser?.isSupportHead == true ||
+        isTeleCaller;
 
     // Restricted agents check
     const allowedAroundTallyChannelIds = {
       'd7a9e726-9520-4cc8-95a6-b38a4afd1d7b',
       'dedce60a-56bd-49fd-bbe2-f88534b8e36f',
     };
-    final isRestrictedAgent = allowedAroundTallyChannelIds.contains(currentUser?.id ?? '');
+    final isRestrictedAgent = allowedAroundTallyChannelIds.contains(
+      currentUser?.id ?? '',
+    );
 
     // Feature flags (global enable/disable)
     final enableNotifications = appSettings == null
@@ -346,7 +447,10 @@ class _TopNav extends ConsumerWidget {
     }
 
     final showClaimTicketsLabel =
-        currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isProjectCoordinator == true || currentUser?.isSupportHead == true;
+        currentUser?.isSupport == true ||
+        currentUser?.isHR == true ||
+        currentUser?.isProjectCoordinator == true ||
+        currentUser?.isSupportHead == true;
     final showBillsAsDashboard = currentUser?.isAccountant == true;
 
     final canViewAmcReminder =
@@ -385,7 +489,7 @@ class _TopNav extends ConsumerWidget {
             currentUser?.isSupportHead == true);
 
     final unreadCount = ref.watch(chatUnreadCountProvider);
-    
+
     // Main navigation items (left side)
     final isSalesChannel = currentPath.startsWith('/sales-channel');
     final mainNavItems = <Widget>[
@@ -394,19 +498,30 @@ class _TopNav extends ConsumerWidget {
           label: 'Chat',
           icon: LucideIcons.messageCircle,
           path: '/sales-channel?tab=0',
-          isActive: currentPath == '/sales-channel' || currentPath.contains('/sales-channel') && (GoRouterState.of(context).uri.queryParameters['tab'] ?? '0') == '0',
+          isActive:
+              currentPath == '/sales-channel' ||
+              currentPath.contains('/sales-channel') &&
+                  (GoRouterState.of(context).uri.queryParameters['tab'] ??
+                          '0') ==
+                      '0',
         ),
         _TopNavItem(
           label: 'Sales',
           icon: LucideIcons.shoppingCart,
           path: '/sales-channel?tab=1',
-          isActive: currentPath.contains('/sales-channel') && (GoRouterState.of(context).uri.queryParameters['tab'] ?? '') == '1',
+          isActive:
+              currentPath.contains('/sales-channel') &&
+              (GoRouterState.of(context).uri.queryParameters['tab'] ?? '') ==
+                  '1',
         ),
         _TopNavItem(
           label: 'Pipeline',
           icon: LucideIcons.layers,
           path: '/sales-channel?tab=2',
-          isActive: currentPath.contains('/sales-channel') && (GoRouterState.of(context).uri.queryParameters['tab'] ?? '') == '2',
+          isActive:
+              currentPath.contains('/sales-channel') &&
+              (GoRouterState.of(context).uri.queryParameters['tab'] ?? '') ==
+                  '2',
         ),
       ] else ...[
         _TopNavItem(
@@ -417,35 +532,50 @@ class _TopNav extends ConsumerWidget {
           badgeCount: unreadCount,
         ),
         if (!isRestrictedAgent)
-        _TopNavItem(
-          label: showBillsAsDashboard
-              ? 'Bills'
-              : (isSales
-                  ? 'Dashboard'
-                  : (showClaimTicketsLabel ? 'Tickets' : 'Dashboard')),
-          icon: showBillsAsDashboard ? LucideIcons.receipt : (showClaimTicketsLabel ? LucideIcons.ticket : LucideIcons.layoutDashboard),
-          path: showBillsAsDashboard 
-              ? '/accountant' 
-              : (isSales 
-                  ? '/sales' 
-                  : (currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isProjectCoordinator == true ? '/support' : '/')),
-          isActive: currentPath == '/' ||
-              currentPath == '/admin' ||
-              currentPath == '/accountant' ||
-              currentPath == '/sales' ||
-              currentPath == '/support' ||
-              (showClaimTicketsLabel && (currentPath.startsWith('/tickets') || currentPath.startsWith('/ticket'))),
-        ),
-        if (!isRestrictedAgent && currentUser?.isAccountant != true &&
+          _TopNavItem(
+            label: showBillsAsDashboard
+                ? 'Bills'
+                : (isSales
+                      ? 'Dashboard'
+                      : (showClaimTicketsLabel ? 'Tickets' : 'Dashboard')),
+            icon: showBillsAsDashboard
+                ? LucideIcons.receipt
+                : (showClaimTicketsLabel
+                      ? LucideIcons.ticket
+                      : LucideIcons.layoutDashboard),
+            path: showBillsAsDashboard
+                ? '/accountant'
+                : (isSales
+                      ? '/sales'
+                      : (currentUser?.isSupport == true ||
+                                currentUser?.isHR == true ||
+                                currentUser?.isProjectCoordinator == true
+                            ? '/support'
+                            : '/')),
+            isActive:
+                currentPath == '/' ||
+                currentPath == '/admin' ||
+                currentPath == '/accountant' ||
+                currentPath == '/sales' ||
+                currentPath == '/support' ||
+                (showClaimTicketsLabel &&
+                    (currentPath.startsWith('/tickets') ||
+                        currentPath.startsWith('/ticket'))),
+          ),
+        if (!isRestrictedAgent &&
+            currentUser?.isAccountant != true &&
             currentUser?.isSupport != true &&
             currentUser?.isHR != true &&
             currentUser?.isProjectCoordinator != true &&
             currentUser?.isSupportHead != true)
           _TopNavItem(
-            label: isSales ? 'My Tickets' : (isTeleCaller ? 'My Tickets' : 'Tickets'),
+            label: isSales
+                ? 'My Tickets'
+                : (isTeleCaller ? 'My Tickets' : 'Tickets'),
             icon: LucideIcons.ticket,
             path: '/tickets',
-            isActive: currentPath.startsWith('/tickets') ||
+            isActive:
+                currentPath.startsWith('/tickets') ||
                 currentPath.startsWith('/ticket'),
           ),
         // Support Dashboard for Accountants
@@ -458,17 +588,14 @@ class _TopNav extends ConsumerWidget {
           ),
       ],
     ];
-    
+
     // Right side utility items (near profile)
-    final useGroupedNav = currentUser?.isAdmin == true || currentUser?.isAccountant == true;
+    final useGroupedNav =
+        currentUser?.isAdmin == true || currentUser?.isAccountant == true;
 
     final rightNavItems = <Widget>[
       if (enableNotifications)
-        _TopNavButton(
-          label: 'Alerts',
-          icon: LucideIcons.bell,
-          onTap: () {},
-        ),
+        _TopNavButton(label: 'Alerts', icon: LucideIcons.bell, onTap: () {}),
       if (enableGlobalSearch)
         _TopNavButton(
           label: 'Search',
@@ -497,7 +624,8 @@ class _TopNav extends ConsumerWidget {
             label: 'Customers',
             icon: LucideIcons.users,
             path: '/customers',
-            isActive: currentPath.startsWith('/customers') ||
+            isActive:
+                currentPath.startsWith('/customers') ||
                 currentPath.startsWith('/customer'),
           ),
         if (canViewAmcReminder)
@@ -507,7 +635,10 @@ class _TopNav extends ConsumerWidget {
             path: '/amc-reminder',
             isActive: currentPath.startsWith('/amc-reminder'),
           ),
-        if (!isRestrictedAgent && currentUser?.isSoftwareDeveloper != true && (canViewBills || currentUser?.isProjectCoordinator == true) && !showBillsAsDashboard)
+        if (!isRestrictedAgent &&
+            currentUser?.isSoftwareDeveloper != true &&
+            (canViewBills || currentUser?.isProjectCoordinator == true) &&
+            !showBillsAsDashboard)
           _TopNavItem(
             label: 'Bills',
             icon: LucideIcons.receipt,
@@ -542,7 +673,9 @@ class _TopNav extends ConsumerWidget {
             path: '/reports',
             isActive: currentPath.startsWith('/reports'),
           ),
-        if (currentUser?.isAdmin == true || currentUser?.isHR == true || currentUser?.id == '326cf09e-ab94-4dd4-bc90-93c41d626b1d')
+        if (currentUser?.isAdmin == true ||
+            currentUser?.isHR == true ||
+            currentUser?.id == '326cf09e-ab94-4dd4-bc90-93c41d626b1d')
           _TopNavItem(
             label: 'User Management',
             icon: LucideIcons.users,
@@ -565,7 +698,12 @@ class _TopNav extends ConsumerWidget {
             path: '/leads',
             isActive: currentPath.startsWith('/leads'),
           ),
-        if (!(currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isSupportHead == true) && currentUser?.isTeleCaller != true && currentUser?.isSoftwareDeveloper != true && currentUser?.isDigitalMarketing != true)
+        if (!(currentUser?.isSupport == true ||
+                currentUser?.isHR == true ||
+                currentUser?.isSupportHead == true) &&
+            currentUser?.isTeleCaller != true &&
+            currentUser?.isSoftwareDeveloper != true &&
+            currentUser?.isDigitalMarketing != true)
           _TopNavItem(
             label: 'Proposals',
             icon: LucideIcons.fileText,
@@ -584,33 +722,86 @@ class _TopNav extends ConsumerWidget {
         _TopNavHoverMenu(
           icon: LucideIcons.briefcase,
           tooltip: 'Sales',
-          isParentActive: currentPath.startsWith('/leads') || currentPath.startsWith('/deals') || currentPath.startsWith('/proposal-generator') || currentPath.startsWith('/customers') || currentPath.startsWith('/customer'),
+          isParentActive:
+              currentPath.startsWith('/leads') ||
+              currentPath.startsWith('/deals') ||
+              currentPath.startsWith('/proposal-generator') ||
+              currentPath.startsWith('/customers') ||
+              currentPath.startsWith('/customer'),
           items: [
-            if (currentUser?.isSales == true || currentUser?.isAccountant == true || currentUser?.isAdmin == true)
-              _DropdownItem(label: 'Leads', icon: LucideIcons.target, path: '/leads', isActive: currentPath.startsWith('/leads')),
+            if (currentUser?.isSales == true ||
+                currentUser?.isAccountant == true ||
+                currentUser?.isAdmin == true)
+              _DropdownItem(
+                label: 'Leads',
+                icon: LucideIcons.target,
+                path: '/leads',
+                isActive: currentPath.startsWith('/leads'),
+              ),
             if (canViewDeals)
-              _DropdownItem(label: 'Deals', icon: LucideIcons.briefcase, path: '/deals', isActive: currentPath.startsWith('/deals')),
-            if (!(currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isSupportHead == true) && currentUser?.isSoftwareDeveloper != true && currentUser?.isDigitalMarketing != true)
-              _DropdownItem(label: 'Proposals', icon: LucideIcons.fileText, path: '/proposal-generator', isActive: currentPath.startsWith('/proposal-generator')),
+              _DropdownItem(
+                label: 'Deals',
+                icon: LucideIcons.briefcase,
+                path: '/deals',
+                isActive: currentPath.startsWith('/deals'),
+              ),
+            if (!(currentUser?.isSupport == true ||
+                    currentUser?.isHR == true ||
+                    currentUser?.isSupportHead == true) &&
+                currentUser?.isSoftwareDeveloper != true &&
+                currentUser?.isDigitalMarketing != true)
+              _DropdownItem(
+                label: 'Proposals',
+                icon: LucideIcons.fileText,
+                path: '/proposal-generator',
+                isActive: currentPath.startsWith('/proposal-generator'),
+              ),
             if (!isRestrictedAgent)
-              _DropdownItem(label: 'Customers', icon: LucideIcons.users, path: '/customers', isActive: currentPath.startsWith('/customers') || currentPath.startsWith('/customer')),
+              _DropdownItem(
+                label: 'Customers',
+                icon: LucideIcons.users,
+                path: '/customers',
+                isActive:
+                    currentPath.startsWith('/customers') ||
+                    currentPath.startsWith('/customer'),
+              ),
           ],
         ),
-        
+
         _TopNavHoverMenu(
           icon: LucideIcons.indianRupee,
           tooltip: 'Finance',
-          isParentActive: currentPath.startsWith('/bills') || currentPath.startsWith('/revenue'),
+          isParentActive:
+              currentPath.startsWith('/bills') ||
+              currentPath.startsWith('/revenue'),
           items: [
-            if (currentUser?.isSoftwareDeveloper != true && canViewBills && !showBillsAsDashboard)
-              _DropdownItem(label: 'Bills', icon: LucideIcons.receipt, path: '/bills', isActive: currentPath.startsWith('/bills')),
-            if (currentUser?.isAdmin == true || currentUser?.isAccountant == true)
-              _DropdownItem(label: 'Revenue', icon: LucideIcons.indianRupee, path: '/revenue', isActive: currentPath.startsWith('/revenue')),
+            if (currentUser?.isSoftwareDeveloper != true &&
+                canViewBills &&
+                !showBillsAsDashboard)
+              _DropdownItem(
+                label: 'Bills',
+                icon: LucideIcons.receipt,
+                path: '/bills',
+                isActive: currentPath.startsWith('/bills'),
+              ),
+            if (currentUser?.isAdmin == true ||
+                currentUser?.isAccountant == true)
+              _DropdownItem(
+                label: 'Revenue',
+                icon: LucideIcons.indianRupee,
+                path: '/revenue',
+                isActive: currentPath.startsWith('/revenue'),
+              ),
             if (currentUser?.isAccountant == true)
-              _DropdownItem(label: 'Support', icon: LucideIcons.headphones, path: '/support', isActive: currentPath == '/support'),
+              _DropdownItem(
+                label: 'Support',
+                icon: LucideIcons.headphones,
+                path: '/support',
+                isActive: currentPath == '/support',
+              ),
           ],
         ),
-        
+
         if (canViewReports)
           _TopNavHoverMenu(
             icon: LucideIcons.barChart,
@@ -618,16 +809,28 @@ class _TopNav extends ConsumerWidget {
             isParentActive: currentPath.startsWith('/reports'),
             onDirectTap: () => context.go('/reports'),
           ),
-        
+
         _TopNavHoverMenu(
           icon: LucideIcons.settings,
           tooltip: 'Administration',
-          isParentActive: currentPath.startsWith('/users') || currentPath.startsWith('/settings'),
+          isParentActive:
+              currentPath.startsWith('/users') ||
+              currentPath.startsWith('/settings'),
           items: [
             if (currentUser?.isAdmin == true || currentUser?.isHR == true)
-              _DropdownItem(label: 'User Management', icon: LucideIcons.users, path: '/users', isActive: currentPath.startsWith('/users')),
+              _DropdownItem(
+                label: 'User Management',
+                icon: LucideIcons.users,
+                path: '/users',
+                isActive: currentPath.startsWith('/users'),
+              ),
             if (currentUser?.isAdmin == true)
-              _DropdownItem(label: 'Settings', icon: LucideIcons.settings, path: '/settings', isActive: currentPath.startsWith('/settings')),
+              _DropdownItem(
+                label: 'Settings',
+                icon: LucideIcons.settings,
+                path: '/settings',
+                isActive: currentPath.startsWith('/settings'),
+              ),
           ],
         ),
       ],
@@ -696,17 +899,18 @@ class _TopNav extends ConsumerWidget {
           // Right side navigation items
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: rightNavItems,
-            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: rightNavItems),
           ),
 
           // Refresh button - invalidate providers instead of full page reload
           Consumer(
             builder: (context, ref, child) {
               return IconButton(
-                icon: const Icon(LucideIcons.refreshCw, color: Colors.white, size: 18),
+                icon: const Icon(
+                  LucideIcons.refreshCw,
+                  color: Colors.white,
+                  size: 18,
+                ),
                 onPressed: () {
                   // Invalidate all data providers to refresh without page reload
                   ref.invalidate(rawTicketsStreamProvider);
@@ -728,10 +932,7 @@ class _TopNav extends ConsumerWidget {
             },
           ),
 
-          const SizedBox(
-            width: 56,
-            child: _UserProfile(),
-          ),
+          const SizedBox(width: 56, child: _UserProfile()),
         ],
       ),
     );
@@ -789,9 +990,10 @@ class _GlobalSearchDialogState extends ConsumerState<_GlobalSearchDialog> {
                 },
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                height: 360,
-                child: ticketsAsync.when(
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 360),
+                  child: ticketsAsync.when(
                   data: (tickets) {
                     return customersAsync.when(
                       data: (customers) {
@@ -871,7 +1073,7 @@ class _GlobalSearchDialogState extends ConsumerState<_GlobalSearchDialog> {
                                   ),
                                   onTap: () {
                                     Navigator.of(context).pop();
-                                    context.go('/ticket/${t.ticketId}');
+                                    context.push('/ticket/${t.ticketId}');
                                   },
                                 );
                               }),
@@ -909,7 +1111,7 @@ class _GlobalSearchDialogState extends ConsumerState<_GlobalSearchDialog> {
                                   ),
                                   onTap: () {
                                     Navigator.of(context).pop();
-                                    context.go('/customer/${c.id}');
+                                    context.push('/customer/${c.id}');
                                   },
                                 );
                               }),
@@ -943,6 +1145,7 @@ class _GlobalSearchDialogState extends ConsumerState<_GlobalSearchDialog> {
                       ),
                     ),
                   ),
+                ),
                 ),
               ),
             ],
@@ -982,8 +1185,8 @@ class _TopNavItemState extends State<_TopNavItem> {
     final itemColor = widget.isActive
         ? activeColor.withValues(alpha: 0.16)
         : (_isHovered
-            ? Colors.white.withValues(alpha: 0.08)
-            : Colors.transparent);
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.transparent);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -1021,8 +1224,9 @@ class _TopNavItemState extends State<_TopNavItem> {
                     widget.label,
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight:
-                          widget.isActive ? FontWeight.w600 : FontWeight.w500,
+                      fontWeight: widget.isActive
+                          ? FontWeight.w600
+                          : FontWeight.w500,
                       color: widget.isActive ? Colors.white : inactiveColor,
                     ),
                     maxLines: 1,
@@ -1153,7 +1357,8 @@ class _TopNavHoverMenu extends StatefulWidget {
   State<_TopNavHoverMenu> createState() => _TopNavHoverMenuState();
 }
 
-class _TopNavHoverMenuState extends State<_TopNavHoverMenu> with SingleTickerProviderStateMixin {
+class _TopNavHoverMenuState extends State<_TopNavHoverMenu>
+    with SingleTickerProviderStateMixin {
   bool _isHovered = false;
   bool _isMenuHovered = false;
   OverlayEntry? _overlayEntry;
@@ -1164,7 +1369,10 @@ class _TopNavHoverMenuState extends State<_TopNavHoverMenu> with SingleTickerPro
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
   }
 
@@ -1191,7 +1399,8 @@ class _TopNavHoverMenuState extends State<_TopNavHoverMenu> with SingleTickerPro
     if (widget.items.isEmpty) return;
     if (_overlayEntry != null) return;
 
-    final RenderBox renderBox = _key.currentContext!.findRenderObject() as RenderBox;
+    final RenderBox renderBox =
+        _key.currentContext!.findRenderObject() as RenderBox;
     final size = renderBox.size;
     final offset = renderBox.localToGlobal(Offset.zero);
 
@@ -1221,7 +1430,7 @@ class _TopNavHoverMenuState extends State<_TopNavHoverMenu> with SingleTickerPro
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -1243,16 +1452,29 @@ class _TopNavHoverMenuState extends State<_TopNavHoverMenu> with SingleTickerPro
                           },
                           hoverColor: Colors.white.withValues(alpha: 0.1),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
                             child: Row(
                               children: [
-                                Icon(item.icon, size: 16, color: item.isActive ? AppColors.primaryLight : Colors.white.withValues(alpha: 0.72)),
+                                Icon(
+                                  item.icon,
+                                  size: 16,
+                                  color: item.isActive
+                                      ? AppColors.primaryLight
+                                      : Colors.white.withValues(alpha: 0.72),
+                                ),
                                 const SizedBox(width: 12),
                                 Text(
                                   item.label,
                                   style: TextStyle(
-                                    color: item.isActive ? Colors.white : Colors.white.withValues(alpha: 0.8),
-                                    fontWeight: item.isActive ? FontWeight.w600 : FontWeight.normal,
+                                    color: item.isActive
+                                        ? Colors.white
+                                        : Colors.white.withValues(alpha: 0.8),
+                                    fontWeight: item.isActive
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
                                     fontSize: 13,
                                   ),
                                 ),
@@ -1282,7 +1504,8 @@ class _TopNavHoverMenuState extends State<_TopNavHoverMenu> with SingleTickerPro
 
   @override
   Widget build(BuildContext context) {
-    if (widget.items.isEmpty && widget.onDirectTap == null) return const SizedBox.shrink();
+    if (widget.items.isEmpty && widget.onDirectTap == null)
+      return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
@@ -1312,12 +1535,16 @@ class _TopNavHoverMenuState extends State<_TopNavHoverMenu> with SingleTickerPro
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: widget.isParentActive ? AppColors.primaryLight.withValues(alpha: 0.15) : Colors.transparent,
+                color: widget.isParentActive
+                    ? AppColors.primaryLight.withValues(alpha: 0.15)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 widget.icon,
-                color: widget.isParentActive ? AppColors.primaryLight : Colors.white.withValues(alpha: 0.72),
+                color: widget.isParentActive
+                    ? AppColors.primaryLight
+                    : Colors.white.withValues(alpha: 0.72),
                 size: 20,
               ),
             ),
@@ -1384,38 +1611,38 @@ class _NavItemState extends State<_NavItem> {
                     : null,
               ),
               child: Stack(
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            widget.icon,
-                            size: 18,
-                            color: widget.isActive ? activeColor : inactiveColor,
-                          ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              widget.label,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: widget.isActive
-                                    ? FontWeight.w600
-                                    : FontWeight.w500,
-                                color: widget.isActive
-                                    ? Colors.white
-                                    : Colors.white.withValues(alpha: 0.7),
-                              ),
-                              maxLines: 1,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          widget.icon,
+                          size: 18,
+                          color: widget.isActive ? activeColor : inactiveColor,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            widget.label,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: widget.isActive
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: widget.isActive
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha: 0.7),
                             ),
+                            maxLines: 1,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1440,12 +1667,18 @@ class _BottomNav extends ConsumerWidget {
     final enableReports = appSettings == null
         ? true
         : (appSettings['enable_reports'] ?? true);
+    final enableDeals = appSettings == null
+        ? true
+        : (appSettings['enable_deals'] ?? true);
 
     final isAccountant = currentUser?.isAccountant == true;
     final isAdmin = currentUser?.isAdmin == true;
     final isSupportHead = currentUser?.isSupportHead == true;
     final simplifyNav =
-        currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isProjectCoordinator == true || currentUser?.isSupportHead == true;
+        currentUser?.isSupport == true ||
+        currentUser?.isHR == true ||
+        currentUser?.isProjectCoordinator == true ||
+        currentUser?.isSupportHead == true;
     final renameDashboard = simplifyNav;
     final canSeeRevenue = isAdmin || isAccountant;
     final canSeeReports =
@@ -1457,14 +1690,20 @@ class _BottomNav extends ConsumerWidget {
       'd7a9e726-9520-4cc8-95a6-b38a4afd1d7b',
       'dedce60a-56bd-49fd-bbe2-f88534b8e36f',
     };
-    final isRestrictedAgent = allowedAroundTallyChannelIds.contains(currentUser?.id ?? '');
+    final isRestrictedAgent = allowedAroundTallyChannelIds.contains(
+      currentUser?.id ?? '',
+    );
 
     // Unified bottom navigation structure
     final destinations = <NavigationDestination>[];
     final navRoutes = <String>[];
 
-    // Dashboard - hidden from restricted agents
-    if (!isRestrictedAgent) {
+    // Dashboard - hidden from restricted agents and support-only users
+    final isSupportOnly =
+        currentUser?.isSupport == true ||
+        currentUser?.isHR == true ||
+        currentUser?.isProjectCoordinator == true;
+    if (!isRestrictedAgent && !isSupportOnly) {
       destinations.add(
         NavigationDestination(
           icon: Icon(
@@ -1506,46 +1745,6 @@ class _BottomNav extends ConsumerWidget {
       navRoutes.add('/tickets');
     }
 
-    // Ticket Alerts - hidden from restricted agents
-    print('DEBUG: User role - isAccountant: $isAccountant, isAdmin: $isAdmin, isSupportHead: $isSupportHead');
-    if (!isAccountant && !isRestrictedAgent) {
-      print('DEBUG: Adding Alerts destination');
-      destinations.add(
-        const NavigationDestination(
-          icon: Icon(LucideIcons.alertTriangle),
-          selectedIcon: Icon(LucideIcons.alertTriangle, color: AppColors.primary),
-          label: 'Alerts',
-        ),
-      );
-      navRoutes.add('/alerts/unclaimed');
-    } else {
-      print('DEBUG: Alerts hidden for accountant or restricted agent');
-    }
-
-    // Customers - hidden from restricted agents
-    if (!isRestrictedAgent) {
-      destinations.add(
-        const NavigationDestination(
-          icon: Icon(LucideIcons.users),
-          selectedIcon: Icon(LucideIcons.users, color: AppColors.primary),
-          label: 'Customers',
-        ),
-      );
-      navRoutes.add('/customers');
-    }
-
-    // Proposals - hidden from restricted agents and Digital Marketing Executive
-    if (!(currentUser?.isSupport == true || currentUser?.isHR == true || currentUser?.isSupportHead == true) && currentUser?.isSoftwareDeveloper != true && currentUser?.isDigitalMarketing != true && !isRestrictedAgent) {
-      destinations.add(
-        const NavigationDestination(
-          icon: Icon(LucideIcons.fileText),
-          selectedIcon: Icon(LucideIcons.fileText, color: AppColors.primary),
-          label: 'Proposals',
-        ),
-      );
-      navRoutes.add('/proposal-generator');
-    }
-
     // Chat
     final rawChatUnread = ref.watch(chatUnreadCountProvider);
     final chatUnread = currentPath.startsWith('/chat') ? 0 : rawChatUnread;
@@ -1573,6 +1772,35 @@ class _BottomNav extends ConsumerWidget {
     );
     navRoutes.add('/chat');
 
+    // Search
+    destinations.add(
+      const NavigationDestination(
+        icon: Icon(LucideIcons.search),
+        selectedIcon: Icon(LucideIcons.search, color: AppColors.primary),
+        label: 'Search',
+      ),
+    );
+    navRoutes.add('__search__');
+
+    // Proposals - hidden from restricted agents and Digital Marketing Executive
+    if (!(currentUser?.isSupport == true ||
+            currentUser?.isHR == true ||
+            currentUser?.isSupportHead == true) &&
+        currentUser?.isSoftwareDeveloper != true &&
+        currentUser?.isDigitalMarketing != true &&
+        !isRestrictedAgent) {
+      destinations.add(
+        const NavigationDestination(
+          icon: Icon(LucideIcons.fileText),
+          selectedIcon: Icon(LucideIcons.fileText, color: AppColors.primary),
+          label: 'Proposals',
+        ),
+      );
+      navRoutes.add('/proposal-generator');
+    }
+
+    // Ticket Alerts moved to More menu
+
     // Leads - for sales, accountant & admin
     if (currentUser?.isSales == true ||
         currentUser?.isAccountant == true ||
@@ -1599,6 +1827,24 @@ class _BottomNav extends ConsumerWidget {
       navRoutes.add('/revenue');
     }
 
+    // Deals
+    final canViewDeals = enableDeals &&
+        !simplifyNav &&
+        (currentUser?.isAdmin == true ||
+            currentUser?.isAccountant == true ||
+            currentUser?.isSupportHead == true);
+
+    if (canViewDeals) {
+      destinations.add(
+        const NavigationDestination(
+          icon: Icon(LucideIcons.briefcase),
+          selectedIcon: Icon(LucideIcons.briefcase, color: AppColors.primary),
+          label: 'Deals',
+        ),
+      );
+      navRoutes.add('/deals');
+    }
+
     // Reports - shown for admins, moderators, accountants when enabled
     if (showReportsDestination) {
       destinations.add(
@@ -1611,6 +1857,18 @@ class _BottomNav extends ConsumerWidget {
       navRoutes.add('/reports');
     }
 
+    // Customers - hidden from restricted agents
+    if (!isRestrictedAgent) {
+      destinations.add(
+        const NavigationDestination(
+          icon: Icon(LucideIcons.users),
+          selectedIcon: Icon(LucideIcons.users, color: AppColors.primary),
+          label: 'Customers',
+        ),
+      );
+      navRoutes.add('/customers');
+    }
+
     // Profile - always shown
     destinations.add(
       const NavigationDestination(
@@ -1621,6 +1879,92 @@ class _BottomNav extends ConsumerWidget {
     );
     navRoutes.add('/profile');
 
+    // Mobile bottom nav: cap at 5 visible items, overflow goes to a "More" menu
+    final visibleDestinations = <NavigationDestination>[];
+    final visibleRoutes = <String>[];
+    final moreDestinations = <NavigationDestination>[];
+    final moreRoutes = <String>[];
+
+    for (int i = 0; i < destinations.length; i++) {
+      final dest = destinations[i];
+      final route = navRoutes[i];
+
+      if (route == '/tickets' || route == '/chat' || route == '__search__') {
+        visibleDestinations.add(dest);
+        visibleRoutes.add(route);
+      } else {
+        moreDestinations.add(dest);
+        moreRoutes.add(route);
+      }
+    }
+
+    // Always add Alerts to More menu
+    if (!isAccountant && !isRestrictedAgent) {
+      moreDestinations.add(
+        const NavigationDestination(
+          icon: Icon(LucideIcons.alertTriangle),
+          selectedIcon: Icon(
+            LucideIcons.alertTriangle,
+            color: AppColors.primary,
+          ),
+          label: 'Alerts',
+        ),
+      );
+      moreRoutes.add('/alerts/unclaimed');
+    }
+
+    // Always add Reminder to More menu
+    moreDestinations.add(
+      const NavigationDestination(
+        icon: Icon(LucideIcons.alarmClock),
+        selectedIcon: Icon(LucideIcons.alarmClock, color: AppColors.primary),
+        label: 'Reminder',
+      ),
+    );
+    moreRoutes.add('__reminder__');
+
+    // Add User Management to More menu for Admin or HR
+    if (isAdmin || currentUser?.isHR == true) {
+      moreDestinations.add(
+        const NavigationDestination(
+          icon: Icon(LucideIcons.userCog),
+          selectedIcon: Icon(LucideIcons.userCog, color: AppColors.primary),
+          label: 'User Management',
+        ),
+      );
+      moreRoutes.add('/users');
+    }
+
+    // Add 'More' button to visible items
+    visibleDestinations.add(
+      const NavigationDestination(
+        icon: Icon(LucideIcons.moreHorizontal),
+        selectedIcon: Icon(
+          LucideIcons.moreHorizontal,
+          color: AppColors.primary,
+        ),
+        label: 'More',
+      ),
+    );
+    visibleRoutes.add('__more__');
+
+    // If the current route is in the overflow menu, highlight More
+    int selectedIndex = _getSelectedIndex(
+      currentPath,
+      visibleRoutes,
+      isAccountant,
+    );
+    if (moreRoutes.isNotEmpty) {
+      final overflowIndex = _getSelectedIndex(
+        currentPath,
+        moreRoutes,
+        isAccountant,
+      );
+      if (overflowIndex >= 0 && overflowIndex < moreRoutes.length) {
+        selectedIndex = visibleDestinations.length - 1;
+      }
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1630,13 +1974,100 @@ class _BottomNav extends ConsumerWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         indicatorColor: AppColors.primary.withValues(alpha: 0.1),
-        selectedIndex: _getSelectedIndex(currentPath, navRoutes, isAccountant),
+        selectedIndex: selectedIndex,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        height: 64,
-        onDestinationSelected: (index) =>
-            _handleNavigation(context, index, navRoutes),
-        destinations: destinations,
+        height: 52,
+        onDestinationSelected: (index) {
+          if (index == visibleDestinations.length - 1 &&
+              moreDestinations.isNotEmpty) {
+            _showMoreMenu(context, moreDestinations, moreRoutes, currentPath);
+          } else if (visibleRoutes[index] == '__search__') {
+            showDialog(
+              context: context,
+              builder: (_) => const _GlobalSearchDialog(),
+            );
+          } else {
+            _handleNavigation(context, index, visibleRoutes);
+          }
+        },
+        destinations: visibleDestinations,
       ),
+    );
+  }
+
+  void _showMoreMenu(
+    BuildContext context,
+    List<NavigationDestination> destinations,
+    List<String> routes,
+    String currentPath,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                padding: const EdgeInsets.all(16),
+                alignment: Alignment.centerLeft,
+                child: const Text(
+                  'More',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+              const Divider(height: 1),
+              ...List.generate(destinations.length, (index) {
+                final dest = destinations[index];
+                final route = routes[index];
+                final isActive =
+                    currentPath == route ||
+                    (route != '/' && currentPath.startsWith(route));
+                final icon = isActive
+                    ? (dest.selectedIcon ?? dest.icon)
+                    : dest.icon;
+                return ListTile(
+                  leading: IconTheme(
+                    data: IconThemeData(
+                      color: isActive ? AppColors.primary : AppColors.slate500,
+                    ),
+                    child: icon,
+                  ),
+                  title: Text(
+                    dest.label,
+                    style: TextStyle(
+                      color: isActive ? AppColors.primary : AppColors.slate900,
+                      fontWeight: isActive
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    if (route == '__search__') {
+                      showDialog(
+                        context: context,
+                        builder: (_) => const _GlobalSearchDialog(),
+                      );
+                    } else if (route == '__reminder__') {
+                      showDialog(
+                        context: context,
+                        builder: (_) => const AddReminderDialog(),
+                      );
+                    } else {
+                      context.go(route);
+                    }
+                  },
+                );
+              }),
+            ],
+          ),
+          ),
+        );
+      },
     );
   }
 
@@ -1728,41 +2159,6 @@ class _OfflineBanner extends ConsumerWidget {
   }
 }
 
-class _ThemeModeToggle extends ConsumerWidget {
-  const _ThemeModeToggle();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider);
-    final isDarkMode = themeMode == ThemeMode.dark;
-
-    return Row(
-      children: [
-        Icon(
-          isDarkMode ? Icons.dark_mode : Icons.light_mode,
-          size: 20,
-          color: isDarkMode ? Colors.white : Colors.black,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          isDarkMode ? 'Dark' : 'Light',
-          style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Switch.adaptive(
-          value: isDarkMode,
-          onChanged: (value) {
-            ref.read(themeModeProvider.notifier).setDarkMode(value);
-          },
-        ),
-      ],
-    );
-  }
-}
 class _UserProfile extends ConsumerWidget {
   const _UserProfile();
 
@@ -1770,10 +2166,9 @@ class _UserProfile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(authProvider);
 
-
-
     return Tooltip(
-      message: '${currentUser?.fullName ?? 'User'} (${currentUser?.role ?? 'Role'})',
+      message:
+          '${currentUser?.fullName ?? 'User'} (${currentUser?.role ?? 'Role'})',
       child: IconButton(
         icon: CircleAvatar(
           radius: 16,
@@ -1793,30 +2188,13 @@ class _UserProfile extends ConsumerWidget {
               : null,
         ),
         onPressed: () => context.go('/profile'),
-        tooltip: '${currentUser?.fullName ?? 'User'} (${currentUser?.role ?? 'Role'})',
+        tooltip:
+            '${currentUser?.fullName ?? 'User'} (${currentUser?.role ?? 'Role'})',
         padding: const EdgeInsets.all(8),
       ),
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // -- Left Navigation (Empty for Support Chat) -------------------------------
 
@@ -1836,7 +2214,7 @@ class _LeftNav extends ConsumerWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 10,
             offset: const Offset(2, 0),
           ),
@@ -1845,9 +2223,7 @@ class _LeftNav extends ConsumerWidget {
       child: Column(
         children: [
           // Channels and DMs section
-          Expanded(
-            child: _ChannelsList(currentPath: currentPath),
-          ),
+          Expanded(child: _ChannelsList(currentPath: currentPath)),
         ],
       ),
     );
@@ -1885,7 +2261,7 @@ class _ResizeHandleState extends State<_ResizeHandle> {
           width: 4,
           decoration: BoxDecoration(
             color: _isHovering || _isDragging
-                ? AppColors.primary.withOpacity(0.5)
+                ? AppColors.primary.withValues(alpha: 0.5)
                 : Colors.transparent,
             border: Border(
               right: BorderSide(
@@ -1934,23 +2310,34 @@ class _CollapsibleTicketPane extends ConsumerWidget {
     final tickets = ticketsAsync.value ?? [];
     final now = DateTime.now();
     final twoDaysAgo = now.subtract(const Duration(days: 2));
-    final recentTickets = tickets.where((t) =>
-        t.createdAt != null && t.createdAt!.isAfter(twoDaysAgo)).toList();
+    final recentTickets = tickets
+        .where((t) => t.createdAt != null && t.createdAt!.isAfter(twoDaysAgo))
+        .toList();
 
+    // ignore: unused_local_variable
     final unclaimedCount = recentTickets
         .where((t) => t.assignedTo == null || t.assignedTo!.isEmpty)
         .length;
+    // ignore: unused_local_variable
     final claimedCount = recentTickets
         .where((t) => t.assignedTo != null && t.assignedTo!.isNotEmpty)
-        .where((t) => t.status != 'Resolved' && t.status != 'Closed' &&
-            t.status != 'BillRaised' && t.status != 'BillProcessed')
+        .where(
+          (t) =>
+              t.status != 'Resolved' &&
+              t.status != 'Closed' &&
+              t.status != 'BillRaised' &&
+              t.status != 'BillProcessed',
+        )
         .length;
+    // ignore: unused_local_variable
     final resolvedCount = recentTickets
-        .where((t) =>
-            t.status == 'Resolved' ||
-            t.status == 'Closed' ||
-            t.status == 'BillRaised' ||
-            t.status == 'BillProcessed')
+        .where(
+          (t) =>
+              t.status == 'Resolved' ||
+              t.status == 'Closed' ||
+              t.status == 'BillRaised' ||
+              t.status == 'BillProcessed',
+        )
         .length;
 
     return Row(
@@ -1994,8 +2381,7 @@ class _CollapsibleTicketPane extends ConsumerWidget {
               ? _SecondLeftNav(currentPath: currentPath, onCollapse: onToggle)
               : const SizedBox.shrink(),
         ),
-        if (isOpen)
-          const VerticalDivider(width: 1, color: AppColors.border),
+        if (isOpen) const VerticalDivider(width: 1, color: AppColors.border),
       ],
     );
   }
@@ -2024,7 +2410,7 @@ class _SecondLeftNav extends ConsumerWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 10,
             offset: const Offset(2, 0),
           ),
@@ -2121,8 +2507,14 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
       'd7a9e726-9520-4cc8-95a6-b38a4afd1d7b',
       'dedce60a-56bd-49fd-bbe2-f88534b8e36f',
     };
-    final isRestrictedAgent = allowedAroundTallyChannelIds.contains(currentUser?.id ?? '');
-    final canAccessSalesChannel = allowedSalesChannelIds.contains(currentUser?.id ?? '') && !isRestrictedAgent;
+    final isRestrictedAgent = allowedAroundTallyChannelIds.contains(
+      currentUser?.id ?? '',
+    );
+    final canAccessSalesChannel =
+        allowedSalesChannelIds.contains(currentUser?.id ?? '') &&
+        !isRestrictedAgent;
+    final canAccessDealsTracker =
+        currentUser?.id == '0a5aeeb8-9544-4dc8-920f-e26c192b0dd3';
     final restrictedFromAroundAi = {
       'd7a9e726-9520-4cc8-95a6-b38a4afd1d7b',
       'dedce60a-56bd-49fd-bbe2-f88534b8e36f',
@@ -2131,111 +2523,133 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
         // Companies Header - hidden from restricted agents
         if (!isRestrictedAgent)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Row(
-            children: [
-              const Icon(LucideIcons.building2, size: 14, color: Colors.white70),
-              const SizedBox(width: 8),
-              const Text(
-                'Companies',
-                style: TextStyle(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                const Icon(
+                  LucideIcons.building2,
+                  size: 14,
                   color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                const Text(
+                  'Companies',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
         // AroundTally Company - hidden from restricted agents
         if (!isRestrictedAgent)
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => context.go('/company/aroundtally'),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: currentPath.startsWith('/company/aroundtally') ? Colors.white.withOpacity(0.1) : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    LucideIcons.building2,
-                    size: 16,
-                    color: currentPath.startsWith('/company/aroundtally') ? Colors.white : Colors.white54,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'AroundTally',
-                    style: TextStyle(
-                      color: currentPath.startsWith('/company/aroundtally') ? Colors.white : Colors.white70,
-                      fontSize: 13,
-                      fontWeight: currentPath.startsWith('/company/aroundtally') ? FontWeight.w600 : FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        // AroundAi Company - hidden from restricted agents
-        if (!isRestrictedAgent)
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: restrictedFromAroundAi
-                ? () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('You do not have access to AroundAi'),
-                        backgroundColor: AppColors.error,
-                      ),
-                    );
-                  }
-                : () => context.go('/company/aroundai'),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: currentPath.startsWith('/company/aroundai') ? Colors.white.withOpacity(0.1) : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    LucideIcons.building2,
-                    size: 16,
-                    color: currentPath.startsWith('/company/aroundai') ? Colors.white : Colors.white54,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'AroundAi',
-                    style: TextStyle(
-                      color: currentPath.startsWith('/company/aroundai') ? Colors.white : Colors.white70,
-                      fontSize: 13,
-                      fontWeight: currentPath.startsWith('/company/aroundai') ? FontWeight.w600 : FontWeight.w500,
-                    ),
-                  ),
-                  if (restrictedFromAroundAi) ...[
-                    const SizedBox(width: 6),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => context.go('/company/aroundtally'),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: currentPath.startsWith('/company/aroundtally')
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
                     Icon(
-                      LucideIcons.lock,
-                      size: 12,
-                      color: Colors.white54,
+                      LucideIcons.building2,
+                      size: 16,
+                      color: currentPath.startsWith('/company/aroundtally')
+                          ? Colors.white
+                          : Colors.white54,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'AroundTally',
+                      style: TextStyle(
+                        color: currentPath.startsWith('/company/aroundtally')
+                            ? Colors.white
+                            : Colors.white70,
+                        fontSize: 13,
+                        fontWeight:
+                            currentPath.startsWith('/company/aroundtally')
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                      ),
                     ),
                   ],
-                ],
+                ),
               ),
             ),
           ),
-        ),
+        // AroundAi Company - hidden from restricted agents
+        if (!isRestrictedAgent)
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: restrictedFromAroundAi
+                  ? () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('You do not have access to AroundAi'),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                    }
+                  : () => context.go('/company/aroundai'),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: currentPath.startsWith('/company/aroundai')
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.building2,
+                      size: 16,
+                      color: currentPath.startsWith('/company/aroundai')
+                          ? Colors.white
+                          : Colors.white54,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'AroundAi',
+                      style: TextStyle(
+                        color: currentPath.startsWith('/company/aroundai')
+                            ? Colors.white
+                            : Colors.white70,
+                        fontSize: 13,
+                        fontWeight: currentPath.startsWith('/company/aroundai')
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                      ),
+                    ),
+                    if (restrictedFromAroundAi) ...[
+                      const SizedBox(width: 6),
+                      Icon(LucideIcons.lock, size: 12, color: Colors.white54),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
 
         // Channels Header
         Padding(
@@ -2264,7 +2678,9 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
               margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isChatActive ? Colors.white.withOpacity(0.1) : Colors.transparent,
+                color: isChatActive
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
@@ -2280,7 +2696,9 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
                     style: TextStyle(
                       color: isChatActive ? Colors.white : Colors.white70,
                       fontSize: 13,
-                      fontWeight: isChatActive ? FontWeight.w600 : FontWeight.w500,
+                      fontWeight: isChatActive
+                          ? FontWeight.w600
+                          : FontWeight.w500,
                     ),
                   ),
                 ],
@@ -2290,54 +2708,124 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
         ),
         // Sales Channel
         if (canAccessSalesChannel)
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => context.go('/sales-channel'),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: currentPath.startsWith('/sales-channel') ? Colors.white.withOpacity(0.1) : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    LucideIcons.hash,
-                    size: 16,
-                    color: currentPath.startsWith('/sales-channel') ? Colors.white : Colors.white54,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'sales',
-                    style: TextStyle(
-                      color: currentPath.startsWith('/sales-channel') ? Colors.white : Colors.white70,
-                      fontSize: 13,
-                      fontWeight: currentPath.startsWith('/sales-channel') ? FontWeight.w600 : FontWeight.w500,
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => context.push('/sales-channel'),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: currentPath.startsWith('/sales-channel')
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.hash,
+                      size: 16,
+                      color: currentPath.startsWith('/sales-channel')
+                          ? Colors.white
+                          : Colors.white54,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Text(
+                      'sales',
+                      style: TextStyle(
+                        color: currentPath.startsWith('/sales-channel')
+                            ? Colors.white
+                            : Colors.white70,
+                        fontSize: 13,
+                        fontWeight: currentPath.startsWith('/sales-channel')
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
+        // Deals Tracker Channel
+        if (canAccessDealsTracker)
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => context.push('/deals-tracker'),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: currentPath.startsWith('/deals-tracker')
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.hash,
+                      size: 16,
+                      color: currentPath.startsWith('/deals-tracker')
+                          ? Colors.white
+                          : Colors.white54,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'deals-tracker',
+                      style: TextStyle(
+                        color: currentPath.startsWith('/deals-tracker')
+                            ? Colors.white
+                            : Colors.white70,
+                        fontSize: 13,
+                        fontWeight: currentPath.startsWith('/deals-tracker')
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         // All-AroundTally Channel - accessible to all users
         Consumer(
           builder: (context, ref, child) {
-            final aroundTallyUnread = ref.watch(allAroundTallyUnreadCountProvider);
-            final isOnChannel = currentPath.startsWith('/channel/all-aroundtally');
+            // Keep the stream alive so unread count updates even when not on the page
+            ref.watch(chatStreamProvider(kAllAroundTallyChannel));
+            final aroundTallyUnread = ref.watch(
+              allAroundTallyUnreadCountProvider,
+            );
+            final isOnChannel = currentPath.startsWith(
+              '/channel/all-aroundtally',
+            );
             final displayUnread = isOnChannel ? 0 : aroundTallyUnread;
 
             return Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: () => context.go('/channel/all-aroundtally'),
+                onTap: () => context.push('/channel/all-aroundtally'),
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: isOnChannel ? Colors.white.withOpacity(0.1) : Colors.transparent,
+                    color: isOnChannel
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
@@ -2351,29 +2839,15 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
                       Text(
                         'all-aroundtally',
                         style: TextStyle(
-                          color: (isOnChannel || displayUnread > 0) ? Colors.white : Colors.white70,
+                          color: (isOnChannel || displayUnread > 0)
+                              ? Colors.white
+                              : Colors.white70,
                           fontSize: 13,
-                          fontWeight: isOnChannel ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight: (isOnChannel || displayUnread > 0)
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                         ),
                       ),
-                      if (displayUnread > 0) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            displayUnread > 9 ? '9+' : displayUnread.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -2382,223 +2856,276 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
           },
         ),
         if (currentUser?.isTeleCaller != true || isRestrictedAgent) ...[
-        const SizedBox(height: 16),
-        // Direct Messages Header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-          child: Row(
-            children: [
-              const Icon(LucideIcons.messagesSquare, size: 14, color: Colors.white70),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Direct messages',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+          const SizedBox(height: 16),
+          // Direct Messages Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            child: Row(
+              children: [
+                const Icon(
+                  LucideIcons.messagesSquare,
+                  size: 14,
+                  color: Colors.white70,
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Direct messages',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-              // Refresh button
-              InkWell(
-                onTap: () {
-                  ref.invalidate(agentsListProvider);
-                  ref.invalidate(dmConversationsProvider);
-                },
-                borderRadius: BorderRadius.circular(4),
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
-                  child: Icon(Icons.refresh, size: 14, color: Colors.white54),
+                // Refresh button
+                InkWell(
+                  onTap: () {
+                    ref.invalidate(agentsListProvider);
+                    ref.invalidate(dmConversationsProvider);
+                  },
+                  borderRadius: BorderRadius.circular(4),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(Icons.refresh, size: 14, color: Colors.white54),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-            ],
+                const SizedBox(width: 8),
+              ],
+            ),
           ),
-        ),
-        // Agents List
-        Expanded(
-          child: agentsAsync.when(
-            data: (agents) {
-              return conversationsAsync.when(
-                data: (conversations) {
-                  // Sort agents: own chat first, then unread, then alphabetical
-                  final sortedAgents = List.from(agents)..sort((a, b) {
-                    final agentAId = a['id']?.toString() ?? '';
-                    final agentBId = b['id']?.toString() ?? '';
-                    
-                    // Own chat pinned to the top
-                    if (currentUser != null) {
-                      if (agentAId == currentUser.id && agentBId != currentUser.id) return -1;
-                      if (agentBId == currentUser.id && agentAId != currentUser.id) return 1;
-                    }
-                    
-                    // Agents with unread messages come before agents without
-                    final unreadA = ref.watch(dmUnreadCountProvider(agentAId));
-                    final unreadB = ref.watch(dmUnreadCountProvider(agentBId));
-                    if (unreadA > 0 && unreadB == 0) return -1;
-                    if (unreadB > 0 && unreadA == 0) return 1;
-                    
-                    // Otherwise alphabetical
-                    final nameA = (a['full_name'] ?? a['username'] ?? '').toString().toLowerCase();
-                    final nameB = (b['full_name'] ?? b['username'] ?? '').toString().toLowerCase();
-                    return nameA.compareTo(nameB);
-                  });
-                  
-                  return ListView.builder(
-                    padding: EdgeInsets.zero,
-                    itemCount: sortedAgents.length,
-                    itemBuilder: (context, index) {
-                      final agent = sortedAgents[index];
-                      final agentId = agent['id']?.toString() ?? '';
-                      final currentUser = ref.watch(authProvider);
-                      final isCurrentUser = currentUser?.id == agentId;
-                      final name = isCurrentUser ? 'YOU' : (agent['full_name'] ?? 'Unknown');
-                      final unreadCount = ref.watch(dmUnreadCountProvider(agentId));
-                      
-                      // Determine online status based on last_seen timestamp
-                      final lastSeen = agent['last_seen'] != null 
-                          ? DateTime.tryParse(agent['last_seen'].toString()) 
-                          : null;
-                      final now = DateTime.now();
-                      
-                      // Online: seen within last 5 minutes
-                      final isOnline = lastSeen != null && 
-                          now.difference(lastSeen).inMinutes < 5;
-                      
-                      // Away: seen within last 30 minutes but not online
-                      final isAway = lastSeen != null && 
-                          !isOnline && 
-                          now.difference(lastSeen).inMinutes < 30; 
-                      
-                      // Generate a distinct color based on index
-                      final List<Color> avatarColors = [
-                        Colors.red.shade400,
-                        Colors.blue.shade400,
-                        Colors.green.shade500,
-                        Colors.orange.shade500,
-                        Colors.purple.shade400,
-                        Colors.teal.shade400,
-                        Colors.pink.shade400,
-                        Colors.indigo.shade400,
-                      ];
-                      final avatarColor = avatarColors[index % avatarColors.length];
-                      
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            context.go('/chat/dm/${agent['id']}');
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                            child: Row(
-                              children: [
-                                Stack(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 12,
-                                      backgroundColor: avatarColor,
-                                      backgroundImage: agent['avatar_url'] != null
-                                          ? NetworkImage(agent['avatar_url'])
-                                          : null,
-                                      child: agent['avatar_url'] == null
-                                          ? Text(
-                                              name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                              style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
-                                            )
-                                          : null,
+          // Agents List
+          Expanded(
+            child: agentsAsync.when(
+              data: (agents) {
+                return conversationsAsync.when(
+                  data: (conversations) {
+                    // Sort agents: own chat first, then unread, then alphabetical
+                    final sortedAgents = List.from(agents)
+                      ..sort((a, b) {
+                        final agentAId = a['id']?.toString() ?? '';
+                        final agentBId = b['id']?.toString() ?? '';
+
+                        // Own chat pinned to the top
+                        if (currentUser != null) {
+                          if (agentAId == currentUser.id &&
+                              agentBId != currentUser.id)
+                            return -1;
+                          if (agentBId == currentUser.id &&
+                              agentAId != currentUser.id)
+                            return 1;
+                        }
+
+                        // Agents with unread messages come before agents without
+                        final unreadA = ref.watch(
+                          dmUnreadCountProvider(agentAId),
+                        );
+                        final unreadB = ref.watch(
+                          dmUnreadCountProvider(agentBId),
+                        );
+                        if (unreadA > 0 && unreadB == 0) return -1;
+                        if (unreadB > 0 && unreadA == 0) return 1;
+
+                        // Otherwise alphabetical
+                        final nameA = (a['full_name'] ?? a['username'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final nameB = (b['full_name'] ?? b['username'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        return nameA.compareTo(nameB);
+                      });
+
+                    return ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: sortedAgents.length,
+                      itemBuilder: (context, index) {
+                        final agent = sortedAgents[index];
+                        final agentId = agent['id']?.toString() ?? '';
+                        final currentUser = ref.watch(authProvider);
+                        final isCurrentUser = currentUser?.id == agentId;
+                        final name = isCurrentUser
+                            ? 'YOU'
+                            : (agent['full_name'] ?? 'Unknown');
+                        final unreadCount = ref.watch(
+                          dmUnreadCountProvider(agentId),
+                        );
+
+                        // Determine online status based on last_seen timestamp
+                        final lastSeen = agent['last_seen'] != null
+                            ? DateTime.tryParse(agent['last_seen'].toString())
+                            : null;
+                        final now = DateTime.now();
+
+                        // Online: seen within last 5 minutes
+                        final isOnline =
+                            lastSeen != null &&
+                            now.difference(lastSeen).inMinutes < 5;
+
+                        // Away: seen within last 30 minutes but not online
+                        final isAway =
+                            lastSeen != null &&
+                            !isOnline &&
+                            now.difference(lastSeen).inMinutes < 30;
+
+                        // Generate a distinct color based on index
+                        final List<Color> avatarColors = [
+                          Colors.red.shade400,
+                          Colors.blue.shade400,
+                          Colors.green.shade500,
+                          Colors.orange.shade500,
+                          Colors.purple.shade400,
+                          Colors.teal.shade400,
+                          Colors.pink.shade400,
+                          Colors.indigo.shade400,
+                        ];
+                        final avatarColor =
+                            avatarColors[index % avatarColors.length];
+
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              context.push('/chat/dm/${agent['id']}');
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 6,
+                              ),
+                              child: Row(
+                                children: [
+                                  Stack(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 12,
+                                        backgroundColor: avatarColor,
+                                        backgroundImage:
+                                            agent['avatar_url'] != null
+                                            ? NetworkImage(agent['avatar_url'])
+                                            : null,
+                                        child: agent['avatar_url'] == null
+                                            ? Text(
+                                                name.isNotEmpty
+                                                    ? name[0].toUpperCase()
+                                                    : '?',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                      Positioned(
+                                        right: 0,
+                                        bottom: 0,
+                                        child: Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color: isOnline
+                                                ? Colors.green
+                                                : isAway
+                                                ? Colors.orange
+                                                : Colors.grey,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: AppColors.slate900,
+                                              width: 1.5,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      name,
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 13,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    Positioned(
-                                      right: 0,
-                                      bottom: 0,
-                                      child: Container(
-                                        width: 8,
-                                        height: 8,
-                                        decoration: BoxDecoration(
-                                          color: isOnline 
-                                              ? Colors.green 
-                                              : isAway 
-                                                  ? Colors.orange 
-                                                  : Colors.grey,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(color: AppColors.slate900, width: 1.5),
+                                  ),
+                                  if (unreadCount > 0)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        unreadCount > 99
+                                            ? '99+'
+                                            : unreadCount.toString(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    name,
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 13,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (unreadCount > 0)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      unreadCount > 99 ? '99+' : unreadCount.toString(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  );
-                },
-                loading: () => const Center(
-                  child: SizedBox(
-                    height: 16, width: 16, 
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54)
-                  )
+                        );
+                      },
+                    );
+                  },
+                  loading: () => const Center(
+                    child: SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white54,
+                      ),
+                    ),
+                  ),
+                  error: (_, __) => const Center(
+                    child: SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white54,
+                      ),
+                    ),
+                  ),
+                );
+              },
+              loading: () => const Center(
+                child: SizedBox(
+                  height: 16,
+                  width: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white54,
+                  ),
                 ),
-                error: (_, __) => const Center(
-                  child: SizedBox(
-                    height: 16, width: 16, 
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54)
-                  )
+              ),
+              error: (err, stack) => const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Failed to load agents',
+                  style: TextStyle(color: Colors.red, fontSize: 10),
                 ),
-              );
-            },
-            loading: () => const Center(
-              child: SizedBox(
-                height: 16, width: 16, 
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54)
-              )
-            ),
-            error: (err, stack) => const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text('Failed to load agents', style: TextStyle(color: Colors.red, fontSize: 10)),
+              ),
             ),
           ),
-        ),
         ], // end isTeleCaller check
       ],
     );
   }
 }
-
-
-
-
 
 // -- Recent Sales Placeholder Widget -------------------------------------------
 
@@ -2612,10 +3139,7 @@ class _RecentSalesPlaceholder extends StatelessWidget {
         padding: EdgeInsets.all(16),
         child: Text(
           'Sales history coming soon',
-          style: TextStyle(
-            color: Colors.white54,
-            fontSize: 12,
-          ),
+          style: TextStyle(color: Colors.white54, fontSize: 12),
         ),
       ),
     );
@@ -2628,44 +3152,51 @@ class _RecentTicketsList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ticketsAsync = ref.watch(ticketsStreamProvider);
-    
+
     return ticketsAsync.when(
       data: (tickets) {
         print('DEBUG: Total tickets: ${tickets.length}');
-        
+
         // Filter tickets from last 2 days
         final now = DateTime.now();
         final twoDaysAgo = now.subtract(const Duration(days: 2));
-        
+
         final recentTickets = tickets.where((ticket) {
           if (ticket.createdAt == null) return false;
-          final isUnclaimed = ticket.assignedTo == null || ticket.assignedTo!.isEmpty;
+          final isUnclaimed =
+              ticket.assignedTo == null || ticket.assignedTo!.isEmpty;
           return ticket.createdAt!.isAfter(twoDaysAgo) || isUnclaimed;
         }).toList();
-        
+
         print('DEBUG: Recent tickets (last 2 days): ${recentTickets.length}');
 
         // Sort: unclaimed first, then by created date (newest first)
         recentTickets.sort((a, b) {
           final aClaimed = a.assignedTo != null && a.assignedTo!.isNotEmpty;
           final bClaimed = b.assignedTo != null && b.assignedTo!.isNotEmpty;
-          
+
           if (aClaimed != bClaimed) {
             return aClaimed ? 1 : -1; // Unclaimed first
           }
-          
+
           // Both have same claim status, sort by date
-          return (b.createdAt ?? DateTime.now()).compareTo(a.createdAt ?? DateTime.now());
+          return (b.createdAt ?? DateTime.now()).compareTo(
+            a.createdAt ?? DateTime.now(),
+          );
         });
 
         if (recentTickets.isEmpty) {
           // If no recent tickets, show some older unclaimed tickets
-          final olderUnclaimed = tickets.where((ticket) {
-            if (ticket.createdAt == null) return false;
-            final isClaimed = ticket.assignedTo != null && ticket.assignedTo!.isNotEmpty;
-            return !isClaimed; // Show unclaimed tickets regardless of age
-          }).take(5).toList();
-          
+          final olderUnclaimed = tickets
+              .where((ticket) {
+                if (ticket.createdAt == null) return false;
+                final isClaimed =
+                    ticket.assignedTo != null && ticket.assignedTo!.isNotEmpty;
+                return !isClaimed; // Show unclaimed tickets regardless of age
+              })
+              .take(5)
+              .toList();
+
           if (olderUnclaimed.isNotEmpty) {
             return Column(
               children: [
@@ -2674,7 +3205,7 @@ class _RecentTicketsList extends ConsumerWidget {
                   child: Text(
                     'No recent tickets. Showing older unclaimed:',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 10,
                     ),
                   ),
@@ -2692,16 +3223,13 @@ class _RecentTicketsList extends ConsumerWidget {
               ],
             );
           }
-          
+
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(16),
               child: Text(
                 'No tickets found',
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ),
           );
@@ -2730,10 +3258,7 @@ class _RecentTicketsList extends ConsumerWidget {
           padding: EdgeInsets.all(16),
           child: Text(
             'Error: $error',
-            style: const TextStyle(
-              color: Colors.red,
-              fontSize: 11,
-            ),
+            style: const TextStyle(color: Colors.red, fontSize: 11),
           ),
         ),
       ),
@@ -2750,7 +3275,7 @@ class _TicketTile extends ConsumerWidget {
 
   String _formatTime(DateTime? dateTime) {
     if (dateTime == null) return 'Unknown';
-    
+
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
@@ -2770,35 +3295,36 @@ class _TicketTile extends ConsumerWidget {
   String _getTicketDescription(Ticket ticket) {
     // Use title as primary issue description
     String description = ticket.title;
-    
+
     // Add description if available and different from title
-    if (ticket.description != null && 
-        ticket.description!.isNotEmpty && 
+    if (ticket.description != null &&
+        ticket.description!.isNotEmpty &&
         ticket.description != ticket.title) {
       description += '\n\n${ticket.description}';
     }
-    
+
     // Add category if available
     if (ticket.category != null && ticket.category!.isNotEmpty) {
       description += '\n\nCategory: ${ticket.category}';
     }
-    
+
     // Add priority if available
     if (ticket.priority != null && ticket.priority!.isNotEmpty) {
       description += '\nPriority: ${ticket.priority}';
     }
-    
+
     // Limit length for tooltip display
     if (description.length > 200) {
       description = '${description.substring(0, 197)}...';
     }
-    
+
     return description.isNotEmpty ? description : 'No description available';
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isClaimed = ticket.assignedTo != null && ticket.assignedTo!.isNotEmpty;
+    final isClaimed =
+        ticket.assignedTo != null && ticket.assignedTo!.isNotEmpty;
     final customerAsync = ref.watch(ticketCustomerProvider(ticket.customerId));
     final agentsAsync = ref.watch(agentsListProvider);
     final timeAgo = _formatTime(ticket.createdAt);
@@ -2811,7 +3337,10 @@ class _TicketTile extends ConsumerWidget {
         (a) => a['id']?.toString() == ticket.assignedTo,
         orElse: () => <String, dynamic>{},
       );
-      final name = agent['full_name']?.toString().trim() ?? agent['username']?.toString().trim() ?? '';
+      final name =
+          agent['full_name']?.toString().trim() ??
+          agent['username']?.toString().trim() ??
+          '';
       if (name.isNotEmpty) assignedAgentName = name;
     }
 
@@ -2838,138 +3367,149 @@ class _TicketTile extends ConsumerWidget {
     final Color cardColor;
     final Color cardBorderColor;
     if (status == 'BillProcessed' || status == 'BillRaised') {
-      cardColor = const Color(0xFF7C3AED).withOpacity(0.08);
-      cardBorderColor = const Color(0xFF7C3AED).withOpacity(0.3);
+      cardColor = const Color(0xFF7C3AED).withValues(alpha: 0.08);
+      cardBorderColor = const Color(0xFF7C3AED).withValues(alpha: 0.3);
     } else if (status == 'Resolved' || status == 'Closed') {
-      cardColor = AppColors.success.withOpacity(0.07);
-      cardBorderColor = AppColors.success.withOpacity(0.3);
+      cardColor = AppColors.success.withValues(alpha: 0.07);
+      cardBorderColor = AppColors.success.withValues(alpha: 0.3);
     } else if (isClaimed) {
-      cardColor = Colors.white.withOpacity(0.05);
-      cardBorderColor = Colors.white.withOpacity(0.1);
+      cardColor = Colors.white.withValues(alpha: 0.05);
+      cardBorderColor = Colors.white.withValues(alpha: 0.1);
     } else {
-      cardColor = AppColors.error.withOpacity(0.1);
-      cardBorderColor = AppColors.error.withOpacity(0.3);
+      cardColor = AppColors.error.withValues(alpha: 0.1);
+      cardBorderColor = AppColors.error.withValues(alpha: 0.3);
     }
 
     return customerAsync.when(
       data: (customerData) {
-        final companyName = customerData?['company_name']?.toString().trim() ?? '';
-        final contactPerson = customerData?['contact_person']?.toString().trim() ?? '';
-        
+        final companyName =
+            customerData?['company_name']?.toString().trim() ?? '';
+        final contactPerson =
+            customerData?['contact_person']?.toString().trim() ?? '';
+
         // Use company name as primary, fallback to contact person
-        final customerName = companyName.isNotEmpty ? companyName : (contactPerson.isNotEmpty ? contactPerson : 'Unknown Customer');
+        final customerName = companyName.isNotEmpty
+            ? companyName
+            : (contactPerson.isNotEmpty ? contactPerson : 'Unknown Customer');
+        // ignore: unused_local_variable
         final customerEmail = customerData?['contact_email'] ?? '';
-        
+
         return Tooltip(
-      message: _getTicketDescription(ticket),
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
-      ),
-      textStyle: const TextStyle(
-        color: Colors.white,
-        fontSize: 12,
-        height: 1.4,
-      ),
-      waitDuration: const Duration(milliseconds: 500),
-      showDuration: const Duration(seconds: 3),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 2),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: cardBorderColor),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              // Navigate to ticket detail
-              context.push('/ticket/${ticket.ticketId}');
-            },
-            borderRadius: BorderRadius.circular(6),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Customer name and claim status
-                  Row(
+          message: _getTicketDescription(ticket),
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          ),
+          textStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            height: 1.4,
+          ),
+          waitDuration: const Duration(milliseconds: 500),
+          showDuration: const Duration(seconds: 3),
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 2),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: cardBorderColor),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  // Navigate to ticket detail
+                  context.push('/ticket/${ticket.ticketId}');
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Left: customer name + time
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              customerName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              timeAgo,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.6),
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      // Right: claimed badge + agent name stacked
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      // Customer name and claim status
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: badgeColor,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              badgeLabel,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 8,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          // Left: customer name + time
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  customerName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  timeAgo,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          if (isClaimed && assignedAgentName != null) ...[
-                            const SizedBox(height: 3),
-                            Text(
-                              assignedAgentName!,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
+                          const SizedBox(width: 4),
+                          // Right: claimed badge + agent name stacked
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: badgeColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  badgeLabel,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                              if (isClaimed && assignedAgentName != null) ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  assignedAgentName,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ],
+                          ),
                         ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    );
+        );
       },
       loading: () => Container(
         margin: const EdgeInsets.symmetric(vertical: 2),
@@ -2988,7 +3528,7 @@ class _TicketTile extends ConsumerWidget {
             Text(
               'Loading...',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.6),
+                color: Colors.white.withValues(alpha: 0.6),
                 fontSize: 10,
               ),
             ),
@@ -3001,7 +3541,7 @@ class _TicketTile extends ConsumerWidget {
         child: Text(
           'Customer not found',
           style: TextStyle(
-            color: Colors.red.withOpacity(0.7),
+            color: Colors.red.withValues(alpha: 0.7),
             fontSize: 10,
           ),
         ),
@@ -3009,4 +3549,3 @@ class _TicketTile extends ConsumerWidget {
     );
   }
 }
-

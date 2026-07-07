@@ -185,8 +185,8 @@ class _DealsPageState extends ConsumerState<DealsPage> {
           builder: (context, setState) {
             return AlertDialog(
               title: Text(isEdit ? 'Edit Deal' : 'New Deal'),
-              content: SizedBox(
-                width: 400,
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,

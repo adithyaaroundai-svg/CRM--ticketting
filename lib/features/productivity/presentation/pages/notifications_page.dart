@@ -304,52 +304,59 @@ class _OperationalAlertsSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: [
-            SizedBox(
-              width: 320,
-              child: _OperationalAlertCard(
-                title: 'Pending tickets',
-                subtitle: pendingCount == 0
-                    ? 'Every new ticket has already been claimed.'
-                    : 'Tickets created but not yet picked up by any agent.',
-                icon: LucideIcons.ticket,
-                accentColor: AppColors.primary,
-                count: pendingCount,
-                isLoading: ticketsLoading,
-                actionLabel: 'Review unclaimed',
-                onTap: onPendingTap,
-              ),
-            ),
-            SizedBox(
-              width: 320,
-              child: _OperationalAlertCard(
-                title: 'AMC expiring this week',
-                subtitle: 'Contracts ending within the next 7 days.',
-                icon: LucideIcons.calendarClock,
-                accentColor: AppColors.warning,
-                count: weeklyAmcCount,
-                isLoading: customersLoading,
-                actionLabel: 'View reminder list',
-                onTap: onAmcTap,
-              ),
-            ),
-            SizedBox(
-              width: 320,
-              child: _OperationalAlertCard(
-                title: 'AMC expiring this month',
-                subtitle: 'Renewals due in the next 30 days.',
-                icon: LucideIcons.calendarDays,
-                accentColor: AppColors.info,
-                count: monthlyAmcCount,
-                isLoading: customersLoading,
-                actionLabel: 'Plan follow-ups',
-                onTap: onAmcTap,
-              ),
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final cardWidth = constraints.maxWidth < 700
+                ? constraints.maxWidth
+                : 320.0;
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                SizedBox(
+                  width: cardWidth,
+                  child: _OperationalAlertCard(
+                    title: 'Pending tickets',
+                    subtitle: pendingCount == 0
+                        ? 'Every new ticket has already been claimed.'
+                        : 'Tickets created but not yet picked up by any agent.',
+                    icon: LucideIcons.ticket,
+                    accentColor: AppColors.primary,
+                    count: pendingCount,
+                    isLoading: ticketsLoading,
+                    actionLabel: 'Review unclaimed',
+                    onTap: onPendingTap,
+                  ),
+                ),
+                SizedBox(
+                  width: cardWidth,
+                  child: _OperationalAlertCard(
+                    title: 'AMC expiring this week',
+                    subtitle: 'Contracts ending within the next 7 days.',
+                    icon: LucideIcons.calendarClock,
+                    accentColor: AppColors.warning,
+                    count: weeklyAmcCount,
+                    isLoading: customersLoading,
+                    actionLabel: 'View reminder list',
+                    onTap: onAmcTap,
+                  ),
+                ),
+                SizedBox(
+                  width: cardWidth,
+                  child: _OperationalAlertCard(
+                    title: 'AMC expiring this month',
+                    subtitle: 'Renewals due in the next 30 days.',
+                    icon: LucideIcons.calendarDays,
+                    accentColor: AppColors.info,
+                    count: monthlyAmcCount,
+                    isLoading: customersLoading,
+                    actionLabel: 'Plan follow-ups',
+                    onTap: onAmcTap,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         if (hasError)
           Padding(

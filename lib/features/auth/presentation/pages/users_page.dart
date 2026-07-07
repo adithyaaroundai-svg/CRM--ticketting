@@ -54,10 +54,16 @@ class _UsersPageState extends ConsumerState<UsersPage> {
     return currentUser?.isAdmin == true || currentUser?.isHR == true;
   }
 
-  // Check if current user can delete users and change roles (admin only)
-  bool get _canDeleteAndEditRoles {
+  // Check if current user can delete users (admin only)
+  bool get _canDeleteUser {
     final currentUser = ref.read(authProvider);
     return currentUser?.isAdmin == true;
+  }
+
+  // Check if current user can edit roles (admin or HR)
+  bool get _canEditRole {
+    final currentUser = ref.read(authProvider);
+    return currentUser?.isAdmin == true || currentUser?.isHR == true;
   }
 
   final List<String> _roles = [
@@ -319,6 +325,10 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                                 role == 'all'
                                     ? 'All Users'
                                     : _getRoleDisplayName(role),
+                                style: TextStyle(
+                                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                ),
                               ),
                               selected: isSelected,
                               onSelected: (selected) {
@@ -395,8 +405,8 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                         final isLast = index == filteredUsers.length - 1;
                         return _UserTile(
                           user: user,
-                          onDelete: _canDeleteAndEditRoles ? () => _deleteUser(user) : null,
-                          onEditRole: _canDeleteAndEditRoles ? () => _showEditRoleDialog(user) : null,
+                          onDelete: _canDeleteUser ? () => _deleteUser(user) : null,
+                          onEditRole: _canEditRole ? () => _showEditRoleDialog(user) : null,
                           isLast: isLast,
                         );
                       }).toList(),
@@ -469,21 +479,24 @@ class _UserTile extends StatelessWidget {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getRoleColor(user.role).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _getRoleDisplayName(user.role),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _getRoleColor(user.role),
-                        fontWeight: FontWeight.w600,
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getRoleColor(user.role).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _getRoleDisplayName(user.role),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _getRoleColor(user.role),
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),

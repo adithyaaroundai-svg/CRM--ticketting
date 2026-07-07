@@ -47,7 +47,7 @@ class _ModeratorDashboardPageState extends ConsumerState<ModeratorDashboardPage>
 
     await ref.read(chatRepositoryProvider).sendMessage(
           senderId: agent.id,
-          senderName: agent.fullName ?? agent.username,
+          senderName: agent.fullName,
           senderRole: agent.role,
           content: chatContent,
           senderAvatarUrl: agent.avatarUrl,

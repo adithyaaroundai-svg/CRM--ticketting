@@ -70,7 +70,7 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
-                      onPressed: () => context.go('/customers/add'),
+                      onPressed: () => context.push('/customers/add'),
                       icon: const Icon(LucideIcons.plus),
                       label: const Text('Add Customer'),
                       style: ElevatedButton.styleFrom(
@@ -144,7 +144,7 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
                               customer: customer,
                               expanded: _expandedListView,
                               onTap: () =>
-                                  context.go('/customer/${customer.id}'),
+                                  context.push('/customer/${customer.id}'),
                             );
                           },
                         );

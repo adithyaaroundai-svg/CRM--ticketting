@@ -1,42 +1,130 @@
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:js' as js;
+import 'package:flutter/foundation.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'web_eval_stub.dart' if (dart.library.js) 'web_eval_web.dart';
 
 /// Plays a soft, pleasant ping for incoming chat messages.
 class ChatSoundService {
+  static final AudioPlayer _audioPlayer = AudioPlayer();
+
   static void playPing() {
     try {
-      js.context.callMethod('eval', [
-        '''
-        (function() {
-          try {
-            var AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return;
-            var ctx = new AudioContext();
-
-            function tone(freq, start, dur, gainVal, type) {
-              var osc = ctx.createOscillator();
-              var g   = ctx.createGain();
-              osc.connect(g);
-              g.connect(ctx.destination);
-              osc.type = type || 'sine';
-              osc.frequency.setValueAtTime(freq, start);
-              g.gain.setValueAtTime(0, start);
-              g.gain.linearRampToValueAtTime(gainVal, start + 0.01);
-              g.gain.exponentialRampToValueAtTime(0.001, start + dur);
-              osc.start(start);
-              osc.stop(start + dur);
-            }
-
-            var now = ctx.currentTime;
-            // Two soft ascending tones — gentle "ding ding"
-            tone(1046, now,        0.22, 0.28, 'sine');
-            tone(1318, now + 0.14, 0.28, 0.22, 'sine');
-          } catch(e) {}
-        })();
-        ''',
-      ]);
-    } catch (_) {
-      // Silently fail
+      if (kIsWeb) {
+        _playWebPing();
+      } else {
+        _playMobilePing();
+      }
+    } catch (e) {
+      debugPrint('Error playing chat ping: $e');
     }
+  }
+
+  static void playMentionPing() {
+    try {
+      if (kIsWeb) {
+        _playWebMentionPing();
+      } else {
+        _playMobilePing();
+      }
+    } catch (e) {
+      debugPrint('Error playing mention ping: $e');
+    }
+  }
+
+  static void _playMobilePing() async {
+    try {
+      await _audioPlayer.setVolume(1.0);
+      await _audioPlayer.play(AssetSource('sounds/reminder.wav'));
+    } catch (e) {
+      debugPrint('Error playing mobile chat ping: $e');
+    }
+  }
+}
+
+void _playWebPing() {
+  try {
+    evalJs(
+      """
+      (function() {
+        try {
+          var AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          var context = new AudioContext();
+          
+          if (context.state === 'suspended') {
+            context.resume();
+          }
+          
+          function playTone(freq, time, duration) {
+            var osc = context.createOscillator();
+            var gain = context.createGain();
+            osc.connect(gain);
+            gain.connect(context.destination);
+            
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.28, time + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+            
+            osc.start(time);
+            osc.stop(time + duration);
+          }
+          
+          var now = context.currentTime;
+          playTone(1046, now, 0.22);
+          playTone(1318, now + 0.14, 0.28);
+        } catch (e) {
+          console.error("Web audio error:", e);
+        }
+      })();
+      """
+    );
+  } catch (e) {
+    debugPrint('Error playing web chat ping via JS: $e');
+  }
+}
+
+void _playWebMentionPing() {
+  try {
+    evalJs(
+      """
+      (function() {
+        try {
+          var AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          var context = new AudioContext();
+          
+          if (context.state === 'suspended') {
+            context.resume();
+          }
+          
+          function playTone(freq, time, duration) {
+            var osc = context.createOscillator();
+            var gain = context.createGain();
+            osc.connect(gain);
+            gain.connect(context.destination);
+            
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.4, time + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+            
+            osc.start(time);
+            osc.stop(time + duration);
+          }
+          
+          var now = context.currentTime;
+          playTone(660, now, 0.15); // A single sweet E5 chime
+        } catch (e) {
+          console.error("Web audio error:", e);
+        }
+      })();
+      """
+    );
+  } catch (e) {
+    debugPrint('Error playing web chat ping via JS: $e');
   }
 }

@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/design_system/theme/app_colors.dart';
+import '../../../../core/utils/json_converters.dart';
 import '../../../../core/design_system/components/app_button.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/customer_notes_provider.dart';
@@ -210,7 +211,7 @@ class _CustomerNotesSectionState extends ConsumerState<CustomerNotesSection> {
                 final note = notes[index];
                 final isPinned = note['is_pinned'] as bool? ?? false;
                 final agentId = note['agent_id'] as String;
-                final createdAt = DateTime.parse(note['created_at'] as String);
+                final createdAt = parseUtcDate(note['created_at'] as String);
 
                 final agentAsync = ref.watch(
                   ticketAssignedAgentProvider(agentId),

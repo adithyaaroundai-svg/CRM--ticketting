@@ -395,20 +395,13 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
     final replyToSenderName = _replyingToMessage?.senderName;
     final replyToContent = _replyingToMessage?.content;
 
-    ref
-
+    final String newMsgId = await ref
         .read(chatControllerProvider.notifier)
-
         .sendMessage(
-
           senderId: agent.id,
-
           senderName: agent.fullName,
-
           senderRole: agent.role,
-
           content: content,
-
           senderAvatarUrl: agent.avatarUrl,
           replyToMessageId: replyToMessageId,
           replyToSenderName: replyToSenderName,
@@ -416,7 +409,6 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
           fileUrl: fileUrl,
           fileName: fileName,
           fileType: fileType,
-
         );
 
     _messageCtrl.clear();
@@ -437,27 +429,27 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
       final String fullName = a['full_name'] ?? a['username'] ?? '';
 
       if (fullName.isNotEmpty && content.contains('@$fullName')) {
-
         try {
+          await ref.read(chatRepositoryProvider).sendMessage(
+            senderId: agent.id,
+            senderName: agent.fullName,
+            senderRole: agent.role,
+            content: 'You were mentioned in the support chat:\n\n"$content"\n\n[MentionID:$newMsgId]',
+            receiverId: a['id'],
+            senderAvatarUrl: agent.avatarUrl,
+          );
 
           await Supabase.instance.client.from('notifications').insert({
-
             'user_id': a['id'],
-
             'type': 'mention',
-
             'title': 'Mentioned in Support',
-
             'message': '${agent.fullName} mentioned you: "$content"',
-
-            'link': '/chat',
-
+            'link': '/chat?highlightMsgId=$newMsgId',
             'is_read': false,
-
           });
-
-        } catch (_) {}
-
+        } catch (e) {
+           debugPrint('Error sending mention notification/DM: $e');
+        }
       }
 
     }
@@ -660,6 +652,9 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
     final messagesAsync = ref.watch(chatStreamProvider('support-chat'));
 
     final currentUser = ref.watch(authProvider);
+    
+    final routerState = GoRouterState.of(context);
+    final highlightMsgId = routerState.uri.queryParameters['highlightMsgId'];
 
 
 
@@ -886,7 +881,12 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
                           _hasInitialScrolled = true;
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (!mounted) return;
-                            if (_entryFirstUnreadMessageId != null && _unreadKey.currentContext != null) {
+                            if (highlightMsgId != null) {
+                               final index = messages.indexWhere((m) => m.id == highlightMsgId);
+                               if (index != -1 && _scrollCtrl.hasClients) {
+                                 _scrollCtrl.jumpTo(index * 150.0); // Rough approximation
+                               }
+                            } else if (_entryFirstUnreadMessageId != null && _unreadKey.currentContext != null) {
                               Scrollable.ensureVisible(
                                 _unreadKey.currentContext!,
                                 alignment: 0.0,
@@ -924,22 +924,36 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
                               }
                             }
                             final showUnreadLabel = msg.id == _entryFirstUnreadMessageId;
+                            
+                            Widget bubble = _ChatBubble(
+                              key: ValueKey(msg.id),
+                              message: msg,
+                              isMe: isMe,
+                              onDelete: () {
+                                _confirmDelete(context, msg.id);
+                              },
+                              onReply: () {
+                                _handleReply(msg);
+                              },
+                              breathingAnimation: _breathingAnimation,
+                            );
+
+                            if (msg.id == highlightMsgId && !msg.isDeleted) {
+                               bubble = Container(
+                                 decoration: BoxDecoration(
+                                    color: Colors.yellow.withOpacity(0.3),
+                                    border: Border.all(color: Colors.orange, width: 2),
+                                    borderRadius: BorderRadius.circular(8),
+                                 ),
+                                 child: bubble,
+                               );
+                            }
+
                             return Column(
                               children: [
                                 if (showDateHeader) _DateHeader(date: msg.createdAt),
                                 if (showUnreadLabel) _UnreadLabel(key: _unreadKey),
-                                _ChatBubble(
-                                  key: ValueKey(msg.id),
-                                  message: msg,
-                                  isMe: isMe,
-                                  onDelete: () {
-                                    _confirmDelete(context, msg.id);
-                                  },
-                                  onReply: () {
-                                    _handleReply(msg);
-                                  },
-                                  breathingAnimation: _breathingAnimation,
-                                ),
+                                bubble,
                               ],
                             );
                           },
@@ -3281,7 +3295,7 @@ class _ChatBubble extends ConsumerWidget {
 
               final isClaimedByMe = ticket?.assignedTo == currentUser?.id;
 
-              final canClaim = currentUser != null; // Anyone can claim tickets now
+              final canClaim = currentUser != null && currentUser.isSoftwareDeveloper != true;
 
 
 
@@ -3451,19 +3465,17 @@ class _ChatBubble extends ConsumerWidget {
 
                                 children: [
 
-                                  Text(
-
-                                    _extractCompanyFromContent(message.content),
-
-                                    style: TextStyle(
-
-                                      color: Colors.grey.shade600,
-
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-
+                                  Flexible(
+                                    child: Text(
+                                      _extractCompanyFromContent(message.content),
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
                                     ),
-
                                   ),
 
                                   if (ticket != null) ...[

@@ -1,42 +1,75 @@
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:js' as js;
+import 'package:flutter/foundation.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'web_eval_stub.dart' if (dart.library.js) 'web_eval_web.dart';
 
-/// Plays a short notification beep using the Web Audio API.
-/// Works in all modern browsers without any asset files.
+/// Service to handle reminder sound notifications across all platforms.
 class ReminderSoundService {
+  static final AudioPlayer _audioPlayer = AudioPlayer();
+
   static void playBeep() {
     try {
-      js.context.callMethod('eval', [
-        '''
-        (function() {
-          try {
-            var AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return;
-            var ctx = new AudioContext();
-
-            function beep(freq, startTime, duration, gain) {
-              var osc = ctx.createOscillator();
-              var gainNode = ctx.createGain();
-              osc.connect(gainNode);
-              gainNode.connect(ctx.destination);
-              osc.type = 'sine';
-              osc.frequency.setValueAtTime(freq, startTime);
-              gainNode.gain.setValueAtTime(gain, startTime);
-              gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-              osc.start(startTime);
-              osc.stop(startTime + duration);
-            }
-
-            var now = ctx.currentTime;
-            beep(880, now,        0.15, 0.4);
-            beep(1100, now + 0.18, 0.15, 0.4);
-            beep(1320, now + 0.36, 0.25, 0.5);
-          } catch(e) {}
-        })();
-        ''',
-      ]);
-    } catch (_) {
-      // Silently fail if Web Audio API is unavailable
+      if (kIsWeb) {
+        _playWebBeep();
+      } else {
+        _playMobileBeep();
+      }
+    } catch (e) {
+      debugPrint('Error playing reminder beep: $e');
     }
+  }
+
+  static void _playMobileBeep() async {
+    try {
+      await _audioPlayer.setVolume(1.0);
+      await _audioPlayer.play(AssetSource('sounds/reminder.wav'));
+    } catch (e) {
+      debugPrint('Error playing mobile reminder sound: $e');
+    }
+  }
+}
+
+void _playWebBeep() {
+  try {
+    evalJs(
+      """
+      (function() {
+        try {
+          var AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          var context = new AudioContext();
+          
+          // Resume audio context if suspended by browser autoplay policy
+          if (context.state === 'suspended') {
+            context.resume();
+          }
+          
+          function playTone(freq, time, duration) {
+            var osc = context.createOscillator();
+            var gain = context.createGain();
+            osc.connect(gain);
+            gain.connect(context.destination);
+            
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.5, time + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+            
+            osc.start(time);
+            osc.stop(time + duration);
+          }
+          
+          var now = context.currentTime;
+          playTone(880, now, 0.25);
+          playTone(1109.73, now + 0.15, 0.4);
+        } catch (e) {
+          console.error("Web audio error:", e);
+        }
+      })();
+      """
+    );
+  } catch (e) {
+    debugPrint('Error playing web reminder sound via JS: $e');
   }
 }

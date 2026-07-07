@@ -62,7 +62,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
 
     await ref.read(chatRepositoryProvider).sendMessage(
           senderId: agent.id,
-          senderName: agent.fullName ?? agent.username,
+          senderName: agent.fullName,
           senderRole: agent.role,
           content: chatContent,
           senderAvatarUrl: agent.avatarUrl,
@@ -88,7 +88,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
           onPressed: _showCreateTicketDialog,
         ),
         body: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 100),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -97,25 +97,42 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                 greeting: 'Admin Dashboard',
                 name: user?.fullName ?? 'Admin',
                 trailing: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 4,
+                  runSpacing: 4,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    if (!_isRestrictedAgent)
-                    OutlinedButton.icon(
-                      icon: const Icon(LucideIcons.hourglass, size: 16),
-                      label: const Text('Unclaimed > 1h'),
-                      onPressed: () => context.push('/tickets?view=stale_unclaimed'),
-                    ),
-                    if (!_isRestrictedAgent)
-                    OutlinedButton.icon(
-                      icon: const Icon(LucideIcons.alertTriangle, size: 16),
-                      label: const Text('Claimed > 12h'),
-                      onPressed: () => context.push('/tickets?view=claimed_overdue'),
+                    if (!_isRestrictedAgent) ...[
+                      OutlinedButton.icon(
+                        icon: const Icon(LucideIcons.hourglass, size: 16),
+                        label: const Text('Unclaimed > 1h'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          textStyle: const TextStyle(fontSize: 13),
+                          minimumSize: const Size(0, 36),
+                        ),
+                        onPressed: () => context.push('/tickets?view=stale_unclaimed'),
+                      ),
+                      OutlinedButton.icon(
+                        icon: const Icon(LucideIcons.alertTriangle, size: 16),
+                        label: const Text('Claimed > 12h'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          textStyle: const TextStyle(fontSize: 13),
+                          minimumSize: const Size(0, 36),
+                        ),
+                        onPressed: () => context.push('/tickets?view=claimed_overdue'),
+                      ),
+                    ],
+                    AppButton.ghost(
+                      label: 'App Settings',
+                      icon: LucideIcons.settings,
+                      size: AppButtonSize.small,
+                      onPressed: () => context.push('/settings'),
                     ),
                     AppButton.ghost(
                       label: 'Refresh',
                       icon: Icons.refresh,
+                      size: AppButtonSize.small,
                       onPressed: () {
                         ref.invalidate(ticketStatsProvider);
                         ref.invalidate(amcStatsProvider);
@@ -127,31 +144,27 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
 
               // Quick Actions
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 4,
+                runSpacing: 4,
                 children: [
                   AppButton.ghost(
                     label: 'View Reports',
                     icon: LucideIcons.barChart3,
+                    size: AppButtonSize.small,
                     onPressed: () => context.push('/reports'),
                   ),
                   AppButton.ghost(
                     label: 'All Tickets',
                     icon: LucideIcons.ticket,
+                    size: AppButtonSize.small,
                     onPressed: () => context.push('/tickets'),
-                  ),
-                  AppButton.ghost(
-                    label: 'App Settings',
-                    icon: LucideIcons.settings,
-                    onPressed: () => context.push('/settings'),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
               // KPI Row: Ticket stats
               LayoutBuilder(
@@ -165,7 +178,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                   // mainAxisExtent would clip the KPI content and trigger the
                   // yellow/black overflow warning banner. Give compact grids a
                   // touch more height so the text + chip fit comfortably.
-                  final tileHeight = crossAxisCount >= 3 ? 190.0 : 220.0;
+                  final tileHeight = crossAxisCount >= 3 ? 140.0 : 175.0;
 
                   return GridView(
                     shrinkWrap: true,
@@ -303,32 +316,38 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                       .toList();
 
                   Duration totalAge = Duration.zero;
-                  var bucket0to4h = 0;
-                  var bucket4to24h = 0;
-                  var bucket1to3d = 0;
-                  var bucketOver3d = 0;
-                  var slaBreachedCount = 0;
+                  // ignore: unused_local_variable
+                  var _bucket0to4h = 0;
+                  // ignore: unused_local_variable
+                  var _bucket4to24h = 0;
+                  // ignore: unused_local_variable
+                  var _bucket1to3d = 0;
+                  // ignore: unused_local_variable
+                  var _bucketOver3d = 0;
+                  // ignore: unused_local_variable
+                  var _slaBreachedCount = 0;
 
                   for (final t in openTicketsForHealth) {
                     final age = now.difference(t.createdAt ?? now);
                     totalAge += age;
                     final hours = age.inHours;
                     if (hours < 4) {
-                      bucket0to4h++;
+                      _bucket0to4h++;
                     } else if (hours < 24) {
-                      bucket4to24h++;
+                      _bucket4to24h++;
                     } else if (hours < 72) {
-                      bucket1to3d++;
+                      _bucket1to3d++;
                     } else {
-                      bucketOver3d++;
+                      _bucketOver3d++;
                     }
 
                     if (t.slaDue != null && t.slaDue!.isBefore(now)) {
-                      slaBreachedCount++;
+                      _slaBreachedCount++;
                     }
                   }
 
-                  final avgAgeHours = openTicketsForHealth.isEmpty
+                  // ignore: unused_local_variable
+                  final _avgAgeHours = openTicketsForHealth.isEmpty
                       ? 0.0
                       : totalAge.inMinutes / openTicketsForHealth.length / 60.0;
 
@@ -522,29 +541,32 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                         ),
                         const SizedBox(height: 12),
                         // Custom Tab Bar
-                        Row(
-                          children: [
-                            _buildTabButton(
-                              label: 'New / Open',
-                              count: newOpenTickets.length,
-                              index: 0,
-                              color: AppColors.info,
-                            ),
-                            const SizedBox(width: 8),
-                            _buildTabButton(
-                              label: 'In Progress',
-                              count: inProgressTickets.length,
-                              index: 1,
-                              color: AppColors.warning,
-                            ),
-                            const SizedBox(width: 8),
-                            _buildTabButton(
-                              label: 'Resolved / Closed',
-                              count: resolvedTickets.length,
-                              index: 2,
-                              color: AppColors.success,
-                            ),
-                          ],
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildTabButton(
+                                label: 'New / Open',
+                                count: newOpenTickets.length,
+                                index: 0,
+                                color: AppColors.info,
+                              ),
+                              const SizedBox(width: 8),
+                              _buildTabButton(
+                                label: 'In Progress',
+                                count: inProgressTickets.length,
+                                index: 1,
+                                color: AppColors.warning,
+                              ),
+                              const SizedBox(width: 8),
+                              _buildTabButton(
+                                label: 'Resolved / Closed',
+                                count: resolvedTickets.length,
+                                index: 2,
+                                color: AppColors.success,
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 16),
                         // Line-by-line Ticket List
@@ -662,7 +684,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? color.withOpacity(0.1) : Colors.transparent,
+          color: isActive ? color.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isActive ? color : AppColors.slate200,
@@ -871,9 +893,9 @@ void _showExpiringAmcDialog(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     margin: const EdgeInsets.only(right: 6, top: 4),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                      color: color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: color.withOpacity(0.3)),
+                      border: Border.all(color: color.withValues(alpha: 0.3)),
                     ),
                     child: Text(
                       '$label: $text',

@@ -900,7 +900,7 @@ final class TicketUpdaterProvider
         argument: null,
         retry: null,
         name: r'ticketUpdaterProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -921,7 +921,7 @@ final class TicketUpdaterProvider
   }
 }
 
-String _$ticketUpdaterHash() => r'a2d48916a9cbf6e169bff37b5ef299748aa255ef';
+String _$ticketUpdaterHash() => r'18e9e332880d07dc4bfdc6a98503f7d5469e8625';
 
 abstract class _$TicketUpdater extends $Notifier<bool> {
   bool build();

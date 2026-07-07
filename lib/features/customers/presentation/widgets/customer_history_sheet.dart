@@ -32,7 +32,7 @@ class CustomerHistoryPage extends ConsumerWidget {
           backgroundColor: Colors.white,
           elevation: 0,
           leading: IconButton(
-            onPressed: () => context.go('/customer/$customerId'),
+            onPressed: () => context.push('/customer/$customerId'),
             icon: const Icon(Icons.arrow_back),
             style: IconButton.styleFrom(
               backgroundColor: AppColors.slate100,

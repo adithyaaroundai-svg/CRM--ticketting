@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -348,6 +349,20 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
+          leading: IconButton(
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/tickets');
+              }
+            },
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Back',
+            style: IconButton.styleFrom(
+              foregroundColor: AppColors.slate700,
+            ),
+          ),
           centerTitle: false,
           titleSpacing: 20,
           toolbarHeight: 60,

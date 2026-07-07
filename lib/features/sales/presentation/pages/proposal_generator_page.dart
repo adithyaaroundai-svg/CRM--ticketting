@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:printing/printing.dart';
@@ -326,8 +326,8 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
               title: Text(
                 existing == null ? 'Add Product Card' : 'Edit Product Card',
               ),
-              content: SizedBox(
-                width: 420,
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -461,8 +461,8 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
               title: Text(
                 existing == null ? 'Add Extra Page' : 'Edit Extra Page',
               ),
-              content: SizedBox(
-                width: 420,
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -713,6 +713,68 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
     }
   }
 
+  void _showProposalDetails(ProposalHistoryItem item) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(LucideIcons.fileText, size: 24),
+            const SizedBox(width: 8),
+            const Expanded(child: Text('Proposal Details')),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _detailRow('Client Name', item.clientName),
+              _detailRow('Phone Number', item.clientPhone),
+              _detailRow('Email', item.clientEmail),
+              _detailRow('Document Number', item.docNumber),
+              _detailRow('Total Amount', '₹${item.totalAmount.toStringAsFixed(2)}'),
+              _detailRow('Downloaded At', DateFormat('d/M/yyyy h:mm a').format(item.downloadedAt.toLocal())),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: cGray700,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isNotEmpty ? value : '-',
+              style: const TextStyle(color: cGray900),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showHistoryDialog() {
     // Refresh history when opening dialog
     _loadHistory();
@@ -726,8 +788,7 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
               children: [
                 const Icon(LucideIcons.history, size: 24),
                 const SizedBox(width: 8),
-                const Text('Proposal History'),
-                const Spacer(),
+                const Expanded(child: Text('Proposal History')),
                 if (_isLoadingHistory)
                   const SizedBox(
                     width: 16,
@@ -744,9 +805,8 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
                   ),
               ],
             ),
-            content: SizedBox(
-              width: 500,
-              height: 400,
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500, maxHeight: 400),
               child: _proposalHistory.isEmpty
                   ? const Center(
                       child: Text(
@@ -760,48 +820,93 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
                         final item = _proposalHistory[index];
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: cBlue600,
-                              child: Text(
-                                item.clientName.isNotEmpty
-                                    ? item.clientName.substring(0, 1).toUpperCase()
-                                    : '?',
-                                style: const TextStyle(color: Colors.white),
+                          child: InkWell(
+                            onTap: () => _showProposalDetails(item),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: cBlue600,
+                                        child: Text(
+                                          item.clientName.isNotEmpty
+                                              ? item.clientName.substring(0, 1).toUpperCase()
+                                              : '?',
+                                          style: const TextStyle(color: Colors.white),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              item.clientName,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              item.clientPhone,
+                                              style: const TextStyle(
+                                                color: cGray600,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '₹${item.totalAmount.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: cGreen600,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  if (item.clientEmail.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: Text(
+                                        item.clientEmail,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: cGray700,
+                                        ),
+                                      ),
+                                    ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Doc: ${item.docNumber}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: cGray500,
+                                        ),
+                                      ),
+                                      Text(
+                                        DateFormat('d/M/yyyy h:mm a')
+                                            .format(item.downloadedAt.toLocal()),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: cGray500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ),
-                            title: Text(item.clientName),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(item.clientPhone),
-                                if (item.clientEmail.isNotEmpty)
-                                  Text(item.clientEmail),
-                                Text(
-                                  'Doc: ${item.docNumber}',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ],
-                            ),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '₹${item.totalAmount.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: cGreen600,
-                                  ),
-                                ),
-                                Text(
-                                  DateFormat('d/M/yyyy h:mm a').format(item.downloadedAt),
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: cGray500,
-                                  ),
-                                ),
-                              ],
                             ),
                           ),
                         );
@@ -859,7 +964,7 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
         ..write(product.title)
         ..write(product.subtitle)
         ..write(product.price)
-        ..write(product.color.value)
+        ..write(product.color.toARGB32())
         ..write(product.style.index)
         ..write(product.isStrikethroughPrice ? 1 : 0);
     }
@@ -869,7 +974,7 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
         ..write('|C|')
         ..write(page.title)
         ..write(page.description)
-        ..write(page.color.value)
+        ..write(page.color.toARGB32())
         ..write(page.style.index);
     }
 
@@ -991,6 +1096,7 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
     });
   }
 
+  // ignore: unused_element
   Future<String?> _uploadProposalPdf(Uint8List pdfBytes, String pdfKey) async {
     if (_cachedPdfUrl != null && _cachedPdfUrlKey == pdfKey) {
       return _cachedPdfUrl;
@@ -1127,118 +1233,141 @@ Sidharth IT Solutions''';
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: SafeArea(
               bottom: false,
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: cGray900),
-                    onPressed: () => Navigator.of(context).canPop()
-                        ? Navigator.of(context).pop()
-                        : context.go('/'),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'Proposal Generator',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: cGray900,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isMobile = constraints.maxWidth < 800;
+                  final actionButtons = [
+                    ElevatedButton.icon(
+                      icon: Icon(
+                        isEditing ? LucideIcons.eye : LucideIcons.edit2,
+                        size: 16,
+                      ),
+                      label: Text(isEditing ? 'Preview Mode' : 'Edit Content'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isEditing ? cGray200 : cBlue600,
+                        foregroundColor: isEditing ? cGray700 : Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () => setState(() => isEditing = !isEditing),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      icon: const Icon(LucideIcons.history, size: 16),
+                      label: const Text('History'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: cGray100,
+                        foregroundColor: cGray700,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: _showHistoryDialog,
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      icon: _isSharingWhatsApp
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(LucideIcons.messageCircle, size: 16),
+                      label: Text(
+                        _isSharingWhatsApp ? 'Opening...' : 'Share WhatsApp',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF25D366),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: _isSharingWhatsApp
+                          ? null
+                          : () => _shareOnWhatsApp(),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      icon: _isGeneratingPdf
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(LucideIcons.download, size: 16),
+                      label: Text(
+                        _isGeneratingPdf ? 'Generating...' : 'Download PDF',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: cGreen600,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: _isGeneratingPdf
+                          ? null
+                          : () => _shareOrDownloadPdf(),
+                    ),
+                  ];
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back, color: cGray900),
+                            onPressed: () => Navigator.of(context).canPop()
+                                ? Navigator.of(context).pop()
+                                : context.go('/'),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  'Proposal Generator',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: cGray900,
+                                  ),
+                                ),
+                                Text(
+                                  'Sidharth IT Solutions',
+                                  style: TextStyle(fontSize: 13, color: cGray600),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (!isMobile) ...actionButtons,
+                        ],
+                      ),
+                      if (isMobile) ...[
+                        const SizedBox(height: 12),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: actionButtons,
                           ),
                         ),
-                        Text(
-                          'Sidharth IT Solutions',
-                          style: TextStyle(fontSize: 13, color: cGray600),
-                        ),
                       ],
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    icon: Icon(
-                      isEditing ? LucideIcons.eye : LucideIcons.edit2,
-                      size: 16,
-                    ),
-                    label: Text(isEditing ? 'Preview Mode' : 'Edit Content'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isEditing ? cGray200 : cBlue600,
-                      foregroundColor: isEditing ? cGray700 : Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () => setState(() => isEditing = !isEditing),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    icon: const Icon(LucideIcons.history, size: 16),
-                    label: const Text('History'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: cGray100,
-                      foregroundColor: cGray700,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: _showHistoryDialog,
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    icon: _isSharingWhatsApp
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(LucideIcons.messageCircle, size: 16),
-                    label: Text(
-                      _isSharingWhatsApp ? 'Opening...' : 'Share WhatsApp',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF25D366),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: _isSharingWhatsApp
-                        ? null
-                        : () => _shareOnWhatsApp(),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    icon: _isGeneratingPdf
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(LucideIcons.download, size: 16),
-                    label: Text(
-                      _isGeneratingPdf ? 'Generating...' : 'Download PDF',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: cGreen600,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: _isGeneratingPdf
-                        ? null
-                        : () => _shareOrDownloadPdf(),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -2029,6 +2158,7 @@ Sidharth IT Solutions''';
     );
   }
 
+  // ignore: unused_element
   Widget _buildMetricCard({
     required String label,
     required String value,
@@ -2382,6 +2512,7 @@ Sidharth IT Solutions''';
     );
   }
 
+  // ignore: unused_element
   Widget _buildImplementationTimeline(Map<String, dynamic> theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2475,6 +2606,7 @@ Sidharth IT Solutions''';
     );
   }
 
+  // ignore: unused_element
   Widget _buildPaymentInfo(Map<String, dynamic> theme) {
     return Container(
       padding: const EdgeInsets.all(24),

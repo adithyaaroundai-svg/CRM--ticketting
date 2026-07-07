@@ -59,7 +59,7 @@ class CustomerInfoCard extends StatelessWidget {
                 ],
                 const SizedBox(width: 8),
                 IconButton(
-                  onPressed: () => context.go('/customer/${customer.id}/edit'),
+                  onPressed: () => context.push('/customer/${customer.id}/edit'),
                   icon: const Icon(LucideIcons.edit2, size: 16),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -134,7 +134,7 @@ class CustomerInfoCard extends StatelessWidget {
                 ],
               ),
               IconButton(
-                onPressed: () => context.go('/customer/${customer.id}/edit'),
+                onPressed: () => context.push('/customer/${customer.id}/edit'),
                 icon: const Icon(LucideIcons.edit, size: 18),
                 tooltip: 'Edit Customer',
                 style: IconButton.styleFrom(

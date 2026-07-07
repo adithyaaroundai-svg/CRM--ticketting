@@ -157,11 +157,13 @@ class _WikiPageState extends ConsumerState<WikiPage> {
       currentPath: '/wiki',
       child: Scaffold(
         backgroundColor: AppColors.slate50,
-        body: Row(
-          children: [
-            // Left: Article List
-            SizedBox(
-              width: 320,
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 700;
+            final showDetail = isMobile && (_selectedArticle != null || _isCreating);
+
+            final articleList = SizedBox(
+              width: isMobile ? double.infinity : 320,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -372,20 +374,52 @@ class _WikiPageState extends ConsumerState<WikiPage> {
                   ),
                 ],
               ),
-            ),
-            const VerticalDivider(width: 1),
+            );
 
-            // Right: Article Detail / Editor
-            Expanded(child: _buildDetailPane(canEdit)),
-          ],
+            if (isMobile) {
+              return showDetail
+                  ? Column(
+                      children: [
+                        Expanded(child: _buildDetailPane(canEdit)),
+                      ],
+                    )
+                  : articleList;
+            }
+
+            return Row(
+              children: [
+                articleList,
+                const VerticalDivider(width: 1),
+                Expanded(child: _buildDetailPane(canEdit)),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
   Widget _buildDetailPane(bool canEdit) {
+    final isMobile = MediaQuery.of(context).size.width < 700;
+
+    Widget backButton() => IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, size: 20),
+          onPressed: () => setState(() {
+            _selectedArticle = null;
+            _isCreating = false;
+            _isEditing = false;
+          }),
+          tooltip: 'Back',
+        );
+
     if (_isCreating) {
-      return _buildEditor(isNew: true, canEdit: canEdit);
+      return Column(
+        children: [
+          if (isMobile)
+            Align(alignment: Alignment.centerLeft, child: backButton()),
+          Expanded(child: _buildEditor(isNew: true, canEdit: canEdit)),
+        ],
+      );
     }
 
     if (_selectedArticle == null) {
@@ -405,10 +439,22 @@ class _WikiPageState extends ConsumerState<WikiPage> {
     }
 
     if (_isEditing) {
-      return _buildEditor(isNew: false, canEdit: canEdit);
+      return Column(
+        children: [
+          if (isMobile)
+            Align(alignment: Alignment.centerLeft, child: backButton()),
+          Expanded(child: _buildEditor(isNew: false, canEdit: canEdit)),
+        ],
+      );
     }
 
-    return _buildArticleView(canEdit);
+    return Column(
+      children: [
+        if (isMobile)
+          Align(alignment: Alignment.centerLeft, child: backButton()),
+        Expanded(child: _buildArticleView(canEdit)),
+      ],
+    );
   }
 
   Widget _buildArticleView(bool canEdit) {

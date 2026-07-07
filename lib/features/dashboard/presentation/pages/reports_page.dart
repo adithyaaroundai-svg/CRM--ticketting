@@ -262,6 +262,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                                 ),
                                 const SizedBox(height: 12),
                                 DropdownButtonFormField<String>(
+                                  isExpanded: true,
                                   initialValue: _priorityFilter,
                                   decoration: InputDecoration(
                                     border: OutlineInputBorder(
@@ -321,6 +322,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                                 ),
                                 const SizedBox(height: 12),
                                 DropdownButtonFormField<String>(
+                                  isExpanded: true,
                                   initialValue: _categoryFilter,
                                   decoration: InputDecoration(
                                     border: OutlineInputBorder(
@@ -385,6 +387,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                           ),
                           const SizedBox(height: 12),
                           DropdownButtonFormField<String>(
+                            isExpanded: true,
                             initialValue: _statusFilter,
                             decoration: InputDecoration(
                               border: OutlineInputBorder(
@@ -437,44 +440,68 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                         return Column(
                           children: [
                             // Summary Cards
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildStatCard(
-                                    title: 'Total Tickets',
-                                    value: stats['total'].toString(),
-                                    icon: LucideIcons.ticket,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: _buildStatCard(
-                                    title: 'Resolved',
-                                    value: stats['resolved'].toString(),
-                                    icon: LucideIcons.checkCircle,
-                                    color: AppColors.success,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: _buildStatCard(
-                                    title: 'Pending',
-                                    value: stats['pending'].toString(),
-                                    icon: LucideIcons.clock,
-                                    color: AppColors.warning,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: _buildStatCard(
-                                    title: 'Billed',
-                                    value: stats['billed'].toString(),
-                                    icon: LucideIcons.receipt,
-                                    color: AppColors.info,
-                                  ),
-                                ),
-                              ],
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final isMobile = constraints.maxWidth < 800;
+                                final totalCard = _buildStatCard(
+                                  title: 'Total Tickets',
+                                  value: stats['total'].toString(),
+                                  icon: LucideIcons.ticket,
+                                  color: AppColors.primary,
+                                );
+                                final resolvedCard = _buildStatCard(
+                                  title: 'Resolved',
+                                  value: stats['resolved'].toString(),
+                                  icon: LucideIcons.checkCircle,
+                                  color: AppColors.success,
+                                );
+                                final pendingCard = _buildStatCard(
+                                  title: 'Pending',
+                                  value: stats['pending'].toString(),
+                                  icon: LucideIcons.clock,
+                                  color: AppColors.warning,
+                                );
+                                final billedCard = _buildStatCard(
+                                  title: 'Billed',
+                                  value: stats['billed'].toString(),
+                                  icon: LucideIcons.receipt,
+                                  color: AppColors.info,
+                                );
+
+                                if (isMobile) {
+                                  return Column(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(child: totalCard),
+                                          const SizedBox(width: 16),
+                                          Expanded(child: resolvedCard),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        children: [
+                                          Expanded(child: pendingCard),
+                                          const SizedBox(width: 16),
+                                          Expanded(child: billedCard),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                }
+
+                                return Row(
+                                  children: [
+                                    Expanded(child: totalCard),
+                                    const SizedBox(width: 16),
+                                    Expanded(child: resolvedCard),
+                                    const SizedBox(width: 16),
+                                    Expanded(child: pendingCard),
+                                    const SizedBox(width: 16),
+                                    Expanded(child: billedCard),
+                                  ],
+                                );
+                              },
                             ),
                             const SizedBox(height: 24),
 

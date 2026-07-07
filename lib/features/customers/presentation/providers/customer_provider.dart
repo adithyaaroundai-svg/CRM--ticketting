@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../customers/domain/entities/customer.dart';
 import '../../../tickets/presentation/providers/ticket_provider.dart';
+import '../../../../core/utils/json_converters.dart';
 
 part 'customer_provider.g.dart';
 
@@ -34,7 +35,7 @@ Future<Map<String, int>> amcStats(Ref ref) async {
     for (var customer in response) {
       final amcDate = customer['amc_expiry_date'];
       if (amcDate != null) {
-        final expiry = DateTime.parse(amcDate);
+        final expiry = parseUtcDate(amcDate.toString());
         if (expiry.isAfter(now)) {
           active++;
         } else {

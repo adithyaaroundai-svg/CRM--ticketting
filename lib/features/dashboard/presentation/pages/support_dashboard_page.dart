@@ -137,7 +137,7 @@ class _SupportDashboardPageState extends ConsumerState<SupportDashboardPage> {
     try {
       await ref.read(chatRepositoryProvider).sendMessage(
             senderId: agent.id,
-            senderName: agent.fullName ?? agent.username,
+            senderName: agent.fullName,
             senderRole: agent.role,
             content: chatContent,
             senderAvatarUrl: agent.avatarUrl,
@@ -152,7 +152,6 @@ class _SupportDashboardPageState extends ConsumerState<SupportDashboardPage> {
   Widget build(BuildContext context) {
     final ticketsAsync = ref.watch(ticketsStreamProvider);
     final currentUser = ref.watch(authProvider);
-    final customersAsync = ref.watch(customersListProvider);
 
     return MainLayout(
       currentPath: '/support',
@@ -238,11 +237,6 @@ class _SupportDashboardPageState extends ConsumerState<SupportDashboardPage> {
               ),
             ];
 
-            final forceClaimButton = currentUser?.isSupportHead == true;
-            final isCustomersLoading = customersAsync.isLoading;
-
-            final resolvedSet = {'Resolved', 'Closed', 'BillProcessed', 'BillRaised'};
-            
             // Combine all tickets into a single list
             final allCombinedTickets = _filterTicketsByDateRange(
               allTickets
@@ -254,74 +248,49 @@ class _SupportDashboardPageState extends ConsumerState<SupportDashboardPage> {
             return Column(
               children: [
                 // Top stats row
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: WelcomeHeader(
-                          name: currentUser?.username ?? 'Support',
-                          subtitle: 'Your support dashboard and ticket queue',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        flex: 4,
-                        child: _QueueStatTiles(stats: queueStats),
-                      ),
-                      const SizedBox(width: 8),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              OutlinedButton.icon(
-                                icon: const Icon(LucideIcons.calendar, size: 14),
-                                label: Text(
-                                  _startDate != null && _endDate != null
-                                      ? '${_startDate!.day}/${_startDate!.month} - ${_endDate!.day}/${_endDate!.month}'
-                                      : 'Filter Date',
-                                  style: const TextStyle(fontSize: 11),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isMobile = constraints.maxWidth < 700;
+                    final actions = _buildTopActions(context, ref);
+
+                    return Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      child: isMobile
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                WelcomeHeader(
+                                  name: currentUser?.username ?? 'Support',
+                                  subtitle: 'Your support dashboard and ticket queue',
                                 ),
-                                onPressed: _selectDateRange,
-                              ),
-                              if (_startDate != null && _endDate != null)
-                                IconButton(
-                                  icon: const Icon(Icons.close, size: 16),
-                                  onPressed: _clearDateFilter,
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
+                                const SizedBox(height: 12),
+                                actions,
+                                const SizedBox(height: 12),
+                                _QueueStatTiles(stats: queueStats),
+                              ],
+                            )
+                          : Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: WelcomeHeader(
+                                    name: currentUser?.username ?? 'Support',
+                                    subtitle: 'Your support dashboard and ticket queue',
+                                  ),
                                 ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          if (!_isRestrictedAgent)
-                          OutlinedButton.icon(
-                            icon: const Icon(LucideIcons.hourglass, size: 14),
-                            label: const Text('Unclaimed > 1h', style: TextStyle(fontSize: 11)),
-                            onPressed: () => context.push('/tickets?view=stale_unclaimed'),
-                          ),
-                          const SizedBox(height: 4),
-                          if (!_isRestrictedAgent)
-                          OutlinedButton.icon(
-                            icon: const Icon(LucideIcons.alertTriangle, size: 14),
-                            label: const Text('Claimed > 12h', style: TextStyle(fontSize: 11)),
-                            onPressed: () => context.push('/tickets?view=claimed_overdue'),
-                          ),
-                          const SizedBox(height: 4),
-                          IconButton(
-                            icon: const Icon(Icons.refresh, size: 20),
-                            onPressed: () => ref.invalidate(rawTicketsStreamProvider),
-                            tooltip: 'Refresh',
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  flex: 4,
+                                  child: _QueueStatTiles(stats: queueStats),
+                                ),
+                                const SizedBox(width: 8),
+                                actions,
+                              ],
+                            ),
+                    );
+                  },
                 ),
                 const Divider(height: 1, color: AppColors.slate200),
                 // Single Table View
@@ -355,45 +324,55 @@ class _SupportDashboardPageState extends ConsumerState<SupportDashboardPage> {
     );
   }
 
-  
-  Widget _buildUnifiedClaimList(
-    BuildContext context, {
-    required List<Ticket> tickets,
-    required bool forceClaimButton,
-  }) {
-    if (tickets.isEmpty) {
-      return EmptyStateCard(
-        icon: LucideIcons.inbox,
-        title: 'All queues are clear',
-        subtitle: 'No unclaimed tickets are waiting right now.',
-      );
-    }
-
-    final limitedTickets = tickets.take(12).toList();
-    final showViewAll = tickets.length > limitedTickets.length;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildTopActions(BuildContext context, WidgetRef ref) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        TicketsTableView(
-          tickets: limitedTickets,
-          showAllTickets: false,
-          showOnlyMine: false,
-          showOnlyUnclaimed: true,
-          groupResolved: false,
-        ),
-        if (showViewAll)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => context.push('/tickets?view=unclaimed'),
-              icon: const Icon(LucideIcons.arrowRight),
-              label: Text('View all ${tickets.length} unclaimed tickets'),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            OutlinedButton.icon(
+              icon: const Icon(LucideIcons.calendar, size: 14),
+              label: Text(
+                _startDate != null && _endDate != null
+                    ? '${_startDate!.day}/${_startDate!.month} - ${_endDate!.day}/${_endDate!.month}'
+                    : 'Filter Date',
+                style: const TextStyle(fontSize: 11),
+              ),
+              onPressed: _selectDateRange,
             ),
+            if (_startDate != null && _endDate != null)
+              IconButton(
+                icon: const Icon(Icons.close, size: 16),
+                onPressed: _clearDateFilter,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+          ],
+        ),
+        if (!_isRestrictedAgent)
+          OutlinedButton.icon(
+            icon: const Icon(LucideIcons.hourglass, size: 14),
+            label: const Text('Unclaimed > 1h', style: TextStyle(fontSize: 11)),
+            onPressed: () => context.push('/tickets?view=stale_unclaimed'),
           ),
+        if (!_isRestrictedAgent)
+          OutlinedButton.icon(
+            icon: const Icon(LucideIcons.alertTriangle, size: 14),
+            label: const Text('Claimed > 12h', style: TextStyle(fontSize: 11)),
+            onPressed: () => context.push('/tickets?view=claimed_overdue'),
+          ),
+        IconButton(
+          icon: const Icon(Icons.refresh, size: 20),
+          onPressed: () => ref.invalidate(rawTicketsStreamProvider),
+          tooltip: 'Refresh',
+        ),
       ],
     );
   }
+
 }
 
 class _QueueStat {

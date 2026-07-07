@@ -176,7 +176,7 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
         chatContent = [
           'Company: $companyName',
           'Issue: $subject',
-          'TicketID: ${ticketToReturn!.ticketId}',
+          'TicketID: ${createdTicket.ticketId}',
         ].join('\n');
 
         ref.invalidate(rawTicketsStreamProvider);
@@ -252,7 +252,7 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
     final customersAsync = ref.watch(customersListProvider);
 
     final screenWidth = MediaQuery.of(context).size.width;
-    final dialogWidth = math.max(520.0, math.min(screenWidth - 72, 860.0));
+    final dialogWidth = math.max(280.0, math.min(screenWidth - 72, 860.0));
 
     return Align(
       alignment: Alignment.topCenter,
@@ -588,8 +588,10 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
                       ),
 
                       const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                      OverflowBar(
+                        alignment: MainAxisAlignment.end,
+                        spacing: 10,
+                        overflowSpacing: 10,
                         children: [
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),
@@ -605,7 +607,6 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
                           FilledButton(
                             onPressed: _isSubmitting
                                 ? null

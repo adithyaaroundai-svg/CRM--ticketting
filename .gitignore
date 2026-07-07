@@ -87,3 +87,4 @@ __pycache__/
 *.p12
 *.jks
 *.keystore
+.env*

@@ -27,12 +27,12 @@ class _CannedResponseDialogState extends ConsumerState<CannedResponseDialog> {
     final responsesAsync = ref.watch(cannedResponsesProvider);
 
     return Dialog(
-      child: Container(
-        width: 500,
-        constraints: const BoxConstraints(maxHeight: 600),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -147,6 +147,7 @@ class _CannedResponseDialogState extends ConsumerState<CannedResponseDialog> {
             ],
           ],
         ),
+        ),
       ),
     );
   }
@@ -224,14 +225,15 @@ class _CreateResponseFormState extends ConsumerState<_CreateResponseForm> {
             validator: (val) => val?.isEmpty == true ? 'Required' : null,
           ),
           const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          OverflowBar(
+            alignment: MainAxisAlignment.end,
+            spacing: 8,
+            overflowSpacing: 8,
             children: [
               TextButton(
                 onPressed: widget.onCancel,
                 child: const Text('Cancel'),
               ),
-              const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: _isSubmitting ? null : _submit,
                 style: ElevatedButton.styleFrom(

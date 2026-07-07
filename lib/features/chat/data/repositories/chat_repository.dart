@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/chat_message.dart';
@@ -75,7 +74,7 @@ class ChatRepository {
   }
 
   // Send a message
-  Future<void> sendMessage({
+  Future<String> sendMessage({
     required String senderId,
     required String senderName,
     required String senderRole,
@@ -127,7 +126,8 @@ class ChatRepository {
       payload['file_type'] = fileType;
     }
     
-    await _client.from('chat_messages').insert(payload);
+    final response = await _client.from('chat_messages').insert(payload).select('id').single();
+    return response['id'] as String;
   }
 
   // Soft delete a message
@@ -192,18 +192,28 @@ class ChatRepository {
 
     final currentReactions = response['reactions'] as List<dynamic>? ?? [];
 
-    // Check if user already reacted with this emoji
+    // Check if user already reacted with any emoji
     final existingIndex = currentReactions.indexWhere(
-      (r) => r['user_id'] == userId && r['emoji'] == emoji,
+      (r) => r['user_id'] == userId,
     );
 
     List<dynamic> updatedReactions;
 
     if (existingIndex != -1) {
-      // Remove the reaction (toggle off)
-      updatedReactions = List.from(currentReactions)..removeAt(existingIndex);
+      if (currentReactions[existingIndex]['emoji'] == emoji) {
+        // Same emoji -> remove the reaction (toggle off)
+        updatedReactions = List.from(currentReactions)..removeAt(existingIndex);
+      } else {
+        // Different emoji -> replace the reaction
+        updatedReactions = List.from(currentReactions);
+        updatedReactions[existingIndex] = {
+          'user_id': userId,
+          'emoji': emoji,
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+        };
+      }
     } else {
-      // Add the reaction
+      // No existing reaction -> add the reaction
       updatedReactions = [
         ...currentReactions,
         {

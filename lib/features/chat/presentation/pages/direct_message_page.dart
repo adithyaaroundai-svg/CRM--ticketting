@@ -432,6 +432,7 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
 
 
 
+  // ignore: unused_element
   Future<void> _showCreateTicketDialog() async {
 
     final createdTicket = await showDialog<Ticket>(
@@ -520,6 +521,40 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
 
   }
 
+  Future<void> _launchTeamsCall(String? teamsUserId, {required bool video}) async {
+    if (teamsUserId == null || teamsUserId.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This agent has not set up their Microsoft Teams ID yet.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
+    final encoded = Uri.encodeComponent(teamsUserId.trim());
+    final url = video
+        ? 'https://teams.microsoft.com/l/call/0/0?users=$encoded&withVideo=true'
+        : 'https://teams.microsoft.com/l/call/0/0?users=$encoded';
+
+    final uri = Uri.parse(url);
+    if (await url_launcher.canLaunchUrl(uri)) {
+      await url_launcher.launchUrl(uri, mode: url_launcher.LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open Microsoft Teams. Please make sure it is installed.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
 
 
   @override
@@ -547,6 +582,7 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     );
     final partnerName = (partnerData['full_name'] ?? partnerData['username'] ?? '').toString();
     final partnerAvatarUrl = partnerData['avatar_url'] as String?;
+    final partnerTeamsId = partnerData['teams_user_id'] as String?;
 
     ref.listen(dmStreamProvider(widget.partnerId), (previous, next) {
       if (next is AsyncData<List<ChatMessage>> && next.value.isNotEmpty) {
@@ -585,9 +621,20 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
         backgroundColor: const Color(0xFFF8FAFC),
 
         appBar: AppBar(
-          automaticallyImplyLeading: false,
-          leading: const SizedBox.shrink(),
-          leadingWidth: 0,
+          leading: IconButton(
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/chat');
+              }
+            },
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Back',
+            style: IconButton.styleFrom(
+              foregroundColor: const Color(0xFF1E293B),
+            ),
+          ),
           title: Row(
             children: [
               // Avatar
@@ -600,7 +647,7 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                   shape: BoxShape.circle,
                   image: partnerAvatarUrl != null
                       ? DecorationImage(
-                          image: NetworkImage(partnerAvatarUrl!),
+                          image: NetworkImage(partnerAvatarUrl),
                           fit: BoxFit.cover,
                         )
                       : null,
@@ -653,75 +700,21 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
 
           actions: [
 
-            Container(
-
-              margin: const EdgeInsets.only(right: 8),
-
-              child: FilledButton(
-
-                onPressed: _showCreateTicketDialog,
-
-                style: FilledButton.styleFrom(
-
-                  backgroundColor: AppColors.primary,
-
-                  padding: const EdgeInsets.symmetric(
-
-                    horizontal: 16,
-
-                    vertical: 8,
-
-                  ),
-
-                  shape: RoundedRectangleBorder(
-
-                    borderRadius: BorderRadius.circular(6),
-
-                  ),
-
-                ),
-
-                child: const Row(
-
-                  mainAxisSize: MainAxisSize.min,
-
-                  children: [
-
-                    Icon(
-
-                      LucideIcons.plus,
-
-                      size: 16,
-
-                      color: Colors.white,
-
-                    ),
-
-                    SizedBox(width: 6),
-
-                    Text(
-
-                      'Raise a Ticket',
-
-                      style: TextStyle(
-
-                        fontWeight: FontWeight.w500,
-
-                        color: Colors.white,
-
-                        fontSize: 13,
-
-                      ),
-
-                    ),
-
-                  ],
-
-                ),
-
-              ),
-
+            // Audio Call button
+            _CallButton(
+              icon: LucideIcons.phone,
+              tooltip: 'Audio Call via Teams',
+              onTap: () => _launchTeamsCall(partnerTeamsId, video: false),
             ),
+
+            // Video Call button
+            _CallButton(
+              icon: LucideIcons.video,
+              tooltip: 'Video Call via Teams',
+              onTap: () => _launchTeamsCall(partnerTeamsId, video: true),
+            ),
+
+            const SizedBox(width: 8),
 
           ],
 
@@ -964,6 +957,7 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
 
 
 
+  // ignore: unused_element
   void _handleBack(BuildContext context, Agent? currentUser) {
 
     if (context.canPop()) {
@@ -1186,30 +1180,51 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
 
 
     setState(() {
-
       _showMentions = false;
-
     });
-
   }
 
-
+  void _triggerMention() {
+    final text = _textCtrl.text;
+    final selection = _textCtrl.selection;
+    
+    int insertOffset = selection.baseOffset;
+    if (insertOffset == -1) {
+      insertOffset = text.length;
+    }
+    
+    String prefix = '@';
+    if (insertOffset > 0 && text[insertOffset - 1] != ' ') {
+      prefix = ' @';
+    }
+    
+    final newText = text.replaceRange(insertOffset, insertOffset, prefix);
+    
+    _textCtrl.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: insertOffset + prefix.length),
+    );
+    
+    setState(() {
+      _showMentions = true;
+      _mentionQuery = '';
+      _mentionStartIndex = insertOffset + (prefix.length - 1);
+    });
+    
+    _messageFocusNode.requestFocus();
+  }
 
   Widget _buildInputArea() {
 
-    return Container(
-
-      padding: EdgeInsets.fromLTRB(
-
-        16,
-
-        12,
-
-        16,
-
-        12 + MediaQuery.of(context).padding.bottom,
-
-      ),
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(
+          16,
+          12,
+          16,
+          12,
+        ),
 
       decoration: BoxDecoration(
 
@@ -1449,6 +1464,14 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                     padding: const EdgeInsets.only(left: 8, right: 12),
                     child: Row(
                       children: [
+                        // Mention button
+                        IconButton(
+                          icon: const Icon(Icons.alternate_email, color: Color(0xFF6B7280), size: 20),
+                          onPressed: _triggerMention,
+                          tooltip: 'Mention',
+                          padding: const EdgeInsets.all(8),
+                          constraints: const BoxConstraints(),
+                        ),
                         // GIF button
                         IconButton(
                           icon: const Icon(Icons.movie_outlined, color: Color(0xFF6B7280), size: 20),
@@ -1522,11 +1545,9 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
       ),
 
         ],
-
       ),
-
+      ),
     );
-
   }
 
 
@@ -1592,6 +1613,7 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     });
   }
 
+  // ignore: unused_element
   Future<void> _pickFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -2199,6 +2221,7 @@ class _ChatBubble extends ConsumerWidget {
 
   }
 
+  // ignore: unused_element
   bool _isSenderOnline(String senderId, List<Map<String, dynamic>> agents) {
     final now = DateTime.now();
     final senderAgent = agents.firstWhere(
@@ -2442,6 +2465,7 @@ class _ChatBubble extends ConsumerWidget {
 
 
 
+  // ignore: unused_element
   String _visibleTicketContent(String content) {
 
     return content
@@ -2699,10 +2723,6 @@ class _ChatBubble extends ConsumerWidget {
 
     }
 
-    final agentsAsync = ref.watch(agentsListProvider);
-
-
-
     return Container(
 
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -2837,12 +2857,9 @@ class _ChatBubble extends ConsumerWidget {
 
                   // Header with name and timestamp
 
-                  Row(
-
-                    mainAxisSize: MainAxisSize.min,
-
-                    mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-
+                  Wrap(
+                    alignment: isMe ? WrapAlignment.end : WrapAlignment.start,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
 
                       if (!isMe) ...[
@@ -3125,7 +3142,7 @@ class _ChatBubble extends ConsumerWidget {
 
                   // Time proximity - tickets created around the same time get bonus
 
-                  if (item.createdAt != null && message.createdAt != null) {
+                  if (item.createdAt != null) {
 
                     final timeDiff = item.createdAt!.difference(message.createdAt).inMinutes.abs();
 
@@ -3243,7 +3260,6 @@ class _ChatBubble extends ConsumerWidget {
 
               final isClaimed = ticket?.assignedTo != null && ticket!.assignedTo!.isNotEmpty;
 
-              final isClaimedByMe = ticket?.assignedTo == currentUser?.id;
 
               final canClaim = currentUser != null; // Anyone can claim tickets now
 
@@ -3266,7 +3282,7 @@ class _ChatBubble extends ConsumerWidget {
                   InkWell(
                     onTap: ticket != null &&
                         // Allow click if ticket is unclaimed OR claimed by current user
-                        (ticket!.assignedTo == null ||
+                        (ticket.assignedTo == null ||
                          ticket.assignedTo!.isEmpty ||
                          ticket.assignedTo == currentUser?.id)
                         ? () => context.push('/ticket/${ticket?.ticketId}')
@@ -3388,7 +3404,7 @@ class _ChatBubble extends ConsumerWidget {
                                           ),
                                         ),
                                         TextSpan(
-                                          text: _getAssignedAgentName(ticket?.assignedTo, agentsAsync.value ?? []),
+                                          text: _getAssignedAgentName(ticket.assignedTo, agentsAsync.value ?? []),
                                           style: TextStyle(
                                             color: Colors.grey.shade600,
                                             fontSize: 12,
@@ -3397,7 +3413,7 @@ class _ChatBubble extends ConsumerWidget {
                                           ),
                                         ),
                                         TextSpan(
-                                          text: ' - ${_getFormattedStatus(ticket?.status)}',
+                                          text: ' - ${_getFormattedStatus(ticket.status)}',
                                           style: TextStyle(
                                             color: Colors.grey.shade600,
                                             fontSize: 10,
@@ -3412,10 +3428,11 @@ class _ChatBubble extends ConsumerWidget {
                               // Company and status info
 
                               Row(
-
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
 
-                                  Text(
+                                  Flexible(
+                                    child: Text(
 
                                     _extractCompanyFromContent(message.content),
 
@@ -3428,6 +3445,10 @@ class _ChatBubble extends ConsumerWidget {
 
                                     ),
 
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+
+                                  ),
                                   ),
 
                                   if (ticket != null) ...[
@@ -3444,7 +3465,7 @@ class _ChatBubble extends ConsumerWidget {
 
                                         decoration: BoxDecoration(
 
-                                          color: _getStatusColor(ticket.status).withOpacity(0.1),
+                                          color: _getStatusColor(ticket.status).withValues(alpha: 0.1),
 
                                           borderRadius: BorderRadius.circular(8),
 
@@ -3490,13 +3511,13 @@ class _ChatBubble extends ConsumerWidget {
                                 vertical: 8,
                               ),
                               decoration: BoxDecoration(
-                                color: _isResolvedStatus(ticket?.status)
+                                color: _isResolvedStatus(ticket.status)
                                     ? AppColors.success
                                     : Colors.grey[500],
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                _isResolvedStatus(ticket?.status) ? 'Resolved' : 'Claimed',
+                                _isResolvedStatus(ticket.status) ? 'Resolved' : 'Claimed',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,
@@ -3685,10 +3706,46 @@ class _ChatBubble extends ConsumerWidget {
               ),
             ),
           ],
-          _RichMessageText(
-            content: message.content,
-            isMe: isMe,
-            richTextDelta: message.richTextDelta,
+          Builder(
+            builder: (context) {
+              String displayContent = message.content;
+              String? mentionId;
+              final mentionRegExp = RegExp(r'\[MentionID:([^\]]+)\]');
+              final match = mentionRegExp.firstMatch(displayContent);
+              if (match != null) {
+                mentionId = match.group(1);
+                displayContent = displayContent.replaceAll(match.group(0)!, '').trim();
+              }
+              
+              return Column(
+                crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  _RichMessageText(
+                    content: displayContent,
+                    isMe: isMe,
+                    richTextDelta: message.richTextDelta,
+                  ),
+                  if (mentionId != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                        label: const Text('Go to Message'),
+                        onPressed: () {
+                          GoRouter.of(context).go('/chat?highlightMsgId=$mentionId');
+                        },
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          textStyle: const TextStyle(fontSize: 12),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -3808,19 +3865,37 @@ class _HoverableMessageRowState extends State<_HoverableMessageRow> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      child: _HoverableActionMenuContext(
-        isMe: widget.isMe,
-        onReply: widget.onReply,
-        onDelete: widget.onDelete,
-        onAddReaction: (context, reaction, messageId) => _addReaction(context, reaction, messageId),
-        onShowMoreReactions: (context, messageId) => _showMoreReactions(context, messageId),
-        onHandleStarMessage: (context, messageId) => _handleStarMessage(context, messageId),
-        isHovering: _isHovering,
-        messageId: widget.message.id,
-        child: widget.child,
+    return GestureDetector(
+      onLongPress: () {
+        final isMobile = MediaQuery.of(context).size.width < 900;
+        if (isMobile) {
+          setState(() => _isHovering = true);
+        }
+      },
+      onTap: () {
+        final isMobile = MediaQuery.of(context).size.width < 900;
+        if (isMobile && _isHovering) {
+          setState(() => _isHovering = false);
+        }
+      },
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) => setState(() => _isHovering = false),
+        child: _HoverableActionMenuContext(
+          isMe: widget.isMe,
+          onReply: widget.onReply,
+          onDelete: widget.onDelete,
+          onAddReaction: (context, reaction, messageId) {
+            _addReaction(context, reaction, messageId);
+            final isMobile = MediaQuery.of(context).size.width < 900;
+            if (isMobile) setState(() => _isHovering = false);
+          },
+          onShowMoreReactions: (context, messageId) => _showMoreReactions(context, messageId),
+          onHandleStarMessage: (context, messageId) => _handleStarMessage(context, messageId),
+          isHovering: _isHovering,
+          messageId: widget.message.id,
+          child: widget.child,
+        ),
       ),
     );
   }
@@ -3866,6 +3941,7 @@ class _HoverableActionMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hoverContext = _HoverableActionMenuContext.of(context);
+    final isMobile = MediaQuery.of(context).size.width < 900;
     
     return AnimatedOpacity(
       opacity: hoverContext.isHovering ? 1.0 : 0.0,
@@ -4366,6 +4442,7 @@ class _InlineParser {
 
 // ── Outlined text — white fill with black stroke ──────────────────────────────
 
+// ignore: unused_element
 class _OutlinedText extends StatelessWidget {
   final String text;
   final double fontSize;
@@ -4411,6 +4488,39 @@ class _OutlinedText extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CallButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _CallButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.green.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.green.shade200),
+          ),
+          child: Icon(icon, size: 18, color: Colors.green.shade700),
+        ),
+      ),
     );
   }
 }

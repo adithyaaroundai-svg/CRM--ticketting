@@ -148,7 +148,7 @@ class _CreateLeadDialogState extends ConsumerState<CreateLeadDialog> {
           'Owner: ${leadData['owner']}',
           if (leadData['description'] != null) 'Description: ${leadData['description']}',
           if (leadData['follow_up_date'] != null) 'Follow Up: ${leadData['follow_up_date']}',
-        ].where((line) => line != null).join('\n');
+        ].join('\n');
       }
 
       // Close dialog immediately
@@ -209,7 +209,7 @@ class _CreateLeadDialogState extends ConsumerState<CreateLeadDialog> {
   Widget build(BuildContext context) {
     final agentsAsync = ref.watch(agentsListProvider);
     final screenWidth = MediaQuery.of(context).size.width;
-    final dialogWidth = math.max(520.0, math.min(screenWidth - 72, 860.0));
+    final dialogWidth = math.max(280.0, math.min(screenWidth - 72, 860.0));
 
     return Align(
       alignment: Alignment.topCenter,
@@ -255,14 +255,13 @@ class _CreateLeadDialogState extends ConsumerState<CreateLeadDialog> {
                       const SizedBox(height: 28),
 
                       // 2-Column Grid Layout
-                      Row(
+                      ResponsiveFormRow(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Left Column
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                                 // Customer Name
                                 const Text(
                                   'Customer Name',
@@ -390,17 +389,13 @@ class _CreateLeadDialogState extends ConsumerState<CreateLeadDialog> {
                                     });
                                   },
                                 ),
-                              ],
-                            ),
+                            ],
                           ),
 
-                          const SizedBox(width: 20),
-
                           // Right Column
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                                 // Owner
                                 const Text(
                                   'Owner',
@@ -538,8 +533,7 @@ class _CreateLeadDialogState extends ConsumerState<CreateLeadDialog> {
                                     });
                                   },
                                 ),
-                              ],
-                            ),
+                            ],
                           ),
                         ],
                       ),
@@ -566,8 +560,10 @@ class _CreateLeadDialogState extends ConsumerState<CreateLeadDialog> {
                       ),
 
                       const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                      OverflowBar(
+                        alignment: MainAxisAlignment.end,
+                        spacing: 10,
+                        overflowSpacing: 10,
                         children: [
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),
@@ -583,7 +579,6 @@ class _CreateLeadDialogState extends ConsumerState<CreateLeadDialog> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
                           FilledButton(
                             onPressed: _isSubmitting ? null : _createLead,
                             style: FilledButton.styleFrom(
@@ -606,7 +601,7 @@ class _CreateLeadDialogState extends ConsumerState<CreateLeadDialog> {
                                     ),
                                   )
                                 : const Text(
-                                    'Create Lead',
+                                    'Save Lead',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w500,
                                       color: Colors.white,

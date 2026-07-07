@@ -61,7 +61,7 @@ class _AgentDashboardPageState extends ConsumerState<AgentDashboardPage> {
 
     await ref.read(chatRepositoryProvider).sendMessage(
           senderId: agent.id,
-          senderName: agent.fullName ?? agent.username,
+          senderName: agent.fullName,
           senderRole: agent.role,
           content: chatContent,
           senderAvatarUrl: agent.avatarUrl,
@@ -81,6 +81,7 @@ class _AgentDashboardPageState extends ConsumerState<AgentDashboardPage> {
           onPressed: _showCreateTicketDialog,
         ),
         body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Header
             Padding(
@@ -88,50 +89,55 @@ class _AgentDashboardPageState extends ConsumerState<AgentDashboardPage> {
               child: WelcomeHeader(
                 name: user?.username ?? 'Agent',
                 subtitle: "Here's what's happening today",
-                trailing: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Wrap(
+                trailing: Builder(
+                  builder: (context) {
+                    final isWide = MediaQuery.of(context).size.width >= 600;
+                    return Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      alignment: WrapAlignment.end,
+                      alignment: isWide ? WrapAlignment.end : WrapAlignment.start,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        if (!_isRestrictedAgent)
-                        OutlinedButton.icon(
-                          icon: const Icon(LucideIcons.hourglass, size: 16),
-                          label: const Text('Unclaimed > 1h'),
-                          onPressed: () => context.push('/tickets?view=stale_unclaimed'),
+                        if (!_isRestrictedAgent) ...[
+                          OutlinedButton.icon(
+                            icon: const Icon(LucideIcons.hourglass, size: 16),
+                            label: const Text('Unclaimed > 1h'),
+                            onPressed: () => context.push('/tickets?view=stale_unclaimed'),
+                          ),
+                          OutlinedButton.icon(
+                            icon: const Icon(LucideIcons.alertTriangle, size: 16),
+                            label: const Text('Claimed > 12h'),
+                            onPressed: () => context.push('/tickets?view=claimed_overdue'),
+                          ),
+                        ],
+                        TextButton.icon(
+                          onPressed: () {
+                            ref.invalidate(rawTicketsStreamProvider);
+                            ref.invalidate(customersListProvider);
+                          },
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: const Text(
+                            'Refresh',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                          ),
                         ),
-                        if (!_isRestrictedAgent)
-                        OutlinedButton.icon(
-                          icon: const Icon(LucideIcons.alertTriangle, size: 16),
-                          label: const Text('Claimed > 12h'),
-                          onPressed: () => context.push('/tickets?view=claimed_overdue'),
+                        TextButton.icon(
+                          onPressed: () => context.push('/tickets?view=unclaimed'),
+                          icon: const Icon(Icons.list_alt, size: 18),
+                          label: const Text(
+                            'View All Unclaimed',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                          ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 8),
-                    AppButton.ghost(
-                      label: 'Refresh',
-                      icon: Icons.refresh,
-                      onPressed: () {
-                        ref.invalidate(rawTicketsStreamProvider);
-                        ref.invalidate(customersListProvider);
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton.icon(
-                      onPressed: () => context.push('/tickets?view=unclaimed'),
-                      icon: const Icon(Icons.list_alt, size: 18),
-                      label: const Text(
-                        'View All Unclaimed',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -169,16 +175,6 @@ class _AgentDashboardPageState extends ConsumerState<AgentDashboardPage> {
                           ..sort((a, b) => (b.createdAt ?? DateTime(0)).compareTo(
                                 a.createdAt ?? DateTime(0),
                               ));
-
-                        // Pending unclaimed from previous dates
-                        final pendingUnclaimed = allUnclaimed
-                            .where((t) {
-                              final createdDate = (t.createdAt ?? DateTime(1970)).toLocal();
-                              return !(createdDate.year == today.year &&
-                                  createdDate.month == today.month &&
-                                  createdDate.day == today.day);
-                            })
-                            .toList();
 
                         final canClaim = user?.isSupportHead == true ||
                             user?.isSupport == true ||
@@ -268,8 +264,10 @@ class _UnclaimedTicketsListView extends ConsumerWidget {
 
   Widget _buildTicketsList(BuildContext context, WidgetRef ref) {
     if (tickets.isEmpty) {
-      return Center(
-        child: Column(
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 80),
+        child: Center(
+          child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
@@ -288,11 +286,12 @@ class _UnclaimedTicketsListView extends ConsumerWidget {
             ),
           ],
         ),
+        ),
       );
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 100),
       itemCount: tickets.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
@@ -314,7 +313,7 @@ class _UnclaimedTicketsListView extends ConsumerWidget {
             ],
           ),
           child: InkWell(
-            onTap: () => context.go('/ticket/${ticket.ticketId}'),
+            onTap: () => context.push('/ticket/${ticket.ticketId}'),
             borderRadius: BorderRadius.circular(8),
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -432,7 +431,7 @@ class _UnclaimedTicketsListView extends ConsumerWidget {
                               .read(ticketAssignerProvider.notifier)
                               .assignTicket(ticket.ticketId, currentUser.id);
 
-                          context.go('/ticket/${ticket.ticketId}');
+                          context.push('/ticket/${ticket.ticketId}');
                         },
                       ),
                     ),
@@ -446,67 +445,10 @@ class _UnclaimedTicketsListView extends ConsumerWidget {
     );
   }
 
-  Widget _buildPriorityBadge(String? priority) {
-    Color color;
-    String label = priority ?? 'Medium';
-
-    switch (priority?.toLowerCase()) {
-      case 'urgent':
-        color = AppColors.error;
-        break;
-      case 'high':
-        color = Colors.orange;
-        break;
-      case 'low':
-        color = AppColors.slate400;
-        break;
-      default:
-        color = AppColors.info;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
   String _formatDate(DateTime? date) {
     if (date == null) return '-';
     final localTime = _toLocalTime(date);
     return DateFormat('dd MMM yyyy • hh:mm a').format(localTime);
-  }
-}
-
-class _EmptyListPlaceholder extends StatelessWidget {
-  final String label;
-  const _EmptyListPlaceholder({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Center(
-        child: Text(label, style: const TextStyle(color: AppColors.slate500)),
-      ),
-    );
   }
 }
 

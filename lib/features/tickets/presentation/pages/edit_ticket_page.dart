@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../../../core/design_system/theme/app_colors.dart';
-import '../../../../core/design_system/components/app_button.dart';
+import '../../../../core/design_system/design_system.dart';
 import '../../domain/entities/ticket.dart';
 import '../providers/ticket_provider.dart';
 
@@ -129,52 +128,47 @@ class _EditTicketPageState extends ConsumerState<EditTicketPage> {
                   ),
 
                   const SizedBox(height: 24),
-                  Row(
+                  ResponsiveFormRow(
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel('Category'),
-                            DropdownButtonFormField<String>(
-                              initialValue: _selectedCategory,
-                              decoration: _inputDecoration('Select category'),
-                              items: _categories
-                                  .map(
-                                    (c) => DropdownMenuItem(
-                                      value: c,
-                                      child: Text(c),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (value) =>
-                                  setState(() => _selectedCategory = value),
-                            ),
-                          ],
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('Category'),
+                          DropdownButtonFormField<String>(
+                            initialValue: _selectedCategory,
+                            decoration: _inputDecoration('Select category'),
+                            items: _categories
+                                .map(
+                                  (c) => DropdownMenuItem(
+                                    value: c,
+                                    child: Text(c),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) =>
+                                setState(() => _selectedCategory = value),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel('Priority'),
-                            DropdownButtonFormField<String>(
-                              initialValue: _selectedPriority,
-                              decoration: _inputDecoration('Select priority'),
-                              items: _priorities
-                                  .map(
-                                    (p) => DropdownMenuItem(
-                                      value: p,
-                                      child: Text(p),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (value) =>
-                                  setState(() => _selectedPriority = value),
-                            ),
-                          ],
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('Priority'),
+                          DropdownButtonFormField<String>(
+                            initialValue: _selectedPriority,
+                            decoration: _inputDecoration('Select priority'),
+                            items: _priorities
+                                .map(
+                                  (p) => DropdownMenuItem(
+                                    value: p,
+                                    child: Text(p),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) =>
+                                setState(() => _selectedPriority = value),
+                          ),
+                        ],
                       ),
                     ],
                   ),

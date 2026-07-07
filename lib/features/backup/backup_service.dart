@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:js_interop';
 
 import 'package:archive/archive_io.dart';
 import 'package:flutter/foundation.dart';
@@ -7,10 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:web/web.dart' as web;
 
 import 'backup_service_native.dart'
     if (dart.library.html) 'backup_service_web_stub.dart' as native_save;
+import 'backup_web_download.dart'
+    if (dart.library.io) 'backup_web_download_stub.dart' as web_download;
 
 /// Result returned after a backup completes or fails.
 class BackupResult {
@@ -149,21 +149,7 @@ Future<BackupResult> createLocalBackup({
     String savedPath;
 
     if (kIsWeb) {
-      // Convert to JS-interop Uint8Array and trigger browser download
-      final uint8 = Uint8List.fromList(zipBytes);
-      final jsArray = uint8.toJS;
-      final blob = web.Blob(
-        [jsArray].toJS,
-        web.BlobPropertyBag(type: 'application/zip'),
-      );
-      final url = web.URL.createObjectURL(blob);
-      final anchor = web.document.createElement('a') as web.HTMLAnchorElement
-        ..href = url
-        ..download = fileName;
-      web.document.body!.append(anchor);
-      anchor.click();
-      anchor.remove();
-      web.URL.revokeObjectURL(url);
+      web_download.triggerDownload(zipBytes, fileName);
       savedPath = 'Your browser Downloads folder  ($fileName)';
     } else {
       savedPath = await native_save.saveZipToDownloads(zipBytes, fileName);

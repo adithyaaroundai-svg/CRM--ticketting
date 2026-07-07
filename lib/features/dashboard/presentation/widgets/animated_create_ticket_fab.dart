@@ -44,11 +44,14 @@ class _AnimatedCreateTicketFabState extends State<AnimatedCreateTicketFab>
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 800;
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         return Transform.scale(
-          scale: _scaleAnimation.value,
+          alignment: Alignment.bottomRight,
+          scale: _scaleAnimation.value * (isMobile ? 0.75 : 1.0),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(30),

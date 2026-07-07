@@ -467,19 +467,11 @@ class _RemarkCardState extends ConsumerState<_RemarkCard> {
     final agentAsync = widget.agentId != null
         ? ref.watch(ticketAssignedAgentProvider(widget.agentId!))
         : null;
-    final createdAtRaw = DateTime.parse(widget.remark['created_at'] as String);
-    final createdAt = createdAtRaw.isUtc 
-        ? createdAtRaw 
-        : DateTime.utc(
-            createdAtRaw.year,
-            createdAtRaw.month,
-            createdAtRaw.day,
-            createdAtRaw.hour,
-            createdAtRaw.minute,
-            createdAtRaw.second,
-            createdAtRaw.millisecond,
-            createdAtRaw.microsecond,
-          );
+    final _rawTs = widget.remark['created_at'] as String;
+    final _normalized = (_rawTs.endsWith('Z') || _rawTs.contains('+'))
+        ? _rawTs
+        : '${_rawTs}Z';
+    final createdAt = DateTime.parse(_normalized).toUtc();
     final remarkType = widget.remark['remark_type'] as String? ?? 'text';
 
     return Align(

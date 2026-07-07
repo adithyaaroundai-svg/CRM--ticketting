@@ -1,3 +1,5 @@
+import '../../../../core/utils/json_converters.dart';
+
 class AppNotification {
   final String id;
   final String userId;
@@ -28,7 +30,7 @@ class AppNotification {
       message: json['message'] as String?,
       link: json['link'] as String?,
       isRead: json['is_read'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: parseUtcDate(json['created_at'] as String),
     );
   }
 }

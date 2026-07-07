@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/design_system/design_system.dart';
 import '../../../sales/presentation/widgets/create_lead_dialog.dart';
+import '../../../sales/presentation/pages/leads_page.dart';
+import '../../../sales/presentation/providers/lead_provider.dart';
 
 class SalesChatPage extends ConsumerStatefulWidget {
   final int initialTab;
@@ -38,12 +40,33 @@ class _SalesChatPageState extends ConsumerState<SalesChatPage> {
         backgroundColor: AppColors.slate50,
         body: Stack(
           children: [
-            content,
+            Positioned.fill(child: content),
             // Create Sale button at top right
             Positioned(
-              top: 16,
-              right: 16,
-              child: Material(
+              top: 6,
+              right: 24,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => ref.invalidate(leadsProvider),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.slate200),
+                        ),
+                        child: const Icon(LucideIcons.refreshCw, size: 16, color: AppColors.slate500),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Material(
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
@@ -81,7 +104,9 @@ class _SalesChatPageState extends ConsumerState<SalesChatPage> {
                   ),
                 ),
               ),
-            ),
+              ], // close Row children
+              ), // close Row
+            ), // close Positioned
           ],
         ),
       ),
@@ -122,12 +147,7 @@ class _PipelineTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return const Center(
-      child: Text(
-        'Pipeline - Coming Soon',
-        style: TextStyle(fontSize: 16, color: AppColors.slate500),
-      ),
-    );
+    return const LeadsPage(isEmbedded: true);
   }
 }
 

@@ -73,7 +73,10 @@ DateTime? _parseDate(dynamic value) {
   if (value == null) return null;
   if (value is DateTime) return value.toUtc();
   if (value is String) {
-    return DateTime.tryParse(value)?.toUtc();
+    final normalized = (value.endsWith('Z') || value.contains('+'))
+        ? value
+        : '${value}Z';
+    return DateTime.tryParse(normalized)?.toUtc();
   }
   return null;
 }
@@ -657,7 +660,7 @@ class TicketCreator extends _$TicketCreator {
 }
 
 // Update ticket
-@riverpod
+@Riverpod(keepAlive: true)
 class TicketUpdater extends _$TicketUpdater {
   @override
   bool build() => false;

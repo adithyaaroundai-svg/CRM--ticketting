@@ -6,9 +6,11 @@ import '../../../../core/design_system/layout/main_layout.dart';
 import '../../../../core/design_system/theme/app_colors.dart';
 import '../providers/lead_provider.dart';
 import '../../domain/entities/lead.dart';
+import '../widgets/create_lead_dialog.dart';
 
 class LeadsPage extends ConsumerStatefulWidget {
-  const LeadsPage({super.key});
+  final bool isEmbedded;
+  const LeadsPage({super.key, this.isEmbedded = false});
 
   @override
   ConsumerState<LeadsPage> createState() => _LeadsPageState();
@@ -33,139 +35,137 @@ class _LeadsPageState extends ConsumerState<LeadsPage> {
       }
     });
 
-    return MainLayout(
-      currentPath: '/leads',
-      child: Scaffold(
-        backgroundColor: AppColors.slate50,
-        body: Column(
-          children: [
-            // Header Section
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 24), // Updated padding
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 1,
-                    offset: Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Pipeline Management',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900, // Updated font weight
-                            color: AppColors.slate900,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4), // Added SizedBox
-                        Text(
-                          'Track and manage your sales leads from proposal to conversion.',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppColors.slate500,
-                            // fontWeight: FontWeight.w400, // Removed font weight
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => ref.invalidate(leadsProvider),
-                    icon: const Icon(LucideIcons.refreshCw, size: 20),
-                    tooltip: 'Refresh',
-                    color: AppColors.slate400,
-                  ),
-                  const SizedBox(width: 8),
-                  _ActionButton(
-                    icon: LucideIcons.plus,
-                    label: 'Add New Lead',
-                    onPressed: () => _showLeadDialog(context, ref),
-                  ),
-                ],
-              ),
-            ),
-
-            // Pipeline Stats
-            leadsAsync.when(
-              data: (leads) {
-                final totalCount = leads.length;
-                final wonCount = leads
-                    .where((d) => d.status == 'win')
-                    .length;
-                final pendingCount = leads
-                    .where((d) => d.status == 'pending')
-                    .length;
-
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                  child: Row(
-                    children: [
-                      _EnhancedStatCard(
-                        label: 'Total Pipeline',
-                        value: totalCount.toString(),
-                        color: AppColors.primary,
-                        icon: LucideIcons.trendingUp,
-                      ),
-                      const SizedBox(width: 16),
-                      _EnhancedStatCard(
-                        label: 'Won Leads',
-                        value: wonCount.toString(),
-                        color: AppColors.success,
-                        icon: LucideIcons.trophy,
-                      ),
-                      const SizedBox(width: 16),
-                      _EnhancedStatCard(
-                        label: 'Active (Pending)',
-                        value: pendingCount.toString(),
-                        color: AppColors.info,
-                        icon: LucideIcons.target,
+    final Widget content = LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 800;
+            return Column(
+              children: [
+                // Header Section
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 1,
+                        offset: Offset(0, 1),
                       ),
                     ],
                   ),
-                );
-              },
-              loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
-            ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Pipeline',
+                        style: TextStyle(
+                          fontSize: isMobile ? 20 : 22,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.slate900,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
-            const SizedBox(height: 24),
+                // Pipeline Stats
+                leadsAsync.when(
+                  data: (leads) {
+                    final totalCount = leads.length;
+                    final wonCount = leads.where((d) => d.status.toLowerCase() == 'win' || d.status.toLowerCase() == 'won').length;
+                    final lostCount = leads.where((d) => d.status.toLowerCase() == 'loss' || d.status.toLowerCase() == 'lost').length;
+                    final pendingCount = leads.where((d) => d.status.toLowerCase() == 'pending' || d.status.toLowerCase() == 'new').length;
+
+                    final statsRow = Row(
+                      children: [
+                        _EnhancedStatCard(
+                          label: 'Total Pipeline',
+                          value: totalCount.toString(),
+                          color: AppColors.primary,
+                          icon: LucideIcons.trendingUp,
+                          isExpanded: !isMobile,
+                          width: isMobile ? 220 : null,
+                        ),
+                        const SizedBox(width: 16),
+                        _EnhancedStatCard(
+                          label: 'Our Customers',
+                          value: wonCount.toString(),
+                          color: AppColors.success,
+                          icon: LucideIcons.users,
+                          isExpanded: !isMobile,
+                          width: isMobile ? 220 : null,
+                        ),
+                        const SizedBox(width: 16),
+                        _EnhancedStatCard(
+                          label: 'Not Our Customers',
+                          value: lostCount.toString(),
+                          color: AppColors.error,
+                          icon: LucideIcons.userX,
+                          isExpanded: !isMobile,
+                          width: isMobile ? 220 : null,
+                        ),
+                        const SizedBox(width: 16),
+                        _EnhancedStatCard(
+                          label: 'Active (Pending)',
+                          value: pendingCount.toString(),
+                          color: AppColors.info,
+                          icon: LucideIcons.target,
+                          isExpanded: !isMobile,
+                          width: isMobile ? 220 : null,
+                        ),
+                      ],
+                    );
+
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                      child: isMobile
+                          ? SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              clipBehavior: Clip.none,
+                              child: statsRow,
+                            )
+                          : statsRow,
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+
+            const SizedBox(height: 12),
 
             // Kanban Board
             Expanded(
               child: leadsAsync.when(
                 data: (leads) {
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
+                  return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: ['pending', 'win', 'loss'].map((status) {
-                        final statusLeads = leads
-                            .where((d) => d.status == status)
-                            .toList();
-                        return _KanbanColumn(
-                          status: status,
-                          leads: statusLeads,
-                          onStageChange: (lead, newStatus) {
-                            ref
-                                .read(leadControllerProvider.notifier)
-                                .updateLeadStatus(lead.id, newStatus);
-                          },
-                          onDelete: (lead) {
-                            ref
-                                .read(leadControllerProvider.notifier)
-                                .deleteLead(lead.id);
-                          },
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: ['New', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'].map((status) {
+                        // For demonstration, mapping existing 'pending' leads to 'New' 
+                        // and 'win' to 'Won' if the backend hasn't been updated yet.
+                        final statusLeads = leads.where((d) {
+                          if (status == 'New' && d.status == 'pending') return true;
+                          if (status == 'Won' && d.status == 'win') return true;
+                          if (status == 'Lost' && d.status == 'loss') return true;
+                          return d.status == status;
+                        }).toList();
+                        
+                        return Expanded(
+                          child: _KanbanColumn(
+                            status: status,
+                            leads: statusLeads,
+                            onStageChange: (lead, newStatus) {
+                              ref
+                                  .read(leadControllerProvider.notifier)
+                                  .updateLeadStatus(lead.id, newStatus);
+                            },
+                            onDelete: (lead) {
+                              ref
+                                  .read(leadControllerProvider.notifier)
+                                  .deleteLead(lead.id);
+                            },
+                          ),
                         );
                       }).toList(),
                     ),
@@ -176,104 +176,23 @@ class _LeadsPageState extends ConsumerState<LeadsPage> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  void _showLeadDialog(BuildContext context, WidgetRef ref) {
-    final companyController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text('New Sales Lead', style: TextStyle(fontWeight: FontWeight.w800)),
-              content: SizedBox(
-                width: 440,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: companyController,
-                        autofocus: true,
-                        decoration: InputDecoration(
-                          labelText: 'Company Name',
-                          hintText: 'Type company name...',
-                          prefixIcon: const Icon(LucideIcons.building2, size: 18),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          filled: true,
-                          fillColor: AppColors.slate50,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Discard', style: TextStyle(color: AppColors.slate500)),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () {
-                    if (companyController.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Company name is required')),
-                      );
-                      return;
-                    }
-
-                    ref.read(leadControllerProvider.notifier).createLead(
-                          companyName: companyController.text.trim(),
-                          amount: 0,
-                          status: 'pending',
-                        ).then((_) {
-                          if (mounted) Navigator.pop(context);
-                        });
-                  },
-                  child: const Text('Create Lead'),
-                ),
-              ],
-            );
-          },
         );
       },
     );
-  }
-}
 
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
+    if (widget.isEmbedded) {
+      return content;
+    }
 
-  const _ActionButton({required this.icon, required this.label, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      icon: Icon(icon, size: 18),
-      label: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 0,
+    return MainLayout(
+      currentPath: '/leads',
+      child: Scaffold(
+        backgroundColor: AppColors.slate50,
+        body: content,
       ),
-      onPressed: onPressed,
     );
   }
+
 }
 
 class _EnhancedStatCard extends StatelessWidget {
@@ -281,20 +200,24 @@ class _EnhancedStatCard extends StatelessWidget {
   final String value;
   final Color color;
   final IconData icon;
+  final bool isExpanded;
+  final double? width;
 
   const _EnhancedStatCard({
     required this.label,
     required this.value,
     required this.color,
     required this.icon,
+    this.isExpanded = true,
+    this.width,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
+    Widget card = Container(
+      width: width,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.slate200),
@@ -342,8 +265,9 @@ class _EnhancedStatCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
+      
+    return isExpanded ? Expanded(child: card) : card;
   }
 }
 
@@ -362,66 +286,44 @@ class _KanbanColumn extends StatelessWidget {
 
   Color get statusColor {
     switch (status) {
-      case 'pending': return AppColors.info;
-      case 'win': return AppColors.success;
-      case 'loss': return AppColors.error;
+      case 'New': return AppColors.slate500;
+      case 'Qualified': return AppColors.primaryLight;
+      case 'Proposal': return Colors.purple.shade400;
+      case 'Negotiation': return Colors.deepOrange;
+      case 'Won': return AppColors.success;
+      case 'Lost': return AppColors.error;
       default: return AppColors.slate500;
     }
   }
 
   String get _statusLabel {
-    switch (status) {
-      case 'pending': return 'Open Pipeline';
-      case 'win': return 'Won Deals';
-      case 'loss': return 'Lost Opportunities';
-      default: return 'Unknown';
-    }
+    return status;
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 320,
-      margin: const EdgeInsets.only(right: 20),
+      margin: EdgeInsets.only(right: status == 'Lost' ? 0 : 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Column Header
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [statusColor.withValues(alpha: 0.15), statusColor.withValues(alpha: 0.05)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              border: Border.all(color: statusColor.withValues(alpha: 0.2)),
+              color: statusColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
             ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  width: 8, height: 8,
-                  decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+                Text(
+                  _statusLabel,
+                  style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 14),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _statusLabel,
-                    style: TextStyle(fontWeight: FontWeight.w800, color: statusColor, fontSize: 13),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: statusColor.withValues(alpha: 0.2)),
-                  ),
-                  child: Text(
-                    '${leads.length}',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor),
-                  ),
+                Text(
+                  '${leads.length} - ₹0',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white70),
                 ),
               ],
             ),
@@ -432,19 +334,15 @@ class _KanbanColumn extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.slate100.withValues(alpha: 0.5),
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                border: Border.all(color: AppColors.slate200),
+                color: const Color(0xFFF1F5F9),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(6)),
               ),
               child: leads.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(LucideIcons.inbox, color: AppColors.slate300, size: 32),
-                          const SizedBox(height: 8),
-                          Text('No leads found', style: TextStyle(color: AppColors.slate400, fontSize: 12)),
-                        ],
+                  ? const Align(
+                      alignment: Alignment.topCenter,
+                      child: Padding(
+                        padding: EdgeInsets.only(top: 16),
+                        child: Text('-', style: TextStyle(color: AppColors.slate400, fontSize: 16)),
                       ),
                     )
                   : ListView.builder(
@@ -477,82 +375,118 @@ class _LeadCard extends StatelessWidget {
     required this.onDelete,
   });
 
-  @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: lead.status == 'pending' || lead.status == 'New' ? Colors.orange.shade300 : AppColors.slate200, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Indicator line
-          Container(
-            height: 3,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        lead.companyName,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.slate900),
-                        maxLines: 2, overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    InkWell(
-                      onTap: () => _confirmDelete(context),
-                      child: Icon(LucideIcons.trash2, size: 14, color: AppColors.slate300),
-                    ),
-                  ],
+                Expanded(
+                  child: Text(
+                    lead.companyName,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.primaryLight),
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Raised ${DateFormat.MMMd().format(lead.createdAt)}',
-                  style: TextStyle(fontSize: 11, color: AppColors.slate400),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Text(
+                    'LEAD',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange.shade700),
+                  ),
                 ),
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                const Text('ACTIONS:', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.slate400)),
-                const SizedBox(height: 8),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    lead.createdBy ?? 'Athira',
+                    style: const TextStyle(fontSize: 12, color: AppColors.slate500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
                 Row(
                   children: [
-                    if (lead.status == 'pending') ...[
-                      _MiniStatusBtn(label: 'CONVERT', color: AppColors.success, onTap: () => onStageChange('win')),
-                      _MiniStatusBtn(label: 'LOSS', color: AppColors.error, onTap: () => onStageChange('loss')),
-                    ] else ...[
-                      _MiniStatusBtn(label: 'UNDO', color: AppColors.info, onTap: () => onStageChange('pending')),
-                      if (lead.status == 'win')
-                        _MiniStatusBtn(label: 'LOSS', color: AppColors.error, onTap: () => onStageChange('loss'))
-                      else
-                        _MiniStatusBtn(label: 'CONVERT', color: AppColors.success, onTap: () => onStageChange('win')),
-                    ],
+                    Icon(LucideIcons.calendar, size: 14, color: AppColors.slate400),
+                    const SizedBox(width: 4),
+                    Text(
+                      DateFormat('yyyy-MM-dd').format(lead.createdAt),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.error),
+                    ),
                   ],
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 6),
+            // Stage Dropdown
+            PopupMenuButton<String>(
+              onSelected: (String nextStage) {
+                // If backend expects specific strings for certain statuses, we map them here
+                // Note: The UI correctly handles mapping 'pending'/'win'/'loss' when rendering.
+                // Depending on the backend, we might just pass the display string directly.
+                // Since the UI currently handles 'New', 'Won', 'Lost' strings in the filter, 
+                // we can just pass the selected string.
+                onStageChange(nextStage);
+              },
+              itemBuilder: (BuildContext context) {
+                return ['New', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'].map((String choice) {
+                  return PopupMenuItem<String>(
+                    value: choice,
+                    child: Text(choice, style: const TextStyle(fontSize: 13, color: AppColors.slate700)),
+                  );
+                }).toList();
+              },
+              offset: const Offset(0, 36),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.slate200),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      lead.status == 'pending' ? 'New' : (lead.status == 'win' ? 'Won' : (lead.status == 'loss' ? 'Lost' : lead.status)), 
+                      style: const TextStyle(fontSize: 13, color: AppColors.slate700),
+                    ),
+                    const Icon(LucideIcons.chevronDown, size: 16, color: AppColors.slate400),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

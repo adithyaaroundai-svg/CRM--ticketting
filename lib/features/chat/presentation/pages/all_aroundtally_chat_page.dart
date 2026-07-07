@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -285,6 +286,7 @@ class _AllAroundTallyChatPageState extends ConsumerState<AllAroundTallyChatPage>
     _scrollToBottom();
   }
 
+  // ignore: unused_element
   Future<void> _pickFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -363,6 +365,7 @@ class _AllAroundTallyChatPageState extends ConsumerState<AllAroundTallyChatPage>
           ),
           backgroundColor: AppColors.primaryDark,
           foregroundColor: Colors.white,
+          iconTheme: const IconThemeData(color: Colors.white),
           elevation: 0,
           actions: [
             // Starred messages button
@@ -662,29 +665,38 @@ class _AllAroundTallyChatPageState extends ConsumerState<AllAroundTallyChatPage>
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: TextField(
-                        controller: _ctrl,
-                        focusNode: _focusNode,
-                        maxLines: 4,
-                        minLines: 1,
-                        decoration: InputDecoration(
-                          hintText: 'Type a message...',
-                          filled: true,
-                          fillColor: Colors.grey.shade100,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide.none,
+                      child: KeyboardListener(
+                        focusNode: FocusNode(),
+                        onKeyEvent: (event) {
+                          if (event is KeyDownEvent &&
+                              event.logicalKey == LogicalKeyboardKey.enter &&
+                              !HardwareKeyboard.instance.isShiftPressed) {
+                            _sendMessage();
+                          }
+                        },
+                        child: TextField(
+                          controller: _ctrl,
+                          focusNode: _focusNode,
+                          maxLines: 4,
+                          minLines: 1,
+                          decoration: InputDecoration(
+                            hintText: 'Type a message... (Enter to send, Shift+Enter for new line)',
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
+                          onTap: () => setState(() {
+                            _showEmojiPicker = false;
+                            _showGifPicker = false;
+                          }),
                         ),
-                        onTap: () => setState(() {
-                          _showEmojiPicker = false;
-                          _showGifPicker = false;
-                        }),
-                        onSubmitted: (_) => _sendMessage(),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -856,17 +868,29 @@ class _ChatBubbleState extends ConsumerState<_ChatBubble> {
     final nameColor = _senderColor(message.senderName);
     final timeStr = DateFormat('h:mm a').format(message.createdAt.toLocal());
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+    return GestureDetector(
+      onLongPress: () {
+        final isMobile = MediaQuery.of(context).size.width < 900;
+        if (isMobile) {
+          setState(() => _hovered = true);
+        }
+      },
+      onTap: () {
+        final isMobile = MediaQuery.of(context).size.width < 900;
+        if (isMobile && _hovered) {
+          setState(() => _hovered = false);
+        }
+      },
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
       child: Container(
         margin: const EdgeInsets.only(bottom: 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             // Constrain bubble to max 75% of available width
-            Flexible(
-              child: ConstrainedBox(
+            ConstrainedBox(
                 constraints: BoxConstraints(
                   maxWidth: MediaQuery.of(context).size.width * 0.75,
                 ),
@@ -1072,7 +1096,6 @@ class _ChatBubbleState extends ConsumerState<_ChatBubble> {
                   ],
                 ),
               ),
-            ),
             // Hover action bar
             if (_hovered && !isDeleted) ...[
               const SizedBox(width: 6),
@@ -1120,6 +1143,7 @@ class _ChatBubbleState extends ConsumerState<_ChatBubble> {
           ],
         ),
       ),
+    ),
     );
   }
 }

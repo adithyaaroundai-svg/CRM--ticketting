@@ -614,7 +614,7 @@ class ChatController extends _$ChatController {
   @override
   FutureOr<void> build() {}
 
-  Future<void> sendMessage({
+  Future<String> sendMessage({
     required String senderId,
     required String senderName,
     required String senderRole,
@@ -631,26 +631,30 @@ class ChatController extends _$ChatController {
     List<dynamic>? richTextDelta,
   }) async {
     state = const AsyncLoading();
+    String newId = '';
     state = await AsyncValue.guard(
-      () => ref
-          .read(chatRepositoryProvider)
-          .sendMessage(
-            senderId: senderId,
-            senderName: senderName,
-            senderRole: senderRole,
-            content: content,
-            receiverId: receiverId,
-            senderAvatarUrl: senderAvatarUrl,
-            replyToMessageId: replyToMessageId,
-            replyToSenderName: replyToSenderName,
-            richTextDelta: richTextDelta,
-            replyToContent: replyToContent,
-            fileUrl: fileUrl,
-            fileName: fileName,
-            fileType: fileType,
-            channel: channel,
-          ),
+      () async {
+        newId = await ref
+            .read(chatRepositoryProvider)
+            .sendMessage(
+              senderId: senderId,
+              senderName: senderName,
+              senderRole: senderRole,
+              content: content,
+              receiverId: receiverId,
+              senderAvatarUrl: senderAvatarUrl,
+              replyToMessageId: replyToMessageId,
+              replyToSenderName: replyToSenderName,
+              richTextDelta: richTextDelta,
+              replyToContent: replyToContent,
+              fileUrl: fileUrl,
+              fileName: fileName,
+              fileType: fileType,
+              channel: channel,
+            );
+      },
     );
+    return newId;
   }
 
   Future<void> deleteMessage(String messageId) async {

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../../core/utils/json_converters.dart';
 
 @immutable
 class Contact {
@@ -36,8 +37,8 @@ class Contact {
       role: json['role'] as String?,
       isPrimary: (json['is_primary'] as bool?) ?? false,
       isBillingContact: (json['is_billing_contact'] as bool?) ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: parseUtcDate(json['created_at'] as String),
+      updatedAt: parseUtcDate(json['updated_at'] as String),
     );
   }
 }

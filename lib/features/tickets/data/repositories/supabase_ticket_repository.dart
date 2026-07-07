@@ -143,6 +143,10 @@ class SupabaseTicketRepository implements TicketRepository {
       data.remove('billing_procedure');
       data.remove('payment_collected');
 
+      // Let the database assign the exact server timestamps for consistency
+      data.remove('created_at');
+      data.remove('updated_at');
+
       print('=== Supabase Insert Ticket Payload ===');
       print(data);
 
@@ -357,7 +361,7 @@ class SupabaseTicketRepository implements TicketRepository {
     try {
       final response = await _supabase
           .from('agents')
-          .select('id, username, full_name, role, display_color, last_seen, avatar_url')
+          .select('id, username, full_name, role, display_color, last_seen, avatar_url, teams_user_id')
           .order('username');
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {

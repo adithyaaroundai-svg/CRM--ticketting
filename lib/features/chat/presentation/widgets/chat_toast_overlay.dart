@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/design_system/theme/app_colors.dart';
 import '../../domain/entities/chat_message.dart';
 import '../providers/chat_provider.dart';
 
@@ -24,13 +23,15 @@ class ChatToastOverlay extends ConsumerWidget {
     final aroundTallyNewMessage = ref.watch(allAroundTallyNewMessageEventProvider);
     final onChatPage = currentPath.startsWith('/chat');
     final onAroundTallyPage = currentPath.startsWith('/channel/all-aroundtally');
+    final isDesktop = MediaQuery.of(context).size.width > 900;
+    final toastBottom = isDesktop ? 28.0 : 80.0;
 
     return Stack(
       children: [
         child,
         if (newMessage != null && !onChatPage)
           Positioned(
-            bottom: 28,
+            bottom: toastBottom,
             // Use left + right so the card never overflows the screen
             left: 16,
             right: 16,
@@ -51,7 +52,7 @@ class ChatToastOverlay extends ConsumerWidget {
           ),
         if (aroundTallyNewMessage != null && !onAroundTallyPage)
           Positioned(
-            bottom: 28,
+            bottom: toastBottom,
             left: 16,
             right: 16,
             child: Align(
@@ -62,7 +63,7 @@ class ChatToastOverlay extends ConsumerWidget {
                 channel: 'all-aroundtally',
                 onTap: () {
                   ref.read(allAroundTallyNewMessageEventProvider.notifier).clear();
-                  context.go('/channel/all-aroundtally');
+                  context.push('/channel/all-aroundtally');
                 },
                 onDismiss: () =>
                     ref.read(allAroundTallyNewMessageEventProvider.notifier).clear(),

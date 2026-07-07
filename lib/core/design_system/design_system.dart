@@ -16,6 +16,7 @@ export 'components/app_card.dart';
 export 'components/app_text_field.dart';
 export 'components/filter_chip_group.dart';
 export 'components/list_tile_card.dart';
+export 'components/responsive_form_row.dart';
 export 'components/section_header.dart';
 export 'components/stat_card.dart';
 export 'components/status_badge.dart';

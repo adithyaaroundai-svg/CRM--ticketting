@@ -22,6 +22,7 @@ class _AddReminderDialogState extends ConsumerState<AddReminderDialog> {
   final _companyController = TextEditingController();
   final _notesController = TextEditingController();
   bool _isLoading = false;
+  bool _showActiveReminders = false;
 
   // Default date = today, time = null (user must pick)
   late DateTime _selectedDate;
@@ -61,6 +62,112 @@ class _AddReminderDialogState extends ConsumerState<AddReminderDialog> {
 
   @override
   Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480, maxHeight: 600),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Header ──────────────────────────────────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _showActiveReminders ? 'Active Reminders' : 'Create Reminder',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.slate900,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        icon: Icon(
+                          _showActiveReminders ? LucideIcons.plus : LucideIcons.list,
+                          size: 16,
+                        ),
+                        label: Text(_showActiveReminders ? 'New' : 'View Active'),
+                        onPressed: () {
+                          setState(() {
+                            _showActiveReminders = !_showActiveReminders;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(LucideIcons.x, size: 20),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Flexible(
+                child: _showActiveReminders ? _buildActiveRemindersList() : _buildCreateForm(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveRemindersList() {
+    final reminders = ref.watch(remindersProvider);
+    final active = reminders.where((r) => !r.isCompleted && !r.isTriggered).toList()
+      ..sort((a, b) => a.remindAt.compareTo(b.remindAt));
+
+    if (active.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 40),
+          child: Text('No active reminders.', style: TextStyle(color: AppColors.slate500)),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      itemCount: active.length,
+      separatorBuilder: (_, __) => const Divider(),
+      itemBuilder: (context, index) {
+        final r = active[index];
+        final timeFmt = DateFormat('MMM d, yyyy HH:mm').format(r.remindAt);
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(r.companyName, style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (r.notes.isNotEmpty) Text(r.notes),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(LucideIcons.clock, size: 12, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Text(timeFmt, style: const TextStyle(fontSize: 12, color: AppColors.primary)),
+                ],
+              ),
+            ],
+          ),
+          trailing: IconButton(
+            icon: const Icon(LucideIcons.checkCircle, color: AppColors.success),
+            tooltip: 'Mark as completed',
+            onPressed: () {
+              ref.read(remindersProvider.notifier).completeReminder(r.id);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCreateForm() {
     final customersAsync = ref.watch(customersListProvider);
     final today = DateTime.now();
     final isToday = _selectedDate.year == today.year &&
@@ -69,219 +176,193 @@ class _AddReminderDialogState extends ConsumerState<AddReminderDialog> {
     final dateLabel =
         isToday ? 'Today' : DateFormat('MMM d, yyyy').format(_selectedDate);
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: 480,
-        padding: const EdgeInsets.all(24),
-        child: SingleChildScrollView(
-          child: FormBuilder(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Header ──────────────────────────────────────────────
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Create Reminder',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.slate900,
+    return SingleChildScrollView(
+      child: FormBuilder(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Company autocomplete ─────────────────────────────────
+            customersAsync.when(
+              data: (customers) {
+                final uniqueCompanyNames = customers
+                    .map((c) => c.companyName)
+                    .where((name) => name.isNotEmpty)
+                    .toSet()
+                    .toList();
+
+                return Autocomplete<String>(
+                  optionsBuilder: (TextEditingValue textEditingValue) {
+                    if (textEditingValue.text.isEmpty) {
+                      return uniqueCompanyNames.take(5);
+                    }
+                    return uniqueCompanyNames.where((name) => name
+                        .toLowerCase()
+                        .contains(textEditingValue.text.toLowerCase()));
+                  },
+                  onSelected: (String selection) {
+                    _companyController.text = selection;
+                  },
+                  fieldViewBuilder: (context, textEditingController,
+                      focusNode, onFieldSubmitted) {
+                    textEditingController.addListener(() {
+                      _companyController.text = textEditingController.text;
+                    });
+                    return TextFormField(
+                      controller: textEditingController,
+                      focusNode: focusNode,
+                      decoration: const InputDecoration(
+                        labelText: 'Company Name (Select or type custom)',
+                        border: OutlineInputBorder(),
+                        hintText: 'Start typing a company...',
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(LucideIcons.x, size: 20),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // ── Company autocomplete ─────────────────────────────────
-                customersAsync.when(
-                  data: (customers) {
-                    final uniqueCompanyNames = customers
-                        .map((c) => c.companyName)
-                        .where((name) => name.isNotEmpty)
-                        .toSet()
-                        .toList();
-
-                    return Autocomplete<String>(
-                      optionsBuilder: (TextEditingValue textEditingValue) {
-                        if (textEditingValue.text.isEmpty) {
-                          return uniqueCompanyNames.take(5);
-                        }
-                        return uniqueCompanyNames.where((name) => name
-                            .toLowerCase()
-                            .contains(textEditingValue.text.toLowerCase()));
-                      },
-                      onSelected: (String selection) {
-                        _companyController.text = selection;
-                      },
-                      fieldViewBuilder: (context, textEditingController,
-                          focusNode, onFieldSubmitted) {
-                        textEditingController.addListener(() {
-                          _companyController.text = textEditingController.text;
-                        });
-                        return TextFormField(
-                          controller: textEditingController,
-                          focusNode: focusNode,
-                          decoration: const InputDecoration(
-                            labelText: 'Company Name (Select or type custom)',
-                            border: OutlineInputBorder(),
-                            hintText: 'Start typing a company...',
-                          ),
-                          onFieldSubmitted: (_) => onFieldSubmitted(),
-                        );
-                      },
-                      optionsViewBuilder: (context, onSelected, options) {
-                        return Align(
-                          alignment: Alignment.topLeft,
-                          child: Material(
-                            elevation: 4.0,
-                            borderRadius: BorderRadius.circular(8),
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(
-                                  maxHeight: 200, maxWidth: 432),
-                              child: ListView.builder(
-                                padding: EdgeInsets.zero,
-                                shrinkWrap: true,
-                                itemCount: options.length,
-                                itemBuilder: (context, index) {
-                                  final option = options.elementAt(index);
-                                  return InkWell(
-                                    onTap: () => onSelected(option),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: Text(option),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                      onFieldSubmitted: (_) => onFieldSubmitted(),
                     );
                   },
-                  loading: () => const CircularProgressIndicator(),
-                  error: (e, _) => const Text('Error loading customers'),
-                ),
-
-                const SizedBox(height: 16),
-
-                // ── Phone number ─────────────────────────────────────────
-                FormBuilderTextField(
-                  name: 'phoneNumber',
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number / Contact Info',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // ── Date + Time pickers ──────────────────────────────────
-                Row(
-                  children: [
-                    // Date
-                    Expanded(
-                      child: InkWell(
-                        onTap: _pickDate,
+                  optionsViewBuilder: (context, onSelected, options) {
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: Material(
+                        elevation: 4.0,
                         borderRadius: BorderRadius.circular(8),
-                        child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: 'Date',
-                            border: OutlineInputBorder(),
-                            suffixIcon:
-                                Icon(LucideIcons.calendar, size: 18),
-                          ),
-                          child: Text(
-                            dateLabel,
-                            style: const TextStyle(color: AppColors.slate900),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                              maxHeight: 200, maxWidth: 432),
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            itemCount: options.length,
+                            itemBuilder: (context, index) {
+                              final option = options.elementAt(index);
+                              return InkWell(
+                                onTap: () => onSelected(option),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Text(option),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
+                    );
+                  },
+                );
+              },
+              loading: () => const CircularProgressIndicator(),
+              error: (e, _) => const Text('Error loading customers'),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Phone number ─────────────────────────────────────────
+            FormBuilderTextField(
+              name: 'phoneNumber',
+              decoration: const InputDecoration(
+                labelText: 'Phone Number / Contact Info',
+                border: OutlineInputBorder(),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Date + Time pickers ──────────────────────────────────
+            Row(
+              children: [
+                // Date
+                Expanded(
+                  child: InkWell(
+                    onTap: _pickDate,
+                    borderRadius: BorderRadius.circular(8),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Date',
+                        border: OutlineInputBorder(),
+                        suffixIcon:
+                            Icon(LucideIcons.calendar, size: 18),
+                      ),
+                      child: Text(
+                        dateLabel,
+                        style: const TextStyle(color: AppColors.slate900),
+                      ),
                     ),
-                    const SizedBox(width: 16),
-                    // Time
-                    Expanded(
-                      child: InkWell(
-                        onTap: _pickTime,
-                        borderRadius: BorderRadius.circular(8),
-                        child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: 'Time',
-                            border: OutlineInputBorder(),
-                            suffixIcon: Icon(LucideIcons.clock, size: 18),
-                          ),
-                          child: Text(
-                            _selectedTime != null
-                                ? _selectedTime!.format(context)
-                                : 'Select time',
-                            style: TextStyle(
-                              color: _selectedTime != null
-                                  ? AppColors.slate900
-                                  : AppColors.slate400,
-                            ),
-                          ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Time
+                Expanded(
+                  child: InkWell(
+                    onTap: _pickTime,
+                    borderRadius: BorderRadius.circular(8),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Time',
+                        border: OutlineInputBorder(),
+                        suffixIcon: Icon(LucideIcons.clock, size: 18),
+                      ),
+                      child: Text(
+                        _selectedTime != null
+                            ? _selectedTime!.format(context)
+                            : 'Select time',
+                        style: TextStyle(
+                          color: _selectedTime != null
+                              ? AppColors.slate900
+                              : AppColors.slate400,
                         ),
                       ),
                     ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // ── Notes ────────────────────────────────────────────────
-                TextField(
-                  controller: _notesController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes (optional)',
-                    hintText: 'Add any extra context...',
-                    border: OutlineInputBorder(),
-                    alignLabelWithHint: true,
                   ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // ── Actions ──────────────────────────────────────────────
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 16),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: _isLoading ? null : _saveReminder,
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Text('Save Reminder'),
-                    ),
-                  ],
                 ),
               ],
             ),
-          ),
+
+            const SizedBox(height: 16),
+
+            // ── Notes ────────────────────────────────────────────────
+            TextField(
+              controller: _notesController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Notes (optional)',
+                hintText: 'Add any extra context...',
+                border: OutlineInputBorder(),
+                alignLabelWithHint: true,
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── Actions ──────────────────────────────────────────────
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              spacing: 16,
+              overflowSpacing: 16,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _isLoading ? null : _saveReminder,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('Save Reminder'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

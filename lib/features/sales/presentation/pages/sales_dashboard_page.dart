@@ -454,7 +454,7 @@ class _TicketCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => context.go('/ticket/${ticket.ticketId}'),
+          onTap: () => context.push('/ticket/${ticket.ticketId}'),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.all(16),

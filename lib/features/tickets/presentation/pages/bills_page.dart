@@ -197,6 +197,8 @@ class _BillsPageState extends ConsumerState<BillsPage> {
     final isAccountant = currentUser?.isAccountant == true;
 
     final currentPath = isAccountant ? '/accountant' : '/bills';
+    final isMobile = MediaQuery.of(context).size.width < 800;
+
     return MainLayout(
       currentPath: currentPath,
       child: Scaffold(
@@ -319,7 +321,8 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                     final unbilledTotal =
                         awaitingBillingTotal + pendingCompletionTotal;
 
-                    return SingleChildScrollView(
+                    return SafeArea(
+                      child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(16),
                       child: Column(
@@ -352,6 +355,7 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                             const SizedBox(height: 12),
                           ],
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Expanded(
@@ -360,66 +364,69 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                                   subtitle: 'Manage raised bills and payments',
                                 ),
                               ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  if (isAccountant)
-                                    FilledButton.icon(
-                                      onPressed: () {
-                                        showDialog(
-                                          context: context,
-                                          builder: (context) => const CreateTicketDialog(),
-                                        );
-                                      },
-                                      icon: const Icon(LucideIcons.plus, size: 16),
-                                      label: const Text('Create Ticket'),
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: AppColors.primary,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 10,
-                                        ),
-                                      ),
+                              if (isAccountant)
+                                FilledButton.icon(
+                                  onPressed: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => const CreateTicketDialog(),
+                                    );
+                                  },
+                                  icon: const Icon(LucideIcons.plus, size: 16),
+                                  label: const Text('Create Ticket'),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
                                     ),
-                                  if (isAccountant)
-                                    TextButton.icon(
-                                      onPressed: () => context.go('/active-claimed'),
-                                      icon: const Icon(LucideIcons.activity, size: 16),
-                                      label: const Text('Active tickets'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: AppColors.error,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
-                                        ),
-                                        textStyle: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  if (isAccountant)
-                                    TextButton.icon(
-                                      onPressed: () => _setSelectionMode(!_selectionMode),
-                                      icon: Icon(
-                                        _selectionMode ? LucideIcons.x : LucideIcons.checkSquare,
-                                        size: 16,
-                                      ),
-                                      label: Text(_selectionMode ? 'Cancel Select' : 'Select'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: AppColors.slate500,
-                                      ),
-                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                if (isAccountant)
                                   TextButton.icon(
-                                    onPressed: _clearFilters,
-                                    icon: const Icon(LucideIcons.rotateCcw, size: 16),
-                                    label: const Text('Reset Filters'),
+                                    onPressed: () => context.go('/active-claimed'),
+                                    icon: const Icon(LucideIcons.activity, size: 16),
+                                    label: const Text('Active tickets'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.error,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      textStyle: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                if (isAccountant)
+                                  TextButton.icon(
+                                    onPressed: () => _setSelectionMode(!_selectionMode),
+                                    icon: Icon(
+                                      _selectionMode ? LucideIcons.x : LucideIcons.checkSquare,
+                                      size: 16,
+                                    ),
+                                    label: Text(_selectionMode ? 'Cancel Select' : 'Select'),
                                     style: TextButton.styleFrom(
                                       foregroundColor: AppColors.slate500,
                                     ),
                                   ),
-                                ],
-                              ),
-                            ],
+                                TextButton.icon(
+                                  onPressed: _clearFilters,
+                                  icon: const Icon(LucideIcons.rotateCcw, size: 16),
+                                  label: const Text('Reset Filters'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.slate500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 16),
 
@@ -555,7 +562,8 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                             }),
                         ],
                       ),
-                    );
+                    ),
+                  );
                   },
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (err, _) => Center(child: Text('Error: $err')),
@@ -725,7 +733,7 @@ class _BillsPageState extends ConsumerState<BillsPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -858,12 +866,16 @@ class _BillListItem extends StatelessWidget {
                   children: [
                     const Icon(LucideIcons.building, size: 13, color: AppColors.slate400),
                     const SizedBox(width: 5),
-                    Text(
-                      customerName,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.slate600,
-                        fontWeight: FontWeight.w500,
+                    Expanded(
+                      child: Text(
+                        customerName,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.slate600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -998,8 +1010,8 @@ class _AmountSummaryTile extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: color.withOpacity(0.08),
-          border: Border.all(color: color.withOpacity(0.2)),
+          color: color.withValues(alpha: 0.08),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

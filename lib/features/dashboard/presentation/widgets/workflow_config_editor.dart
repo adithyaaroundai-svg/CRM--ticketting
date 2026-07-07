@@ -270,7 +270,13 @@ class _WorkflowConfigEditorState extends State<WorkflowConfigEditor> {
             children: allStatuses.map((status) {
               final enabled = _enabledStatuses.contains(status);
               return FilterChip(
-                label: Text(status),
+                label: Text(
+                  status,
+                  style: TextStyle(
+                    color: enabled ? AppColors.primary : AppColors.textPrimary,
+                    fontWeight: enabled ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
                 selected: enabled,
                 onSelected: (v) => _toggleStatus(status, v),
                 selectedColor: AppColors.primary.withValues(alpha: 0.15),

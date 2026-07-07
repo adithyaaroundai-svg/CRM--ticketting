@@ -86,7 +86,7 @@ class AmcReminderPage extends ConsumerWidget {
                               contactPerson: customer.contactPerson,
                               phoneNumbers: customer.phoneNumbers,
                               contactEmail: customer.contactEmail,
-                              onTap: () => context.go('/customer/${customer.id}'),
+                              onTap: () => context.push('/customer/${customer.id}'),
                             );
                           },
                         ),

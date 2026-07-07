@@ -420,7 +420,7 @@ class TicketCardWithAmc extends ConsumerWidget {
         referenceDate != null
             ? timeago.format(
                 referenceDate,
-                clock: _toLocalTime(DateTime.now().toUtc()),
+                clock: DateTime.now(),
               )
             : null;
     final actionButton = _buildActionButtons(
@@ -589,7 +589,7 @@ class TicketCardWithAmc extends ConsumerWidget {
         referenceDate != null
             ? timeago.format(
                 referenceDate,
-                clock: _toLocalTime(DateTime.now().toUtc()),
+                clock: DateTime.now(),
               )
             : null;
     final actionButton = _buildActionButtons(
@@ -844,7 +844,7 @@ class TicketCardWithAmc extends ConsumerWidget {
               side: BorderSide(color: AppColors.info.withValues(alpha: 0.6)),
             ),
             onPressed: () async {
-              context.go('/ticket/${ticket.ticketId}');
+              context.push('/ticket/${ticket.ticketId}');
             },
           ),
         ),
