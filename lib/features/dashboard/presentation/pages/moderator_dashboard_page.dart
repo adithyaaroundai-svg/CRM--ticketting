@@ -10,6 +10,7 @@ import '../../../tickets/domain/entities/ticket.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/data/repositories/chat_repository.dart';
 import '../../../chat/presentation/providers/chat_provider.dart';
+import '../../../customers/presentation/providers/customer_provider.dart';
 import '../widgets/ticket_card_with_amc.dart';
 
 class ModeratorDashboardPage extends ConsumerStatefulWidget {
@@ -39,8 +40,22 @@ class _ModeratorDashboardPageState extends ConsumerState<ModeratorDashboardPage>
     final agent = ref.read(authProvider);
     if (agent == null) return;
 
+    // Get customer name from customer ID
+    final customersAsync = ref.read(customersListProvider);
+    String companyName = ticket.customerId;
+    
+    if (customersAsync.hasValue) {
+      final customers = customersAsync.value ?? [];
+      try {
+        final customer = customers.firstWhere((c) => c.id == ticket.customerId);
+        companyName = customer.companyName;
+      } catch (e) {
+        // Customer not found, keep default
+      }
+    }
+
     final chatContent = [
-      'Company: ${ticket.customerId}',
+      'Company: $companyName',
       'Issue: ${ticket.title}',
       'TicketID: ${ticket.ticketId}',
     ].join('\n');

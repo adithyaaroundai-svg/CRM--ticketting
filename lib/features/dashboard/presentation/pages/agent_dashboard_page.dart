@@ -53,8 +53,22 @@ class _AgentDashboardPageState extends ConsumerState<AgentDashboardPage> {
     final agent = ref.read(authProvider);
     if (agent == null) return;
 
+    // Get customer name from customer ID
+    final customersAsync = ref.read(customersListProvider);
+    String companyName = ticket.customerId;
+    
+    if (customersAsync.hasValue) {
+      final customers = customersAsync.value ?? [];
+      try {
+        final customer = customers.firstWhere((c) => c.id == ticket.customerId);
+        companyName = customer.companyName;
+      } catch (e) {
+        // Customer not found, keep default
+      }
+    }
+
     final chatContent = [
-      'Company: ${ticket.customerId}',
+      'Company: $companyName',
       'Issue: ${ticket.title}',
       'TicketID: ${ticket.ticketId}',
     ].join('\n');
