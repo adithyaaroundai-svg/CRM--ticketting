@@ -58,8 +58,6 @@ supabase/.temp/
 supabase/config.toml.local
 
 # Flutter generated files
-*.g.dart
-*.freezed.dart
 *.mocks.dart
 
 # Web build output
