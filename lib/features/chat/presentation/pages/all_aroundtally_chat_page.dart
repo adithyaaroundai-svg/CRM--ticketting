@@ -19,6 +19,7 @@ import '../../../../core/design_system/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../../domain/entities/chat_message.dart';
+import '../../../tickets/presentation/providers/ticket_provider.dart';
 
 IconData _getFileIcon(String? fileType) {
   if (fileType == null) return Icons.insert_drive_file;
@@ -71,11 +72,45 @@ class _AllAroundTallyChatPageState extends ConsumerState<AllAroundTallyChatPage>
   bool _gifLoading = false;
   final _gifSearchCtrl = TextEditingController();
 
+  // Mentions
+  bool _showMentions = false;
+  String _mentionQuery = '';
+  int _mentionStartIndex = 0;
+
   @override
   void initState() {
     super.initState();
     _scrollCtrl.addListener(_onScroll);
     _focusNode.addListener(_onFocusChange);
+
+    _ctrl.addListener(() {
+      final text = _ctrl.text;
+      final selection = _ctrl.selection;
+      
+      if (!selection.isValid || selection.baseOffset == -1) return;
+
+      final cursorPos = selection.baseOffset;
+      final textBeforeCursor = text.substring(0, cursorPos);
+      final lastAtSignIndex = textBeforeCursor.lastIndexOf('@');
+
+      if (lastAtSignIndex != -1) {
+        final textAfterAtSign = textBeforeCursor.substring(lastAtSignIndex + 1);
+        if (!textAfterAtSign.contains(' ')) {
+          setState(() {
+            _showMentions = true;
+            _mentionQuery = textAfterAtSign.toLowerCase();
+            _mentionStartIndex = lastAtSignIndex;
+          });
+          return;
+        }
+      }
+      
+      if (_showMentions) {
+        setState(() {
+          _showMentions = false;
+        });
+      }
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
@@ -315,6 +350,145 @@ class _AllAroundTallyChatPageState extends ConsumerState<AllAroundTallyChatPage>
     });
   }
 
+  Color _userColor(String name) {
+    final colors = [
+      AppColors.primary,
+      AppColors.success,
+      AppColors.warning,
+      AppColors.error,
+      AppColors.info,
+    ];
+    return colors[name.hashCode % colors.length];
+  }
+
+  Widget _buildMentionsList() {
+    final agentsAsync = ref.watch(agentsListProvider);
+
+    return agentsAsync.when(
+      data: (agents) {
+        final filteredAgents = agents.where((a) {
+          final name = (a['full_name'] ?? a['username'] ?? '').toString().toLowerCase();
+          final role = (a['role'] ?? '').toString().toLowerCase();
+          return name.contains(_mentionQuery) || role.contains(_mentionQuery);
+        }).toList()
+          ..sort((a, b) {
+            final nameA = (a['full_name'] ?? a['username'] ?? '').toString().toLowerCase();
+            final nameB = (b['full_name'] ?? b['username'] ?? '').toString().toLowerCase();
+            return nameA.compareTo(nameB);
+          });
+
+        if (filteredAgents.isEmpty) return const SizedBox.shrink();
+
+        return Container(
+          constraints: const BoxConstraints(maxHeight: 200),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 4,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: ListView.builder(
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
+            itemCount: filteredAgents.length,
+            itemBuilder: (context, index) {
+              final agent = filteredAgents[index];
+              final name = (agent['full_name'] ?? agent['username'] ?? '').toString();
+              return ListTile(
+                dense: true,
+                leading: CircleAvatar(
+                  radius: 12,
+                  backgroundColor: _userColor(name).withValues(alpha: 0.15),
+                  child: Text(
+                    name.isNotEmpty ? name[0].toUpperCase() : '?',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: _userColor(name),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                title: Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _userColor(name),
+                  ),
+                ),
+                subtitle: Text(
+                  (agent['role'] ?? '').toString(),
+                  style: const TextStyle(fontSize: 11),
+                ),
+                onTap: () => _insertMention(name),
+              );
+            },
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  void _insertMention(String name) {
+    final text = _ctrl.text;
+    final newText = text.replaceRange(
+      _mentionStartIndex,
+      _ctrl.selection.baseOffset,
+      '@$name ',
+    );
+
+    _ctrl.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(
+        offset: _mentionStartIndex + name.length + 2,
+      ),
+    );
+
+    setState(() {
+      _showMentions = false;
+    });
+
+    _focusNode.requestFocus();
+  }
+
+  void _triggerMention() {
+    final text = _ctrl.text;
+    final selection = _ctrl.selection;
+    
+    int insertOffset = selection.baseOffset;
+    if (insertOffset == -1) {
+      insertOffset = text.length;
+    }
+    
+    String prefix = '@';
+    if (insertOffset > 0 && text[insertOffset - 1] != ' ') {
+      prefix = ' @';
+    }
+    
+    final newText = text.replaceRange(insertOffset, insertOffset, prefix);
+    
+    _ctrl.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: insertOffset + prefix.length),
+    );
+    
+    setState(() {
+      _showMentions = true;
+      _mentionQuery = '';
+      _mentionStartIndex = insertOffset + (prefix.length - 1);
+    });
+    
+    _focusNode.requestFocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(chatStreamProvider('all-aroundtally'));
@@ -367,15 +541,7 @@ class _AllAroundTallyChatPageState extends ConsumerState<AllAroundTallyChatPage>
           foregroundColor: Colors.white,
           iconTheme: const IconThemeData(color: Colors.white),
           elevation: 0,
-          actions: [
-            // Starred messages button
-            IconButton(
-              icon: const Icon(LucideIcons.star, size: 20),
-              onPressed: () => context.push('/chat/starred'),
-              tooltip: 'Starred Messages',
-            ),
-            const SizedBox(width: 8),
-          ],
+
         ),
         body: Column(
           children: [
@@ -612,101 +778,133 @@ class _AllAroundTallyChatPageState extends ConsumerState<AllAroundTallyChatPage>
                   ],
                 ),
               ),
+            // Mentions List
+            if (_showMentions) _buildMentionsList(),
+            
             // Input area
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: Colors.grey.shade200)),
+              padding: EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: MediaQuery.sizeOf(context).width < 800 ? 0 : 8,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.transparent,
               ),
               child: SafeArea(
                 child: Row(
                   children: [
-                    // Emoji toggle
-                    IconButton(
-                      icon: Icon(
-                        Icons.emoji_emotions_outlined,
-                        color: _showEmojiPicker ? AppColors.primary : AppColors.slate500,
-                        size: 22,
-                      ),
-                      onPressed: () => setState(() {
-                        _showEmojiPicker = !_showEmojiPicker;
-                        if (_showEmojiPicker) _showGifPicker = false;
-                      }),
-                      tooltip: 'Emoji',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                    const SizedBox(width: 4),
-                    // GIF toggle
-                    GestureDetector(
-                      onTap: () => setState(() {
-                        _showGifPicker = !_showGifPicker;
-                        if (_showGifPicker) {
-                          _showEmojiPicker = false;
-                          if (_gifResults.isEmpty) _searchGifs('trending');
-                        }
-                      }),
+                    Expanded(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                         decoration: BoxDecoration(
-                          color: _showGifPicker ? AppColors.primary : Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(6),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.grey.shade300),
                         ),
-                        child: Text(
-                          'GIF',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: _showGifPicker ? Colors.white : AppColors.slate600,
-                          ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: KeyboardListener(
+                                focusNode: FocusNode(),
+                                onKeyEvent: (event) {
+                                  if (event is KeyDownEvent &&
+                                      event.logicalKey == LogicalKeyboardKey.enter &&
+                                      !HardwareKeyboard.instance.isShiftPressed) {
+                                    _sendMessage();
+                                  }
+                                },
+                                child: TextField(
+                                  controller: _ctrl,
+                                  focusNode: _focusNode,
+                                  maxLines: 4,
+                                  minLines: 1,
+                                  style: const TextStyle(fontSize: 14),
+                                  decoration: InputDecoration(
+                                    hintText: 'Type a message...',
+                                    hintStyle: const TextStyle(fontSize: 14, color: AppColors.slate500),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    isDense: true,
+                                    prefixIconConstraints: const BoxConstraints(),
+                                    prefixIcon: Padding(
+                                      padding: const EdgeInsets.only(left: 12.0, right: 4.0),
+                                      child: InkWell(
+                                        onTap: () => setState(() {
+                                          _showEmojiPicker = !_showEmojiPicker;
+                                          if (_showEmojiPicker) _showGifPicker = false;
+                                        }),
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(4.0),
+                                          child: Icon(
+                                            Icons.emoji_emotions_outlined,
+                                            color: _showEmojiPicker ? AppColors.primary : AppColors.slate500,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    suffixIconConstraints: const BoxConstraints(),
+                                    suffixIcon: Padding(
+                                      padding: const EdgeInsets.only(right: 12.0, left: 4.0),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          InkWell(
+                                            onTap: _triggerMention,
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: const Padding(
+                                              padding: EdgeInsets.all(4.0),
+                                              child: Icon(Icons.alternate_email, color: AppColors.slate500, size: 20),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          InkWell(
+                                            onTap: () => setState(() {
+                                              _showGifPicker = !_showGifPicker;
+                                              if (_showGifPicker) {
+                                                _showEmojiPicker = false;
+                                                if (_gifResults.isEmpty) _searchGifs('trending');
+                                              }
+                                            }),
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(4.0),
+                                              child: Icon(
+                                                Icons.movie_outlined,
+                                                color: _showGifPicker ? AppColors.primary : AppColors.slate500,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  onTap: () => setState(() {
+                                    _showEmojiPicker = false;
+                                    _showGifPicker = false;
+                                  }),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: KeyboardListener(
-                        focusNode: FocusNode(),
-                        onKeyEvent: (event) {
-                          if (event is KeyDownEvent &&
-                              event.logicalKey == LogicalKeyboardKey.enter &&
-                              !HardwareKeyboard.instance.isShiftPressed) {
-                            _sendMessage();
-                          }
-                        },
-                        child: TextField(
-                          controller: _ctrl,
-                          focusNode: _focusNode,
-                          maxLines: 4,
-                          minLines: 1,
-                          decoration: InputDecoration(
-                            hintText: 'Type a message... (Enter to send, Shift+Enter for new line)',
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                          ),
-                          onTap: () => setState(() {
-                            _showEmojiPicker = false;
-                            _showGifPicker = false;
-                          }),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
                     // Send button
-                    IconButton(
-                      icon: const Icon(LucideIcons.send, size: 20),
-                      onPressed: _sendMessage,
-                      color: AppColors.primary,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                    CircleAvatar(
+                      backgroundColor: AppColors.primary,
+                      radius: 20,
+                      child: IconButton(
+                        icon: const Icon(LucideIcons.send, color: Colors.white, size: 18),
+                        onPressed: _sendMessage,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
                     ),
                   ],
                 ),

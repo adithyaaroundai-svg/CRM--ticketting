@@ -1286,50 +1286,93 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
 
     });
 
+
+
+    _messageFocusNode.requestFocus();
+
+  }
+
+
+
+  void _triggerMention() {
+
+    final text = _messageCtrl.text;
+
+    final selection = _messageCtrl.selection;
+
+    
+
+    int insertOffset = selection.baseOffset;
+
+    if (insertOffset == -1) {
+
+      insertOffset = text.length;
+
+    }
+
+    
+
+    String prefix = '@';
+
+    if (insertOffset > 0 && text[insertOffset - 1] != ' ') {
+
+      prefix = ' @';
+
+    }
+
+    
+
+    final newText = text.replaceRange(insertOffset, insertOffset, prefix);
+
+    
+
+    _messageCtrl.value = TextEditingValue(
+
+      text: newText,
+
+      selection: TextSelection.collapsed(offset: insertOffset + prefix.length),
+
+    );
+
+    
+
+    setState(() {
+
+      _showMentions = true;
+
+      _mentionQuery = '';
+
+      _mentionStartIndex = insertOffset + (prefix.length - 1);
+
+    });
+
+    
+
+    _messageFocusNode.requestFocus();
+
   }
 
 
 
   Widget _buildInputArea() {
-
     return Container(
-
       padding: EdgeInsets.fromLTRB(
-
         16,
-
-        12,
-
+        MediaQuery.sizeOf(context).width < 800 ? 0 : 12,
         16,
-
-        12 + MediaQuery.of(context).padding.bottom,
-
+        MediaQuery.sizeOf(context).width < 800 ? 0 : 12,
       ),
 
-      decoration: BoxDecoration(
-
-        color: Colors.white,
-
-        boxShadow: [
-
-          BoxShadow(
-
-            color: Colors.black.withValues(alpha: 0.05),
-
-            blurRadius: 10,
-
-            offset: const Offset(0, -2),
-
-          ),
-
-        ],
-
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
       ),
 
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           if (_showFormattingBar)
             Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
@@ -1482,33 +1525,7 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
 
                 children: [
 
-                  // Left side icons
-                  Padding(
-                    padding: const EdgeInsets.only(left: 12, right: 8),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.emoji_emotions_outlined, color: Color(0xFF6B7280), size: 20),
-                          onPressed: _showEmojiPicker,
-                          tooltip: 'Emoji',
-                          padding: const EdgeInsets.all(8),
-                          constraints: const BoxConstraints(),
-                        ),
-                        // attach button hidden
-                        IconButton(
-                          icon: Icon(_showFormattingBar ? Icons.text_format : Icons.text_format, color: _showFormattingBar ? AppColors.primary : const Color(0xFF6B7280), size: 20),
-                          onPressed: () {
-                            setState(() {
-                              _showFormattingBar = !_showFormattingBar;
-                            });
-                          },
-                          tooltip: 'Format Text',
-                          padding: const EdgeInsets.all(8),
-                          constraints: const BoxConstraints(),
-                        ),
-                      ],
-                    ),
-                  ),
+
 
                   // Text input
                   Expanded(
@@ -1527,7 +1544,7 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
                       child: TextField(
                         controller: _messageCtrl,
                         focusNode: _messageFocusNode,
-                        maxLines: 5,
+                        maxLines: MediaQuery.sizeOf(context).width < 800 ? 1 : 5,
                         minLines: 1,
                         style: const TextStyle(fontSize: 14),
                         textInputAction: TextInputAction.newline,
@@ -1535,9 +1552,39 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
                           hintText: 'Type a message...',
                           hintStyle: TextStyle(color: AppColors.slate400, fontSize: 14),
                           border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
+                          prefixIcon: Padding(
+                            padding: const EdgeInsets.only(left: 8, right: 2),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                InkWell(
+                                  onTap: _showEmojiPicker,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(4.0),
+                                    child: Icon(Icons.emoji_emotions_outlined, color: Color(0xFF6B7280), size: 18),
+                                  ),
+                                ),
+                                const SizedBox(width: 2),
+                                InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _showFormattingBar = !_showFormattingBar;
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4.0),
+                                    child: Icon(_showFormattingBar ? Icons.text_format : Icons.text_format, color: _showFormattingBar ? AppColors.primary : const Color(0xFF6B7280), size: 18),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                          contentPadding: EdgeInsets.symmetric(
                             horizontal: 8,
-                            vertical: 12,
+                            vertical: MediaQuery.sizeOf(context).width < 800 ? 0 : 12,
                           ),
                         ),
                       ),
@@ -1546,16 +1593,27 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
 
                   // Right side icons
                   Padding(
-                    padding: const EdgeInsets.only(left: 8, right: 12),
+                    padding: const EdgeInsets.only(left: 2, right: 8),
                     child: Row(
                       children: [
+                        // Mention button
+                        InkWell(
+                          onTap: _triggerMention,
+                          borderRadius: BorderRadius.circular(12),
+                          child: const Padding(
+                            padding: EdgeInsets.all(4.0),
+                            child: Icon(Icons.alternate_email, color: Color(0xFF6B7280), size: 18),
+                          ),
+                        ),
+                        const SizedBox(width: 2),
                         // GIF button
-                        IconButton(
-                          icon: const Icon(Icons.movie_outlined, color: Color(0xFF6B7280), size: 20),
-                          onPressed: _showGifPicker,
-                          tooltip: 'Add GIF',
-                          padding: const EdgeInsets.all(8),
-                          constraints: const BoxConstraints(),
+                        InkWell(
+                          onTap: _showGifPicker,
+                          borderRadius: BorderRadius.circular(12),
+                          child: const Padding(
+                            padding: EdgeInsets.all(4.0),
+                            child: Icon(Icons.movie_outlined, color: Color(0xFF6B7280), size: 18),
+                          ),
                         ),
                       ],
                     ),
@@ -1603,31 +1661,35 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
 
             child: _isUploadingFile
                 ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    width: 36,
+                    height: 36,
+                    child: Center(
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
                     ),
                   )
                 : IconButton(
-                    icon: const Icon(LucideIcons.send, color: Colors.white, size: 18),
+                    icon: const Icon(LucideIcons.send, color: Colors.white, size: 16),
                     onPressed: _sendMessage,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   ),
 
           ),
 
         ],
-
       ),
-
-        ],
-
-      ),
-
-    );
-
-  }
+    ],
+  ),
+),
+);
+}
 
 
 

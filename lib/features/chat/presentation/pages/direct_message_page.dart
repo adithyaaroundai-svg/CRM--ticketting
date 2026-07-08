@@ -1226,24 +1226,8 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
           12,
         ),
 
-      decoration: BoxDecoration(
-
-        color: Colors.white,
-
-        boxShadow: [
-
-          BoxShadow(
-
-            color: Colors.black.withValues(alpha: 0.05),
-
-            blurRadius: 10,
-
-            offset: const Offset(0, -2),
-
-          ),
-
-        ],
-
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
       ),
 
       child: Column(
@@ -1374,181 +1358,147 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
               ),
             ),
           Row(
-
             children: [
-
               Expanded(
-
                 child: Container(
-
-              decoration: BoxDecoration(
-
-                color: Colors.white,
-
-                borderRadius: BorderRadius.circular(24),
-
-                border: Border.all(color: AppColors.slate200),
-
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.grey.shade300),
                   ),
-                ],
-              ),
-
-              child: Row(
-
-                children: [
-
-                  // Left side icons
-                  Padding(
-                    padding: const EdgeInsets.only(left: 12, right: 8),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.emoji_emotions_outlined, color: Color(0xFF6B7280), size: 20),
-                          onPressed: _showEmojiPicker,
-                          tooltip: 'Emoji',
-                          padding: const EdgeInsets.all(8),
-                          constraints: const BoxConstraints(),
-                        ),
-                        // attach button hidden
-                        IconButton(
-                          icon: Icon(_showFormattingBar ? Icons.text_format : Icons.text_format, color: _showFormattingBar ? AppColors.primary : const Color(0xFF6B7280), size: 20),
-                          onPressed: () {
-                            setState(() {
-                              _showFormattingBar = !_showFormattingBar;
-                            });
-                          },
-                          tooltip: 'Format Text',
-                          padding: const EdgeInsets.all(8),
-                          constraints: const BoxConstraints(),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Text input
-                  Expanded(
-                    child: Focus(
-                      onKeyEvent: (node, event) {
-                        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
-                          if (HardwareKeyboard.instance.isShiftPressed) {
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Focus(
+                          onKeyEvent: (node, event) {
+                            if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                              if (HardwareKeyboard.instance.isShiftPressed) {
+                                return KeyEventResult.ignored;
+                              } else {
+                                _sendMessage();
+                                return KeyEventResult.handled;
+                              }
+                            }
                             return KeyEventResult.ignored;
-                          } else {
-                            _sendMessage();
-                            return KeyEventResult.handled;
-                          }
-                        }
-                        return KeyEventResult.ignored;
-                      },
-                      child: TextField(
-                        controller: _textCtrl,
-                        focusNode: _messageFocusNode,
-                        maxLines: null,
-                        keyboardType: TextInputType.multiline,
-                        decoration: const InputDecoration(
-                          hintText: 'Type a message...',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(vertical: 12),
-                          isDense: true,
+                          },
+                          child: TextField(
+                            controller: _textCtrl,
+                            focusNode: _messageFocusNode,
+                            minLines: 1,
+                            maxLines: 4,
+                            keyboardType: TextInputType.multiline,
+                            style: const TextStyle(fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: 'Type a message...',
+                              hintStyle: const TextStyle(fontSize: 14, color: AppColors.slate500),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              isDense: true,
+                              prefixIconConstraints: const BoxConstraints(),
+                              prefixIcon: Padding(
+                                padding: const EdgeInsets.only(left: 12.0, right: 4.0),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    InkWell(
+                                      onTap: _showEmojiPicker,
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(4.0),
+                                        child: Icon(Icons.emoji_emotions_outlined, color: AppColors.slate500, size: 20),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _showFormattingBar = !_showFormattingBar;
+                                        });
+                                      },
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(4.0),
+                                        child: Icon(_showFormattingBar ? Icons.text_format : Icons.text_format, color: _showFormattingBar ? AppColors.primary : AppColors.slate500, size: 20),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              suffixIconConstraints: const BoxConstraints(),
+                              suffixIcon: Padding(
+                                padding: const EdgeInsets.only(right: 12.0, left: 4.0),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    InkWell(
+                                      onTap: _triggerMention,
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(4.0),
+                                        child: Icon(Icons.alternate_email, color: AppColors.slate500, size: 20),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    InkWell(
+                                      onTap: _showGifPicker,
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(4.0),
+                                        child: Icon(Icons.movie_outlined, color: AppColors.slate500, size: 20),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-
-                  // Right side icons
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8, right: 12),
-                    child: Row(
-                      children: [
-                        // Mention button
-                        IconButton(
-                          icon: const Icon(Icons.alternate_email, color: Color(0xFF6B7280), size: 20),
-                          onPressed: _triggerMention,
-                          tooltip: 'Mention',
-                          padding: const EdgeInsets.all(8),
-                          constraints: const BoxConstraints(),
-                        ),
-                        // GIF button
-                        IconButton(
-                          icon: const Icon(Icons.movie_outlined, color: Color(0xFF6B7280), size: 20),
-                          onPressed: _showGifPicker,
-                          tooltip: 'Add GIF',
-                          padding: const EdgeInsets.all(8),
-                          constraints: const BoxConstraints(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-
-
-          const SizedBox(width: 8),
-
-          Container(
-
-            decoration: BoxDecoration(
-
-              gradient: LinearGradient(
-
-                colors: [AppColors.primary, AppColors.primaryDark],
-
-                begin: Alignment.topLeft,
-
-                end: Alignment.bottomRight,
-
-              ),
-
-              shape: BoxShape.circle,
-
-              boxShadow: [
-
-                BoxShadow(
-
-                  color: AppColors.primary.withValues(alpha: 0.3),
-
-                  blurRadius: 8,
-
-                  offset: const Offset(0, 2),
-
                 ),
-
-              ],
-
-            ),
-
-            child: _isUploadingFile
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : IconButton(
-                    icon: const Icon(LucideIcons.send, color: Colors.white, size: 18),
-                    onPressed: _sendMessage,
+              ),
+              const SizedBox(width: 8),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryDark],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: _isUploadingFile
+                    ? const SizedBox(
+                        width: 36,
+                        height: 36,
+                        child: Padding(
+                          padding: EdgeInsets.all(9.0),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                      )
+                    : IconButton(
+                        icon: const Icon(LucideIcons.send, color: Colors.white, size: 18),
+                        onPressed: _sendMessage,
+                      ),
+              ),
+            ],
           ),
-
-        ],
-
-      ),
-
         ],
       ),
-      ),
-    );
-  }
+    ),
+  );
+}
 
 
 

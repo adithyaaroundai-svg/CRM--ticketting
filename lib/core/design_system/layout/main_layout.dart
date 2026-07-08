@@ -2220,11 +2220,14 @@ class _LeftNav extends ConsumerWidget {
           ),
         ],
       ),
-      child: Column(
-        children: [
-          // Channels and DMs section
-          Expanded(child: _ChannelsList(currentPath: currentPath)),
-        ],
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // Channels and DMs section
+            Expanded(child: _ChannelsList(currentPath: currentPath)),
+          ],
+        ),
       ),
     );
   }
