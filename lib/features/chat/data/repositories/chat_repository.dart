@@ -130,7 +130,35 @@ class ChatRepository {
     return response['id'] as String;
   }
 
-  // Soft delete a message
+  // Insert a call-event system message.
+  // [callType] is 'audio' or 'video'.
+  // [event] is 'started' | 'ended' | 'missed' | 'ongoing'.
+  // [duration] is optional (e.g., '5m 32s'), used for 'ended' event.
+  Future<void> sendCallMessage({
+    required String senderId,
+    required String senderName,
+    required String senderRole,
+    String callType = 'audio', // 'audio' | 'video'
+    String event = 'started',  // 'started' | 'ended' | 'missed' | 'ongoing'
+    String? duration,
+    String? receiverId,
+    String channel = 'support-chat',
+  }) async {
+    // Format: __CALL_AUDIO_STARTED__ or __CALL_VIDEO_ENDED__:5m 32s
+    final suffix = duration != null ? ':$duration' : '';
+    final content = '__CALL_${callType.toUpperCase()}_${event.toUpperCase()}__$suffix';
+    final payload = <String, dynamic>{
+      'sender_id': senderId,
+      'sender_name': senderName,
+      'sender_role': senderRole,
+      'content': content,
+      'channel': channel,
+    };
+    if (receiverId != null) payload['receiver_id'] = receiverId;
+    await _client.from('chat_messages').insert(payload);
+  }
+
+
   Future<void> deleteMessage(String messageId) async {
     await _client
         .from('chat_messages')

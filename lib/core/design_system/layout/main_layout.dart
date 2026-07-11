@@ -13,6 +13,8 @@ import '../../../features/customers/presentation/providers/customer_provider.dar
 import '../../../features/dashboard/presentation/providers/app_settings_provider.dart';
 import '../../network/connectivity_provider.dart';
 import '../../../features/chat/presentation/providers/chat_provider.dart';
+import '../../../features/chat/presentation/providers/custom_channel_provider.dart';
+import '../../../features/chat/presentation/widgets/create_channel_dialog.dart';
 import '../../../features/tickets/domain/entities/ticket.dart';
 import '../../../features/chat/presentation/widgets/chat_toast_overlay.dart';
 import '../../../features/productivity/presentation/widgets/add_reminder_dialog.dart';
@@ -2497,6 +2499,7 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
     final agentsAsync = ref.watch(agentsListProvider);
     final conversationsAsync = ref.watch(dmConversationsProvider);
     final currentUser = ref.watch(authProvider);
+    final customChannelsAsync = ref.watch(customChannelsProvider);
 
     const allowedSalesChannelIds = {
       '0a5aeeb8-9544-4dc8-920f-e26c192b0dd3',
@@ -2656,22 +2659,91 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
 
         // Channels Header
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(LucideIcons.hash, size: 14, color: Colors.white70),
-              const SizedBox(width: 8),
-              const Text(
-                'Channels',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                children: const [
+                  Icon(LucideIcons.hash, size: 14, color: Colors.white70),
+                  SizedBox(width: 8),
+                  Text(
+                    'Channels',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(LucideIcons.plus, size: 16, color: Colors.white70),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => const CreateChannelDialog(),
+                  );
+                },
               ),
             ],
           ),
         ),
+        
+        // Dynamic Channels
+        if (customChannelsAsync.hasError)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              'Error: ${customChannelsAsync.error}',
+              style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+            ),
+          ),
+        if (customChannelsAsync.hasValue) ...[
+          for (final channel in customChannelsAsync.value!)
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => context.go('/c/${channel.id}'),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: currentPath.startsWith('/c/${channel.id}')
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        channel.isPrivate ? LucideIcons.lock : LucideIcons.hash,
+                        size: 16,
+                        color: currentPath.startsWith('/c/${channel.id}') ? Colors.white : Colors.white54,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          channel.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: currentPath.startsWith('/c/${channel.id}') ? Colors.white : Colors.white70,
+                            fontSize: 13,
+                            fontWeight: currentPath.startsWith('/c/${channel.id}')
+                                ? FontWeight.w600
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+
         // Support Chat Channel
         Material(
           color: Colors.transparent,

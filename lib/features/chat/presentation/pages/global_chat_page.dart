@@ -58,9 +58,13 @@ IconData _getFileIcon(String? fileType) {
 
 Future<void> _downloadFile(String url, String fileName) async {
   try {
-    await url_launcher.launchUrl(Uri.parse(url));
+    final uri = Uri.parse(url);
+    await url_launcher.launchUrl(
+      uri,
+      mode: url_launcher.LaunchMode.externalApplication,
+    );
   } catch (e) {
-    // Handle error
+    debugPrint('Could not launch $url: $e');
   }
 }
 
@@ -923,12 +927,21 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
                                 showDateHeader = true;
                               }
                             }
+                            
+                            bool showSender = true;
+                            if (!showDateHeader && index > 0) {
+                              final prevMsg = messages[index - 1];
+                              if (prevMsg.senderId == msg.senderId) {
+                                showSender = false;
+                              }
+                            }
                             final showUnreadLabel = msg.id == _entryFirstUnreadMessageId;
                             
                             Widget bubble = _ChatBubble(
                               key: ValueKey(msg.id),
                               message: msg,
                               isMe: isMe,
+                              showSender: showSender,
                               onDelete: () {
                                 _confirmDelete(context, msg.id);
                               },
@@ -1436,59 +1449,51 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
           // File preview
           if (_selectedFile != null)
             Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(8),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.attach_file,
-                    size: 16,
-                    color: Color(0xFF64748B),
-                  ),
-                  const SizedBox(width: 8),
+                  Icon(_getFileIcon(_selectedFile!.extension), size: 32, color: AppColors.primary),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: _isUploadingFile
-                        ? const Row(
-                            children: [
-                              SizedBox(
-                                width: 12,
-                                height: 12,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF64748B)),
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Uploading...',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          )
-                        : Text(
-                            _selectedFile!.name,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF475569),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _selectedFile!.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (_selectedFile!.size > 0)
+                          Text(
+                            '${(_selectedFile!.size / 1024).toStringAsFixed(1)} KB',
+                            style: const TextStyle(fontSize: 12, color: AppColors.slate500),
                           ),
+                      ],
+                    ),
                   ),
-                  if (!_isUploadingFile)
+                  if (_isUploadingFile)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
                     IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        size: 16,
-                        color: Color(0xFF64748B),
-                      ),
+                      icon: const Icon(Icons.close, color: AppColors.slate500),
                       onPressed: _clearFile,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -1497,11 +1502,13 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
               ),
             ),
           Row(
-
             children: [
-
+              IconButton(
+                icon: const Icon(Icons.add, color: AppColors.slate500),
+                onPressed: _pickFile,
+                padding: const EdgeInsets.all(12),
+              ),
               Expanded(
-
                 child: Container(
 
               decoration: BoxDecoration(
@@ -2290,6 +2297,7 @@ class _ChatBubble extends ConsumerWidget {
   final ChatMessage message;
 
   final bool isMe;
+  final bool showSender;
 
   final VoidCallback onDelete;
   final VoidCallback onReply;
@@ -2304,6 +2312,7 @@ class _ChatBubble extends ConsumerWidget {
     required this.message,
 
     required this.isMe,
+    this.showSender = true,
 
     required this.onDelete,
     required this.onReply,
@@ -2863,210 +2872,122 @@ class _ChatBubble extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
 
                 children: [
-                  // File attachment display
-                  if (message.fileUrl != null && message.fileName != null)
-                    if (message.fileType == 'gif' || message.fileType == 'jpg' || message.fileType == 'jpeg' || message.fileType == 'png' || message.fileType == 'webp')
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        constraints: const BoxConstraints(
-                          maxWidth: 250,
-                          maxHeight: 250,
+                  // Header with name and timestamp
+                  if (showSender)
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          Text(
+                            message.senderName,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: _userColor(message.senderName),
+                          ),
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            message.fileUrl!,
-                            fit: BoxFit.contain,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                width: 200,
-                                height: 150,
-                                color: Colors.grey[200],
-                                child: const Center(
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+
+                        if (message.senderRole.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _userColor(message.senderName)
+                                  .withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              message.senderRole.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.w600,
+                                color: _userColor(message.senderName),
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 8),
+                        // Action menu (shown on hover)
+                        const _HoverableActionMenu(),
+                      ],
+                    ),
+                  ),
+
+                  // Message content with ticket handling
+                  _buildSlackStyleMessageContent(context, ref),
+
+                  // File attachment display
+                  if (message.fileUrl != null && message.fileUrl!.isNotEmpty)
+                    if (message.fileType?.toLowerCase() == 'gif')
+                      // Render GIF as animated inline image
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          message.fileUrl!,
+                          width: 200,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (_, child, progress) => progress == null
+                              ? child
+                              : SizedBox(
+                                  width: 200,
+                                  height: 120,
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      value: progress.expectedTotalBytes != null
+                                          ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
+                                          : null,
+                                    ),
+                                  ),
                                 ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 200,
-                                height: 150,
-                                color: Colors.grey[200],
-                                child: const Center(
-                                  child: Icon(Icons.broken_image, color: Colors.grey),
-                                ),
-                              );
-                            },
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 200,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Center(child: Icon(Icons.gif, size: 32, color: AppColors.slate400)),
                           ),
                         ),
                       )
                     else
-                      Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: const Color(0xFFE2E8F0),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE2E8F0),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Icon(
-                              _getFileIcon(message.fileType),
-                              size: 20,
-                              color: const Color(0xFF64748B),
-                            ),
+                      GestureDetector(
+                        onTap: () => _downloadFile(message.fileUrl!, message.fileName ?? 'file'),
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 4, bottom: 8),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.grey.shade300),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  message.fileName!,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF1E293B),
-                                  ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(_getFileIcon(message.fileType),
+                                  size: 16, color: AppColors.slate500),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  message.fileName ?? 'File',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Attachment',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF64748B),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(LucideIcons.download,
+                                  size: 14, color: AppColors.slate500),
+                            ],
                           ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.download,
-                              size: 18,
-                              color: Color(0xFF64748B),
-                            ),
-                            onPressed: () => _downloadFile(message.fileUrl!, message.fileName!),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-
-                  // Header with name and timestamp
-
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-
-                      children: [
-
-                        Text(
-
-                          message.senderName,
-
-                          style: TextStyle(
-
-                            fontSize: 15,
-
-                            fontWeight: FontWeight.w600,
-
-                            color: _userColor(message.senderName),
-
-                          ),
-
-                        ),
-
-                        const SizedBox(width: 8),
-
-                        Text(
-
-                          DateFormat('h:mm a').format(message.createdAt.toLocal()),
-
-                          style: const TextStyle(
-
-                            fontSize: 12,
-
-                            color: Color(0xFF6B7280),
-
-                          ),
-
-                        ),
-
-                        if (message.senderRole.isNotEmpty) ...[
-
-                          const SizedBox(width: 8),
 
 
-
-                    Container(
-
-                          padding: const EdgeInsets.symmetric(
-
-                            horizontal: 6,
-
-                            vertical: 2,
-
-                          ),
-
-                          decoration: BoxDecoration(
-
-                            color: _userColor(message.senderName)
-
-                                .withValues(alpha: 0.10),
-
-                            borderRadius: BorderRadius.circular(4),
-
-                          ),
-
-                          child: Text(
-
-                            message.senderRole.toUpperCase(),
-
-                            style: TextStyle(
-
-                              fontSize: 8,
-
-                              fontWeight: FontWeight.w600,
-
-                              color: _userColor(message.senderName),
-
-                            ),
-
-                          ),
-
-                        ),
-
-                      ],
-
-                      const SizedBox(width: 8),
-
-                      // Action menu (shown on hover)
-                      const _HoverableActionMenu(),
-                    ],
-
-                  ),
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  // Message content with ticket handling
-
-                  _buildSlackStyleMessageContent(context, ref),
 
                   const SizedBox(height: 6),
 
@@ -3812,18 +3733,32 @@ class _ChatBubble extends ConsumerWidget {
               ],
             ),
           ),
-          // Actual reply message text — show placeholder if empty
-          if (message.content.trim().isNotEmpty)
-            _RichMessageText(content: message.content, isMe: false)
-          else
-            const Text(
-              '↩ Replied',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF94A3B8),
-                fontStyle: FontStyle.italic,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Flexible(
+                child: message.content.trim().isNotEmpty
+                    ? _RichMessageText(content: message.content, isMe: false)
+                    : const Text(
+                        '↩ Replied',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF94A3B8),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Text(
+                DateFormat('h:mm a').format(message.createdAt.toLocal()),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+            ],
+          ),
         ],
       );
     }
@@ -3833,9 +3768,25 @@ class _ChatBubble extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    return _RichMessageText(
-      content: message.content,
-      isMe: false,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Flexible(
+          child: _RichMessageText(
+            content: message.content,
+            isMe: false,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          DateFormat('h:mm a').format(message.createdAt.toLocal()),
+          style: const TextStyle(
+            fontSize: 10,
+            color: Color(0xFF94A3B8),
+          ),
+        ),
+      ],
     );
   }
 
@@ -3932,18 +3883,21 @@ class _HoverableMessageRowState extends State<_HoverableMessageRow> {
   bool _isHovering = false;
 
   void _addReaction(BuildContext context, String reaction, String messageId) {
+    setState(() => _isHovering = false);
     // Find the parent _GlobalChatPageState and call its method
     final state = context.findAncestorStateOfType<_GlobalChatPageState>();
     state?._addReaction(context, reaction, messageId);
   }
 
   void _showMoreReactions(BuildContext context, String messageId) {
+    setState(() => _isHovering = false);
     // Find the parent _GlobalChatPageState and call its method
     final state = context.findAncestorStateOfType<_GlobalChatPageState>();
     state?._showMoreReactions(context, messageId);
   }
 
   void _handleStarMessage(BuildContext context, String messageId) {
+    setState(() => _isHovering = false);
     // Find the parent _GlobalChatPageState and call its method
     final state = context.findAncestorStateOfType<_GlobalChatPageState>();
     state?._handleStarMessage(context, messageId);
@@ -3951,19 +3905,30 @@ class _HoverableMessageRowState extends State<_HoverableMessageRow> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      child: _HoverableActionMenuContext(
-        isMe: widget.isMe,
-        onReply: widget.onReply,
-        onDelete: widget.onDelete,
-        onAddReaction: (context, reaction, messageId) => _addReaction(context, reaction, messageId),
-        onShowMoreReactions: (context, messageId) => _showMoreReactions(context, messageId),
-        onHandleStarMessage: (context, messageId) => _handleStarMessage(context, messageId),
-        isHovering: _isHovering,
-        messageId: widget.message.id,
-        child: widget.child,
+    return TapRegion(
+      onTapOutside: (_) {
+        if (_isHovering) setState(() => _isHovering = false);
+      },
+      child: GestureDetector(
+        onLongPress: () => setState(() => _isHovering = true),
+        onTap: () {
+          if (_isHovering) setState(() => _isHovering = false);
+        },
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _isHovering = true),
+          onExit: (_) => setState(() => _isHovering = false),
+          child: _HoverableActionMenuContext(
+            isMe: widget.isMe,
+            onReply: widget.onReply,
+            onDelete: widget.onDelete,
+            onAddReaction: (context, reaction, messageId) => _addReaction(context, reaction, messageId),
+            onShowMoreReactions: (context, messageId) => _showMoreReactions(context, messageId),
+            onHandleStarMessage: (context, messageId) => _handleStarMessage(context, messageId),
+            isHovering: _isHovering,
+            messageId: widget.message.id,
+            child: widget.child,
+          ),
+        ),
       ),
     );
   }

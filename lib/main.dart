@@ -8,6 +8,7 @@ import 'features/dashboard/presentation/pages/admin_dashboard_page.dart';
 import 'features/chat/presentation/pages/global_chat_page.dart';
 import 'features/chat/presentation/pages/sales_chat_page.dart';
 import 'features/chat/presentation/pages/all_aroundtally_chat_page.dart';
+import 'features/chat/presentation/pages/custom_channel_chat_page.dart';
 import 'features/sales/presentation/pages/leads_page.dart';
 import 'features/chat/presentation/pages/direct_message_page.dart';
 import 'features/auth/presentation/pages/login_page.dart';
@@ -420,6 +421,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final userId = state.pathParameters['userId']!;
           return DirectMessagePage(partnerId: userId);
+        },
+      ),
+      GoRoute(
+        path: '/c/:channelId',
+        builder: (context, state) {
+          final channelId = state.pathParameters['channelId']!;
+          return CustomChannelChatPage(channelId: channelId);
         },
       ),
     ],

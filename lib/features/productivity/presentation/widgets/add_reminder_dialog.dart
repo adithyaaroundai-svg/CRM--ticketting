@@ -67,42 +67,52 @@ class _AddReminderDialogState extends ConsumerState<AddReminderDialog> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480, maxHeight: 600),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               // ── Header ──────────────────────────────────────────────
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _showActiveReminders ? 'Active Reminders' : 'Create Reminder',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.slate900,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _showActiveReminders ? 'Active Reminders' : 'Create Reminder',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.slate900,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 32),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          icon: Icon(
+                            _showActiveReminders ? LucideIcons.plus : LucideIcons.list,
+                            size: 16,
+                          ),
+                          label: Text(_showActiveReminders ? 'New Reminder' : 'View Active'),
+                          onPressed: () {
+                            setState(() {
+                              _showActiveReminders = !_showActiveReminders;
+                            });
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                  Row(
-                    children: [
-                      TextButton.icon(
-                        icon: Icon(
-                          _showActiveReminders ? LucideIcons.plus : LucideIcons.list,
-                          size: 16,
-                        ),
-                        label: Text(_showActiveReminders ? 'New' : 'View Active'),
-                        onPressed: () {
-                          setState(() {
-                            _showActiveReminders = !_showActiveReminders;
-                          });
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(LucideIcons.x, size: 20),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(LucideIcons.x, size: 20),
+                    onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
               ),
