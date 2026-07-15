@@ -45,6 +45,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
   String _newPaymentCollected = 'No';
   DateTime? _newCompletedDate;
   DateTime? _newReportedDate;
+  bool _isSavingNewTicket = false;
 
   @override
   void dispose() {
@@ -107,6 +108,9 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
       return;
     }
 
+    if (_isSavingNewTicket) return;
+    setState(() => _isSavingNewTicket = true);
+
     try {
       // Create customer if needed
       String customerId;
@@ -145,6 +149,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
         'customer_id': customerId,
         'title': task,
         'status': _newStatus,
+        'contact_phone': contactNumber.isEmpty ? null : contactNumber,
         'assigned_to': _newClaimedById,
         'bill_amount': billAmount.isEmpty ? null : double.tryParse(billAmount),
         'payment_collected': _newPaymentCollected == 'Yes',
@@ -167,6 +172,8 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
           SnackBar(content: Text('Failed to create ticket: $e'), backgroundColor: Colors.red),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isSavingNewTicket = false);
     }
   }
 
@@ -335,6 +342,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                     ),
                   ),
                 ),
+                const SizedBox(width: 34),
               ],
             ),
           ),
@@ -700,12 +708,14 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                                                 mainAxisAlignment: MainAxisAlignment.end,
                                                 children: [
                                                   ElevatedButton(
-                                                    onPressed: _saveNewTicket,
+                                                    onPressed: _isSavingNewTicket ? null : _saveNewTicket,
                                                     style: ElevatedButton.styleFrom(
                                                       backgroundColor: AppColors.primary,
                                                       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                                     ),
-                                                    child: Text('Save', style: TextStyle(fontSize: 12, color: Colors.white)),
+                                                    child: _isSavingNewTicket
+                                                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                                        : Text('Save', style: TextStyle(fontSize: 12, color: Colors.white)),
                                                   ),
                                                   SizedBox(width: 8),
                                                   ElevatedButton(
@@ -1264,22 +1274,33 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
   bool _editingTask = false;
   bool _savingCustomer = false;
   bool _savingTask = false;
+  bool _editingContact = false;
+  bool _savingContact = false;
+  bool _editingBill = false;
+  bool _savingBill = false;
+  bool _isDeleting = false;
   bool _suppressNextTap = false;
 
   late TextEditingController _customerCtrl;
   late TextEditingController _taskCtrl;
+  late TextEditingController _contactCtrl;
+  late TextEditingController _billCtrl;
 
   @override
   void initState() {
     super.initState();
     _customerCtrl = TextEditingController();
     _taskCtrl = TextEditingController(text: widget.ticket.title);
+    _contactCtrl = TextEditingController(text: widget.ticket.contactPhone ?? '');
+    _billCtrl = TextEditingController(text: widget.ticket.billAmount?.toString() ?? '');
   }
 
   @override
   void dispose() {
     _customerCtrl.dispose();
     _taskCtrl.dispose();
+    _contactCtrl.dispose();
+    _billCtrl.dispose();
     super.dispose();
   }
 
@@ -1323,6 +1344,101 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
     }
   }
 
+  Future<void> _saveContact(String newContact) async {
+    setState(() => _savingContact = true);
+    final notifier = ref.read(ticketUpdaterProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final updated = widget.ticket.copyWith(contactPhone: newContact.trim());
+      await notifier.updateTicket(updated);
+      if (mounted) setState(() => _editingContact = false);
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Failed to update contact: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingContact = false);
+    }
+  }
+
+  Future<void> _saveBillAmount(String newBillAmount) async {
+    setState(() => _savingBill = true);
+    final notifier = ref.read(ticketUpdaterProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final val = double.tryParse(newBillAmount.trim());
+      final updated = widget.ticket.copyWith(billAmount: val);
+      await notifier.updateTicket(updated);
+      if (mounted) setState(() => _editingBill = false);
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Failed to update bill amount: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingBill = false);
+    }
+  }
+
+  Future<void> _saveStatus(String newStatus) async {
+    final notifier = ref.read(ticketUpdaterProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final updated = widget.ticket.copyWith(status: newStatus);
+      await notifier.updateTicket(updated);
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Failed to update status: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteTicket() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Ticket'),
+        content: const Text('Are you sure you want to delete this ticket? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isDeleting = true);
+    final repo = ref.read(ticketRepositoryProvider);
+    final result = await repo.deleteTickets([widget.ticket.ticketId]);
+    
+    result.fold(
+      (failure) {
+        if (mounted) {
+          setState(() => _isDeleting = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete: ${failure.message}'), backgroundColor: Colors.red),
+          );
+        }
+      },
+      (_) {
+        // Success
+        if (mounted) {
+          setState(() => _isDeleting = false);
+        }
+        ref.invalidate(ticketsStreamProvider);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ticket = widget.ticket;
@@ -1343,9 +1459,12 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
 
     // Only the agent who claimed the ticket can edit
     final isClaimedByMe = currentUser != null && ticket.assignedTo == currentUser.id;
+    // Agent who claimed OR created the ticket can delete it
+    final isCreatedByMe = currentUser != null && ticket.createdBy == currentUser.id;
+    final canDelete = isClaimedByMe || isCreatedByMe;
 
     return InkWell(
-      onTap: (_editingCustomer || _editingTask || _suppressNextTap)
+      onTap: (_editingCustomer || _editingTask || _editingContact || _editingBill || _suppressNextTap || _isDeleting)
           ? null
           : () => context.push('/ticket/${ticket.ticketId}'),
       child: Container(
@@ -1363,7 +1482,35 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
             // Status
             Expanded(
               flex: 2,
-              child: _buildStatusChip(ticket.status, isUnclaimedTab, ticket.assignedTo != null),
+              child: isClaimedByMe
+                  ? DropdownButton<String>(
+                      value: const [
+                        'New', 'Open', 'InProgress', 'OnHold', 'WaitingForCustomer',
+                        'Resolved', 'Closed', 'Reopened', 'BillRaised', 'BillProcessed'
+                      ].contains(ticket.status) ? ticket.status : 'New',
+                      items: const [
+                        DropdownMenuItem(value: 'New', child: Text('New')),
+                        DropdownMenuItem(value: 'Open', child: Text('Open')),
+                        DropdownMenuItem(value: 'InProgress', child: Text('In Progress')),
+                        DropdownMenuItem(value: 'OnHold', child: Text('On Hold')),
+                        DropdownMenuItem(value: 'WaitingForCustomer', child: Text('Waiting')),
+                        DropdownMenuItem(value: 'Resolved', child: Text('Resolved')),
+                        DropdownMenuItem(value: 'Closed', child: Text('Closed')),
+                        DropdownMenuItem(value: 'Reopened', child: Text('Reopened')),
+                        DropdownMenuItem(value: 'BillRaised', child: Text('Bill Raised')),
+                        DropdownMenuItem(value: 'BillProcessed', child: Text('Billed')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null && val != ticket.status) {
+                          _saveStatus(val);
+                        }
+                      },
+                      isDense: true,
+                      underline: const SizedBox(),
+                      iconSize: 16,
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.slate800),
+                    )
+                  : _buildStatusChip(ticket.status, isUnclaimedTab, ticket.assignedTo != null),
             ),
             const SizedBox(width: 32),
             // Customer Name
@@ -1437,11 +1584,69 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
             // Contact Number
             Expanded(
               flex: 2,
-              child: Text(
-                ticket.contactPhone ?? 'N/A',
-                style: const TextStyle(fontSize: 13, color: AppColors.slate600),
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: isClaimedByMe
+                  ? _editingContact
+                      ? Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _contactCtrl,
+                                autofocus: true,
+                                style: const TextStyle(fontSize: 13, color: AppColors.slate800),
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                  border: OutlineInputBorder(),
+                                ),
+                                onSubmitted: (_) => _saveContact(_contactCtrl.text),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            if (_savingContact)
+                              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                            else ...[
+                              InkWell(
+                                onTap: () => _saveContact(_contactCtrl.text),
+                                child: const Icon(LucideIcons.check, size: 16, color: Colors.green),
+                              ),
+                              const SizedBox(width: 4),
+                              InkWell(
+                                onTap: () => setState(() {
+                                  _editingContact = false;
+                                  _contactCtrl.text = ticket.contactPhone ?? '';
+                                }),
+                                child: const Icon(LucideIcons.x, size: 16, color: Colors.grey),
+                              ),
+                            ],
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                ticket.contactPhone ?? 'N/A',
+                                style: const TextStyle(fontSize: 13, color: AppColors.slate600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            _EditButton(
+                              onTap: () => setState(() {
+                                _suppressNextTap = true;
+                                _contactCtrl.text = ticket.contactPhone ?? '';
+                                _editingContact = true;
+                                Future.delayed(const Duration(milliseconds: 100), () {
+                                  if (mounted) setState(() => _suppressNextTap = false);
+                                });
+                              }),
+                            ),
+                          ],
+                        )
+                  : Text(
+                      ticket.contactPhone ?? 'N/A',
+                      style: const TextStyle(fontSize: 13, color: AppColors.slate600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
             ),
             const SizedBox(width: 32),
             // Allocated to
@@ -1531,20 +1736,85 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
               ),
             ),
             const SizedBox(width: 32),
-            // Billing Procedure
+            // Billing Procedure (Bill Amount)
             Expanded(
               flex: 2,
-              child: Text(
-                (ticket.billAmount != null && ticket.billAmount! > 0)
-                    ? '₹ ${ticket.billAmount!.toStringAsFixed(2)}'
-                    : '',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.blue.shade600,
-                  fontWeight: FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: isClaimedByMe
+                  ? _editingBill
+                      ? Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _billCtrl,
+                                autofocus: true,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                style: TextStyle(fontSize: 13, color: Colors.blue.shade600, fontWeight: FontWeight.w500),
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                  border: OutlineInputBorder(),
+                                ),
+                                onSubmitted: (_) => _saveBillAmount(_billCtrl.text),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            if (_savingBill)
+                              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                            else ...[
+                              InkWell(
+                                onTap: () => _saveBillAmount(_billCtrl.text),
+                                child: const Icon(LucideIcons.check, size: 16, color: Colors.green),
+                              ),
+                              const SizedBox(width: 4),
+                              InkWell(
+                                onTap: () => setState(() {
+                                  _editingBill = false;
+                                  _billCtrl.text = ticket.billAmount?.toString() ?? '';
+                                }),
+                                child: const Icon(LucideIcons.x, size: 16, color: Colors.grey),
+                              ),
+                            ],
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                (ticket.billAmount != null && ticket.billAmount! > 0)
+                                    ? '₹ ${ticket.billAmount!.toStringAsFixed(2)}'
+                                    : '₹ 0.00',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.blue.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            _EditButton(
+                              onTap: () => setState(() {
+                                _suppressNextTap = true;
+                                _billCtrl.text = ticket.billAmount?.toString() ?? '';
+                                _editingBill = true;
+                                Future.delayed(const Duration(milliseconds: 100), () {
+                                  if (mounted) setState(() => _suppressNextTap = false);
+                                });
+                              }),
+                            ),
+                          ],
+                        )
+                  : Text(
+                      (ticket.billAmount != null && ticket.billAmount! > 0)
+                          ? '₹ ${ticket.billAmount!.toStringAsFixed(2)}'
+                          : '₹ 0.00',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.blue.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
             ),
             const SizedBox(width: 32),
             // Payment collected
@@ -1642,6 +1912,19 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                 ],
               ),
             ),
+            // Delete button (conditionally shown)
+            if (canDelete)
+              Padding(
+                padding: const EdgeInsets.only(left: 16),
+                child: _isDeleting
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : InkWell(
+                        onTap: _deleteTicket,
+                        child: const Icon(LucideIcons.trash2, size: 18, color: Colors.red),
+                      ),
+              )
+            else
+              const SizedBox(width: 34), // Maintain spacing if no delete button
           ],
         ),
       ),

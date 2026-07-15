@@ -2985,6 +2985,13 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
                       return !hiddenAgentIds.contains(id);
                     }).toList();
 
+                    // Resolve unread counts first to ensure stable ref.watch ordering
+                    final unreadCounts = <String, int>{};
+                    for (final a in filteredAgents) {
+                      final id = a['id']?.toString() ?? '';
+                      unreadCounts[id] = ref.watch(dmUnreadCountProvider(id));
+                    }
+
                     // Sort agents: own chat first, then unread, then alphabetical
                     final sortedAgents = List.from(filteredAgents)
                       ..sort((a, b) {
@@ -3002,12 +3009,8 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
                         }
 
                         // Agents with unread messages come before agents without
-                        final unreadA = ref.watch(
-                          dmUnreadCountProvider(agentAId),
-                        );
-                        final unreadB = ref.watch(
-                          dmUnreadCountProvider(agentBId),
-                        );
+                        final unreadA = unreadCounts[agentAId] ?? 0;
+                        final unreadB = unreadCounts[agentBId] ?? 0;
                         if (unreadA > 0 && unreadB == 0) return -1;
                         if (unreadB > 0 && unreadA == 0) return 1;
 
