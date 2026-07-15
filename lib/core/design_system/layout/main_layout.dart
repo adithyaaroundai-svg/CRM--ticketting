@@ -2930,7 +2930,7 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
             );
           },
         ),
-        if (currentUser?.isTeleCaller != true || isRestrictedAgent || currentUser?.id == 'f398fe3a-ea5f-4f98-9720-b3e32e798a63') ...[
+
           const SizedBox(height: 16),
           // Direct Messages Header
           Padding(
@@ -3206,7 +3206,7 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
               ),
             ),
           ),
-        ], // end isTeleCaller check
+
       ],
     );
   }
