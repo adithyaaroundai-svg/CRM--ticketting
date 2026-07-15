@@ -614,9 +614,7 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
         if (currentCount > previousCount) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_scrollCtrl.hasClients) {
-              _scrollCtrl.jumpTo(
-                _scrollCtrl.position.maxScrollExtent,
-              );
+              _scrollCtrl.jumpTo(0.0);
             }
           });
         }
@@ -808,8 +806,6 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                                 duration: const Duration(milliseconds: 300),
                                 curve: Curves.easeOut,
                               );
-                            } else if (_scrollCtrl.hasClients) {
-                              _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
                             }
                           });
                         }
@@ -822,11 +818,12 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                             horizontal: 16,
                             vertical: 20,
                           ),
-                          reverse: false,
+                          reverse: true,
                           physics: const ClampingScrollPhysics(),
                           itemCount: messages.length,
                           cacheExtent: 500,
-                          itemBuilder: (context, index) {
+                          itemBuilder: (context, rawIndex) {
+                            final index = messages.length - 1 - rawIndex;
                             final msg = messages[index];
                             final isMe = msg.senderId == currentUser?.id;
                             bool showDateHeader = false;
@@ -2740,9 +2737,11 @@ class _ChatBubble extends ConsumerWidget {
                 onReply: onReply,
                 onDelete: onDelete,
                 message: message,
-                child: Column(
-
-                  crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Column(
+                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
 
                 children: [
                   // Header with name and timestamp
@@ -2796,9 +2795,6 @@ class _ChatBubble extends ConsumerWidget {
                           ),
                         ),
                       ],
-                      const SizedBox(width: 8),
-                      // Action menu (shown on hover)
-                      const _HoverableActionMenu(),
                     ],
                   ),
 
@@ -2878,10 +2874,16 @@ class _ChatBubble extends ConsumerWidget {
                   // Reactions display
                   if (message.reactions.isNotEmpty)
                     _buildReactionsDisplay(context, ref),
-
-                ],
-
-              ),
+                  ],
+                ),
+                Positioned(
+                  top: -12,
+                  right: isMe ? null : 0,
+                  left: isMe ? 0 : null,
+                  child: const _HoverableActionMenu(),
+                ),
+              ],
+            ),
             ),
           ),
         ),

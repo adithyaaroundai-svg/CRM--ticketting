@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/ticket_provider.dart';
+import '../providers/table_font_size_provider.dart';
 import '../../domain/entities/ticket.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../customers/presentation/providers/customer_provider.dart';
@@ -185,6 +186,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
 
     // Group tickets by date
     final groupedTickets = _groupTicketsByDate(widget.tickets);
+    final fontScale = ref.watch(tableFontSizeProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -201,11 +203,15 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
           );
         }
 
-        return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(fontScale),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -761,6 +767,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
         ),
         ),
       ),
+        ),
     );
   },
 );
@@ -1013,10 +1020,13 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
           Icon(icon, size: 12, color: AppColors.slate400),
           const SizedBox(width: 6),
           Expanded(
-            child: Text(
-              value,
-              style: TextStyle(fontSize: 12, color: AppColors.slate600),
-              overflow: TextOverflow.ellipsis,
+            child: Tooltip(
+              message: value,
+              child: Text(
+                value,
+                style: TextStyle(fontSize: 12, color: AppColors.slate600),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
         ],
@@ -1555,10 +1565,13 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                       : Row(
                           children: [
                             Flexible(
-                              child: Text(
-                                customerName,
-                                style: const TextStyle(fontSize: 13, color: AppColors.slate800, fontWeight: FontWeight.w500),
-                                overflow: TextOverflow.ellipsis,
+                              child: Tooltip(
+                                message: customerName,
+                                child: Text(
+                                  customerName,
+                                  style: const TextStyle(fontSize: 13, color: AppColors.slate800, fontWeight: FontWeight.w500),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -1574,10 +1587,13 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                             ),
                           ],
                         )
-                  : Text(
-                      customerName,
-                      style: const TextStyle(fontSize: 13, color: AppColors.slate800, fontWeight: FontWeight.w500),
-                      overflow: TextOverflow.ellipsis,
+                  : Tooltip(
+                      message: customerName,
+                      child: Text(
+                        customerName,
+                        style: const TextStyle(fontSize: 13, color: AppColors.slate800, fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
             ),
             const SizedBox(width: 32),
@@ -1623,10 +1639,13 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                       : Row(
                           children: [
                             Flexible(
-                              child: Text(
-                                ticket.contactPhone ?? 'N/A',
-                                style: const TextStyle(fontSize: 13, color: AppColors.slate600),
-                                overflow: TextOverflow.ellipsis,
+                              child: Tooltip(
+                                message: ticket.contactPhone ?? 'N/A',
+                                child: Text(
+                                  ticket.contactPhone ?? 'N/A',
+                                  style: const TextStyle(fontSize: 13, color: AppColors.slate600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -1642,24 +1661,30 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                             ),
                           ],
                         )
-                  : Text(
-                      ticket.contactPhone ?? 'N/A',
-                      style: const TextStyle(fontSize: 13, color: AppColors.slate600),
-                      overflow: TextOverflow.ellipsis,
+                  : Tooltip(
+                      message: ticket.contactPhone ?? 'N/A',
+                      child: Text(
+                        ticket.contactPhone ?? 'N/A',
+                        style: const TextStyle(fontSize: 13, color: AppColors.slate600),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
             ),
             const SizedBox(width: 32),
             // Allocated to
             Expanded(
               flex: 2,
-              child: Text(
-                assignedAgentName,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.slate600,
-                  fontWeight: ticket.assignedTo != null ? FontWeight.w500 : null,
+              child: Tooltip(
+                message: assignedAgentName,
+                child: Text(
+                  assignedAgentName,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.slate600,
+                    fontWeight: ticket.assignedTo != null ? FontWeight.w500 : null,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 32),
@@ -1707,11 +1732,14 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                         : Row(
                             children: [
                               Flexible(
-                                child: Text(
-                                  ticket.title,
-                                  style: const TextStyle(fontSize: 13, color: AppColors.slate700),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 2,
+                                child: Tooltip(
+                                  message: ticket.title,
+                                  child: Text(
+                                    ticket.title,
+                                    style: const TextStyle(fontSize: 13, color: AppColors.slate700),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 2,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -1727,11 +1755,14 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                               ),
                             ],
                           )
-                    : Text(
-                        ticket.title,
-                        style: const TextStyle(fontSize: 13, color: AppColors.slate700),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
+                    : Tooltip(
+                        message: ticket.title,
+                        child: Text(
+                          ticket.title,
+                          style: const TextStyle(fontSize: 13, color: AppColors.slate700),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        ),
                       ),
               ),
             ),

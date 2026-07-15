@@ -134,9 +134,8 @@ class _AllAroundTallyChatPageState extends ConsumerState<AllAroundTallyChatPage>
 
   void _onScroll() {
     if (!_scrollCtrl.hasClients) return;
-    final maxScroll = _scrollCtrl.position.maxScrollExtent;
     final currentScroll = _scrollCtrl.position.pixels;
-    final shouldShow = maxScroll - currentScroll > 100;
+    final shouldShow = currentScroll > 100;
     if (shouldShow != _showScrollToBottom) {
       setState(() => _showScrollToBottom = shouldShow);
     }
@@ -153,7 +152,7 @@ class _AllAroundTallyChatPageState extends ConsumerState<AllAroundTallyChatPage>
   void _scrollToBottom() {
     if (_scrollCtrl.hasClients) {
       _scrollCtrl.animateTo(
-        _scrollCtrl.position.maxScrollExtent,
+        0.0,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
@@ -508,9 +507,7 @@ class _AllAroundTallyChatPageState extends ConsumerState<AllAroundTallyChatPage>
         if (currentCount > previousCount) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_scrollCtrl.hasClients) {
-              _scrollCtrl.jumpTo(
-                _scrollCtrl.position.maxScrollExtent,
-              );
+              _scrollCtrl.jumpTo(0.0);
             }
           });
         }
@@ -589,8 +586,10 @@ class _AllAroundTallyChatPageState extends ConsumerState<AllAroundTallyChatPage>
                       ListView.builder(
                         controller: _scrollCtrl,
                         padding: const EdgeInsets.all(16),
+                        reverse: true,
                         itemCount: messages.length,
-                        itemBuilder: (context, index) {
+                        itemBuilder: (context, rawIndex) {
+                          final index = messages.length - 1 - rawIndex;
                           final msg = messages[index];
                           final isMe = msg.senderId == currentUser?.id;
                           final prevMsg = index > 0 ? messages[index - 1] : null;

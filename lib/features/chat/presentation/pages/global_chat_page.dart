@@ -671,9 +671,7 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
         if (currentCount > previousCount) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_scrollCtrl.hasClients) {
-              _scrollCtrl.jumpTo(
-                _scrollCtrl.position.maxScrollExtent,
-              );
+              _scrollCtrl.jumpTo(0.0);
             }
           });
         }
@@ -886,9 +884,10 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (!mounted) return;
                             if (highlightMsgId != null) {
-                               final index = messages.indexWhere((m) => m.id == highlightMsgId);
-                               if (index != -1 && _scrollCtrl.hasClients) {
-                                 _scrollCtrl.jumpTo(index * 150.0); // Rough approximation
+                               final rawIndex = messages.indexWhere((m) => m.id == highlightMsgId);
+                               if (rawIndex != -1 && _scrollCtrl.hasClients) {
+                                 final reverseIdx = messages.length - 1 - rawIndex;
+                                 _scrollCtrl.jumpTo(reverseIdx * 150.0); // Rough approximation
                                }
                             } else if (_entryFirstUnreadMessageId != null && _unreadKey.currentContext != null) {
                               Scrollable.ensureVisible(
@@ -897,8 +896,6 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
                                 duration: const Duration(milliseconds: 300),
                                 curve: Curves.easeOut,
                               );
-                            } else if (_scrollCtrl.hasClients) {
-                              _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
                             }
                           });
                         }
@@ -911,11 +908,12 @@ class _GlobalChatPageState extends ConsumerState<GlobalChatPage> with TickerProv
                             horizontal: 16,
                             vertical: 20,
                           ),
-                          reverse: false,
+                          reverse: true,
                           physics: const ClampingScrollPhysics(),
                           itemCount: messages.length,
                           cacheExtent: 500,
-                          itemBuilder: (context, index) {
+                          itemBuilder: (context, rawIndex) {
+                            final index = messages.length - 1 - rawIndex;
                             final msg = messages[index];
                             final isMe = msg.senderId == currentUser?.id;
                             bool showDateHeader = false;
@@ -2867,9 +2865,11 @@ class _ChatBubble extends ConsumerWidget {
               onReply: onReply,
               onDelete: onDelete,
               message: message,
-              child: Column(
-
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
 
                 children: [
                   // Header with name and timestamp
@@ -2909,9 +2909,6 @@ class _ChatBubble extends ConsumerWidget {
                             ),
                           ),
                         ],
-                        const SizedBox(width: 8),
-                        // Action menu (shown on hover)
-                        const _HoverableActionMenu(),
                       ],
                     ),
                   ),
@@ -2994,12 +2991,16 @@ class _ChatBubble extends ConsumerWidget {
                   // Reactions display
                   if (message.reactions.isNotEmpty)
                     _buildReactionsDisplay(context, ref),
-
                 ],
-
               ),
-            ),
-
+              const Positioned(
+                top: -12,
+                right: 0,
+                child: _HoverableActionMenu(),
+              ),
+            ],
+          ),
+          ),
           ),
 
         ],

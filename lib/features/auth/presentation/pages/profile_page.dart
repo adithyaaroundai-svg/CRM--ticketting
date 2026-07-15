@@ -9,6 +9,7 @@ import '../../../../core/design_system/design_system.dart';
 import '../providers/auth_provider.dart';
 import '../../../tickets/presentation/providers/ticket_provider.dart';
 import '../../../backup/backup_service.dart';
+import '../../../tickets/presentation/providers/table_font_size_provider.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -306,6 +307,52 @@ class ProfilePage extends ConsumerWidget {
                 const SizedBox(height: 16),
                 _BackupCard(),
               ],
+              const SizedBox(height: 24),
+              const Text(
+                'Display Settings',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.slate900,
+                ),
+              ),
+              const SizedBox(height: 16),
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Ticket Table Font Size',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.slate800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Text('A', style: TextStyle(fontSize: 12, color: AppColors.slate500)),
+                        Expanded(
+                          child: Slider(
+                            value: ref.watch(tableFontSizeProvider),
+                            min: 0.8,
+                            max: 1.5,
+                            divisions: 7,
+                            label: '${(ref.watch(tableFontSizeProvider) * 100).toInt()}%',
+                            activeColor: AppColors.primary,
+                            inactiveColor: AppColors.slate200,
+                            onChanged: (val) {
+                              ref.read(tableFontSizeProvider.notifier).setScale(val);
+                            },
+                          ),
+                        ),
+                        const Text('A', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.slate500)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 24),
               const Text(
                 'Security',
