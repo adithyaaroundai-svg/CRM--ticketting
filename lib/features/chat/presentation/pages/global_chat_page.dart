@@ -3645,7 +3645,18 @@ class _ChatBubble extends ConsumerWidget {
                                       ),
                                     ),
                                   ),
-                          )                      ],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8, right: 4),
+                            child: Text(
+                              DateFormat('hh:mm a').format(message.createdAt.toLocal()),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey.shade500,
+                              ),
+                            ),
+                          ),
+                        ],
 
                     ),
 

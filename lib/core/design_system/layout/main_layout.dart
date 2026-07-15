@@ -2930,7 +2930,7 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
             );
           },
         ),
-        if (currentUser?.isTeleCaller != true || isRestrictedAgent) ...[
+        if (currentUser?.isTeleCaller != true || isRestrictedAgent || currentUser?.id == 'f398fe3a-ea5f-4f98-9720-b3e32e798a63') ...[
           const SizedBox(height: 16),
           // Direct Messages Header
           Padding(
@@ -2975,8 +2975,18 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
               data: (agents) {
                 return conversationsAsync.when(
                   data: (conversations) {
+                    // Filter out specific agents
+                    final hiddenAgentIds = const {
+                      '1f4d7758-12ba-43eb-9e47-cc0c95b740b8',
+                      '2d58eb0a-916a-4cb6-9245-b5b124caa0a3',
+                    };
+                    final filteredAgents = agents.where((a) {
+                      final id = a['id']?.toString() ?? '';
+                      return !hiddenAgentIds.contains(id);
+                    }).toList();
+
                     // Sort agents: own chat first, then unread, then alphabetical
-                    final sortedAgents = List.from(agents)
+                    final sortedAgents = List.from(filteredAgents)
                       ..sort((a, b) {
                         final agentAId = a['id']?.toString() ?? '';
                         final agentBId = b['id']?.toString() ?? '';

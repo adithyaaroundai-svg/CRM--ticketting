@@ -132,7 +132,7 @@ class AuthNotifier extends _$AuthNotifier {
       agentRow = await client
           .from('agents')
           .select('id, username, full_name, role, display_color, avatar_url, teams_user_id')
-          .ilike('username', username)
+          .eq('username', username)
           .eq('password', password)
           .limit(1)
           .maybeSingle()
