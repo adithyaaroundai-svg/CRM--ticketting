@@ -51,10 +51,10 @@ class SectionHeader extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.slate900,
+                  color: context.adaptiveSlate900,
                   letterSpacing: -0.5,
                 ),
               ),
@@ -62,9 +62,9 @@ class SectionHeader extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   subtitle!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.slate500,
+                    color: context.adaptiveSlate500,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -140,13 +140,13 @@ class PageHeader extends StatelessWidget {
         if (onBack != null) ...[
           Container(
             decoration: BoxDecoration(
-              color: AppColors.slate100,
+              color: context.adaptiveSlate100,
               borderRadius: BorderRadius.circular(10),
             ),
             child: IconButton(
               icon: const Icon(Icons.arrow_back_rounded, size: 20),
               onPressed: onBack,
-              color: AppColors.slate700,
+              color: context.adaptiveSlate700,
               tooltip: 'Go back',
             ),
           ),
@@ -158,10 +158,10 @@ class PageHeader extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.slate900,
+                  color: context.adaptiveSlate900,
                   letterSpacing: -0.5,
                 ),
               ),
@@ -169,9 +169,9 @@ class PageHeader extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   subtitle!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.slate500,
+                    color: context.adaptiveSlate500,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -250,19 +250,19 @@ class WelcomeHeader extends StatelessWidget {
       children: [
         Text(
           greeting,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: AppColors.slate500,
+            color: Theme.of(context).textTheme.bodyMedium?.color ?? Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 4),
         Text(
           name,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.w700,
-            color: AppColors.slate900,
+            color: Theme.of(context).textTheme.headlineMedium?.color ?? Theme.of(context).colorScheme.onSurface,
             letterSpacing: -0.5,
           ),
         ),
@@ -271,17 +271,17 @@ class WelcomeHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: AppColors.primarySurface,
+              color: Theme.of(context).colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.2),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
               ),
             ),
             child: Text(
               subtitle!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: AppColors.primary,
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),

@@ -10,6 +10,7 @@ import '../providers/auth_provider.dart';
 import '../../../tickets/presentation/providers/ticket_provider.dart';
 import '../../../backup/backup_service.dart';
 import '../../../tickets/presentation/providers/table_font_size_provider.dart';
+import '../../../../core/design_system/theme/theme_provider.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -23,7 +24,7 @@ class ProfilePage extends ConsumerWidget {
     return MainLayout(
       currentPath: '/profile',
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: Colors.transparent,
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -52,11 +53,11 @@ class ProfilePage extends ConsumerWidget {
                                       return Container(
                                         width: 80,
                                         height: 80,
-                                        color: AppColors.slate200,
-                                        child: const Icon(
+                                        color: context.adaptiveSlate200,
+                                        child: Icon(
                                           LucideIcons.user,
                                           size: 40,
-                                          color: AppColors.slate500,
+                                          color: context.adaptiveSlate500,
                                         ),
                                       );
                                     },
@@ -64,11 +65,11 @@ class ProfilePage extends ConsumerWidget {
                                 : Container(
                                     width: 80,
                                     height: 80,
-                                    color: AppColors.slate200,
-                                    child: const Icon(
+                                    color: context.adaptiveSlate200,
+                                    child: Icon(
                                       LucideIcons.user,
                                       size: 40,
-                                      color: AppColors.slate500,
+                                      color: context.adaptiveSlate500,
                                     ),
                                   ),
                           ),
@@ -98,17 +99,17 @@ class ProfilePage extends ConsumerWidget {
                     const SizedBox(height: 16),
                     Text(
                       user?.fullName ?? 'User',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.slate900,
+                        color: context.adaptiveSlate900,
                       ),
                     ),
                     Text(
                       user?.role ?? 'Role',
                       style: TextStyle(
                         fontSize: 14,
-                        color: AppColors.slate500,
+                        color: context.adaptiveSlate500,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -121,7 +122,7 @@ class ProfilePage extends ConsumerWidget {
                       successMsg: 'Username updated',
                       errorMsg: 'Failed to update username',
                     ),
-                    const Divider(height: 32),
+                    Divider(height: 32),
                     _FieldEditor(
                       label: 'Full name',
                       currentValue: user?.fullName ?? '',
@@ -134,17 +135,19 @@ class ProfilePage extends ConsumerWidget {
                     _TeamsUserIdEditor(currentTeamsUserId: user?.teamsUserId),
                     const Divider(height: 32),
                     _ColorSelector(currentHex: user?.displayColor),
+                    const Divider(height: 32),
+                    const _ThemeSelector(),
                   ],
                 ),
               ),
               if (isSupport) ...[
                 const SizedBox(height: 24),
-                const Text(
+                Text(
                   'My Support Performance',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.slate900,
+                    color: context.adaptiveSlate900,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -153,11 +156,11 @@ class ProfilePage extends ConsumerWidget {
                     data: (tickets) {
                       final currentUser = user;
                       if (currentUser == null) {
-                        return const Text(
+                        return Text(
                           'No agent information available.',
                           style: TextStyle(
                             fontSize: 13,
-                            color: AppColors.slate600,
+                            color: context.adaptiveSlate600,
                           ),
                         );
                       }
@@ -167,11 +170,11 @@ class ProfilePage extends ConsumerWidget {
                           .toList();
 
                       if (myTickets.isEmpty) {
-                        return const Text(
+                        return Text(
                           'No tickets assigned to you yet. Your support stats will appear here once you start working on tickets.',
                           style: TextStyle(
                             fontSize: 13,
-                            color: AppColors.slate600,
+                            color: context.adaptiveSlate600,
                           ),
                         );
                       }
@@ -241,11 +244,11 @@ class ProfilePage extends ConsumerWidget {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Based on the last 30 days of ticket activity.',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.slate600,
+                              color: context.adaptiveSlate600,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -286,7 +289,7 @@ class ProfilePage extends ConsumerWidget {
                     ),
                     error: (err, _) => Text(
                       'Error loading support metrics: $err',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.error,
                       ),
@@ -296,24 +299,24 @@ class ProfilePage extends ConsumerWidget {
               ],
               if (user?.isAdmin == true) ...[
                 const SizedBox(height: 24),
-                const Text(
+                Text(
                   'Data & Backup',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.slate900,
+                    color: context.adaptiveSlate900,
                   ),
                 ),
                 const SizedBox(height: 16),
                 _BackupCard(),
               ],
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Display Settings',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.slate900,
+                  color: context.adaptiveSlate900,
                 ),
               ),
               const SizedBox(height: 16),
@@ -321,18 +324,18 @@ class ProfilePage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Ticket Table Font Size',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.slate800,
+                        color: context.adaptiveSlate800,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Text('A', style: TextStyle(fontSize: 12, color: AppColors.slate500)),
+                        Text('A', style: TextStyle(fontSize: 12, color: context.adaptiveSlate500)),
                         Expanded(
                           child: Slider(
                             value: ref.watch(tableFontSizeProvider),
@@ -340,26 +343,26 @@ class ProfilePage extends ConsumerWidget {
                             max: 1.5,
                             divisions: 7,
                             label: '${(ref.watch(tableFontSizeProvider) * 100).toInt()}%',
-                            activeColor: AppColors.primary,
-                            inactiveColor: AppColors.slate200,
+                            activeColor: context.isDarkMode ? Colors.white : AppColors.primary,
+                            inactiveColor: context.isDarkMode ? Colors.white.withValues(alpha: 0.2) : context.adaptiveSlate200,
                             onChanged: (val) {
-                              ref.read(tableFontSizeProvider.notifier).setScale(val);
+                               ref.read(tableFontSizeProvider.notifier).setScale(val);
                             },
                           ),
                         ),
-                        const Text('A', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.slate500)),
+                        Text('A', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: context.adaptiveSlate500)),
                       ],
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Security',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.slate900,
+                  color: context.adaptiveSlate900,
                 ),
               ),
               const SizedBox(height: 16),
@@ -427,11 +430,11 @@ class ProfilePage extends ConsumerWidget {
                       return Container(
                         width: 300,
                         height: 300,
-                        color: AppColors.slate200,
-                        child: const Icon(
+                        color: context.adaptiveSlate200,
+                        child: Icon(
                           LucideIcons.imageOff,
                           size: 48,
-                          color: AppColors.slate500,
+                          color: context.adaptiveSlate500,
                         ),
                       );
                     },
@@ -443,7 +446,7 @@ class ProfilePage extends ConsumerWidget {
               top: 16,
               right: 16,
               child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                icon: Icon(Icons.close, color: Colors.white, size: 28),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ),
@@ -588,9 +591,9 @@ class _SupportProfileStat extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.slate50,
+        color: context.adaptiveSlate50,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.adaptiveBorder),
       ),
       constraints: const BoxConstraints(minWidth: 140),
       child: Column(
@@ -598,16 +601,16 @@ class _SupportProfileStat extends StatelessWidget {
         children: [
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.slate900,
+              color: context.adaptiveSlate900,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(fontSize: 11, color: AppColors.slate600),
+            style: TextStyle(fontSize: 11, color: context.adaptiveSlate600),
           ),
         ],
       ),
@@ -712,12 +715,12 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Change Password',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.slate900,
+                    color: context.adaptiveSlate900,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -779,7 +782,7 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
                       onPressed: _isSubmitting
                           ? null
                           : () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+                      child: Text('Cancel'),
                     ),
                     const SizedBox(width: 8),
                     AppButton(
@@ -859,7 +862,7 @@ class _FieldEditorState extends State<_FieldEditor> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(widget.label, style: const TextStyle(fontSize: 14, color: AppColors.slate500)),
+        Text(widget.label, style: TextStyle(fontSize: 14, color: context.adaptiveSlate500)),
         const SizedBox(width: 16),
         Expanded(
           child: _editing
@@ -869,7 +872,7 @@ class _FieldEditorState extends State<_FieldEditor> {
                       child: TextField(
                         controller: _ctrl,
                         autofocus: true,
-                        style: const TextStyle(fontSize: 14, color: AppColors.slate900),
+                        style: TextStyle(fontSize: 14, color: context.adaptiveSlate900),
                         decoration: InputDecoration(
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -884,7 +887,7 @@ class _FieldEditorState extends State<_FieldEditor> {
                       const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                     else ...[
                       IconButton(
-                        icon: const Icon(LucideIcons.check, size: 18, color: AppColors.success),
+                        icon: Icon(LucideIcons.check, size: 18, color: AppColors.success),
                         onPressed: _save,
                         tooltip: 'Save',
                         padding: EdgeInsets.zero,
@@ -892,7 +895,7 @@ class _FieldEditorState extends State<_FieldEditor> {
                       ),
                       const SizedBox(width: 4),
                       IconButton(
-                        icon: const Icon(LucideIcons.x, size: 18, color: AppColors.slate400),
+                        icon: Icon(LucideIcons.x, size: 18, color: context.adaptiveSlate400),
                         onPressed: () {
                           _ctrl.text = widget.currentValue;
                           setState(() => _editing = false);
@@ -910,17 +913,17 @@ class _FieldEditorState extends State<_FieldEditor> {
                     Flexible(
                       child: Text(
                         widget.currentValue.isNotEmpty ? widget.currentValue : '-',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.slate900,
+                          color: context.adaptiveSlate900,
                         ),
                         textAlign: TextAlign.right,
                       ),
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(LucideIcons.pencil, size: 14, color: AppColors.slate400),
+                      icon: Icon(LucideIcons.pencil, size: 14, color: context.adaptiveSlate400),
                       onPressed: () => setState(() => _editing = true),
                       tooltip: 'Edit ${widget.label}',
                       padding: EdgeInsets.zero,
@@ -1006,9 +1009,9 @@ class _TeamsUserIdEditorState extends ConsumerState<_TeamsUserIdEditor> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
+        Text(
           'Teams User ID',
-          style: TextStyle(fontSize: 14, color: AppColors.slate500),
+          style: TextStyle(fontSize: 14, color: context.adaptiveSlate500),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -1019,7 +1022,7 @@ class _TeamsUserIdEditorState extends ConsumerState<_TeamsUserIdEditor> {
                       child: TextField(
                         controller: _ctrl,
                         autofocus: true,
-                        style: const TextStyle(fontSize: 14, color: AppColors.slate900),
+                        style: TextStyle(fontSize: 14, color: context.adaptiveSlate900),
                         decoration: const InputDecoration(
                           isDense: true,
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -1034,7 +1037,7 @@ class _TeamsUserIdEditorState extends ConsumerState<_TeamsUserIdEditor> {
                       const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                     else ...[
                       IconButton(
-                        icon: const Icon(LucideIcons.check, size: 18, color: AppColors.success),
+                        icon: Icon(LucideIcons.check, size: 18, color: AppColors.success),
                         onPressed: _save,
                         tooltip: 'Save',
                         padding: EdgeInsets.zero,
@@ -1042,7 +1045,7 @@ class _TeamsUserIdEditorState extends ConsumerState<_TeamsUserIdEditor> {
                       ),
                       const SizedBox(width: 4),
                       IconButton(
-                        icon: const Icon(LucideIcons.x, size: 18, color: AppColors.slate400),
+                        icon: Icon(LucideIcons.x, size: 18, color: context.adaptiveSlate400),
                         onPressed: () {
                           _ctrl.text = _displayValue;
                           setState(() => _editing = false);
@@ -1064,15 +1067,15 @@ class _TeamsUserIdEditorState extends ConsumerState<_TeamsUserIdEditor> {
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: _displayValue.isNotEmpty
-                              ? AppColors.slate900
-                              : AppColors.slate400,
+                              ? context.adaptiveSlate900
+                              : context.adaptiveSlate400,
                         ),
                         textAlign: TextAlign.right,
                       ),
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(LucideIcons.pencil, size: 14, color: AppColors.slate400),
+                      icon: Icon(LucideIcons.pencil, size: 14, color: context.adaptiveSlate400),
                       onPressed: () => setState(() => _editing = true),
                       tooltip: 'Edit Teams User ID',
                       padding: EdgeInsets.zero,
@@ -1149,12 +1152,12 @@ class _ColorSelectorState extends ConsumerState<_ColorSelector> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Display Color',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.slate500,
+                color: context.adaptiveSlate500,
               ),
             ),
             if (_isSaving)
@@ -1183,7 +1186,7 @@ class _ColorSelectorState extends ConsumerState<_ColorSelector> {
                   color: color,
                   shape: BoxShape.circle,
                   border: isSelected
-                      ? Border.all(color: AppColors.slate900, width: 3)
+                      ? Border.all(color: context.adaptiveSlate900, width: 3)
                       : null,
                   boxShadow: [
                     if (isSelected)
@@ -1195,7 +1198,7 @@ class _ColorSelectorState extends ConsumerState<_ColorSelector> {
                   ],
                 ),
                 child: isSelected
-                    ? const Icon(LucideIcons.check, color: Colors.white, size: 20)
+                    ? Icon(LucideIcons.check, color: Colors.white, size: 20)
                     : null,
               ),
             );
@@ -1287,18 +1290,18 @@ class _BackupCardState extends ConsumerState<_BackupCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Local Backup',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.slate900,
+                        color: context.adaptiveSlate900,
                       ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
+                    Text(
                       'Exports tickets, customers & chat to a .zip file on your device.',
-                      style: TextStyle(fontSize: 12, color: AppColors.slate500),
+                      style: TextStyle(fontSize: 12, color: context.adaptiveSlate500),
                     ),
                   ],
                 ),
@@ -1307,25 +1310,25 @@ class _BackupCardState extends ConsumerState<_BackupCard> {
           ),
 
           const SizedBox(height: 16),
-          const Divider(height: 1),
+          Divider(height: 1),
           const SizedBox(height: 14),
 
           // Last backup row
           Row(
             children: [
-              const Icon(LucideIcons.clock, size: 14, color: AppColors.slate400),
+              Icon(LucideIcons.clock, size: 14, color: context.adaptiveSlate400),
               const SizedBox(width: 6),
-              const Text(
+              Text(
                 'Last backup: ',
-                style: TextStyle(fontSize: 13, color: AppColors.slate500),
+                style: TextStyle(fontSize: 13, color: context.adaptiveSlate500),
               ),
               lastBackupAsync.when(
                 data: (dt) => Text(
                   _formatBackupTime(dt),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.slate700,
+                    color: context.adaptiveSlate700,
                   ),
                 ),
                 loading: () => const SizedBox(
@@ -1333,8 +1336,8 @@ class _BackupCardState extends ConsumerState<_BackupCard> {
                   height: 12,
                   child: CircularProgressIndicator(strokeWidth: 1.5),
                 ),
-                error: (_, __) => const Text('Unknown',
-                    style: TextStyle(fontSize: 13, color: AppColors.slate500)),
+                error: (_, __) => Text('Unknown',
+                    style: TextStyle(fontSize: 13, color: context.adaptiveSlate500)),
               ),
             ],
           ),
@@ -1345,19 +1348,19 @@ class _BackupCardState extends ConsumerState<_BackupCard> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.slate50,
+              color: context.adaptiveSlate50,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.slate200),
+              border: Border.all(color: context.adaptiveSlate200),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Includes:',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.slate600,
+                    color: context.adaptiveSlate600,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1425,7 +1428,7 @@ class _BackupCardState extends ConsumerState<_BackupCard> {
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : const Icon(LucideIcons.download, size: 16),
+                  : Icon(LucideIcons.download, size: 16),
               label: Text(_isRunning ? 'Creating backup...' : 'Create Local Backup'),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -1443,13 +1446,118 @@ class _BackupCardState extends ConsumerState<_BackupCard> {
       padding: const EdgeInsets.only(top: 4),
       child: Row(
         children: [
-          Icon(icon, size: 12, color: AppColors.slate400),
+          Icon(icon, size: 12, color: context.adaptiveSlate400),
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(fontSize: 12, color: AppColors.slate600),
+            style: TextStyle(fontSize: 12, color: context.adaptiveSlate600),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ThemeSelector extends ConsumerWidget {
+  const _ThemeSelector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentTheme = ref.watch(themeProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              LucideIcons.palette,
+              size: 20,
+              color: context.adaptiveSlate500,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'App Theme',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: context.adaptiveSlate900,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            _buildThemeOption(
+              context: context,
+              title: 'White (Light)',
+              type: AppThemeType.white,
+              currentTheme: currentTheme,
+              onSelect: () => ref.read(themeProvider.notifier).setTheme(AppThemeType.white),
+            ),
+            _buildThemeOption(
+              context: context,
+              title: 'Blue Gradient (Dark)',
+              type: AppThemeType.blueGradient,
+              currentTheme: currentTheme,
+              onSelect: () => ref.read(themeProvider.notifier).setTheme(AppThemeType.blueGradient),
+            ),
+            _buildThemeOption(
+              context: context,
+              title: 'Pink (Dark)',
+              type: AppThemeType.pink,
+              currentTheme: currentTheme,
+              onSelect: () => ref.read(themeProvider.notifier).setTheme(AppThemeType.pink),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildThemeOption({
+    required BuildContext context,
+    required String title,
+    required AppThemeType type,
+    required AppThemeType currentTheme,
+    required VoidCallback onSelect,
+  }) {
+    final isSelected = type == currentTheme;
+    return InkWell(
+      onTap: onSelect,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.2) : Colors.transparent,
+          border: Border.all(
+            color: isSelected ? AppColors.primary : context.adaptiveSlate200,
+            width: 2,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected ? LucideIcons.checkCircle2 : LucideIcons.circle,
+              size: 20,
+              color: isSelected ? Colors.white : context.adaptiveSlate400,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? Colors.white : context.adaptiveSlate700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

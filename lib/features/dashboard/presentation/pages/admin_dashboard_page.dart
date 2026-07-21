@@ -97,7 +97,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
     return MainLayout(
       currentPath: '/admin',
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: Colors.transparent,
         floatingActionButton: AnimatedCreateTicketFab(
           onPressed: _showCreateTicketDialog,
         ),
@@ -305,12 +305,12 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                             Icon(
                               LucideIcons.inbox,
                               size: 48,
-                              color: AppColors.slate300,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                             ),
                             const SizedBox(height: 16),
                             Text(
                               'No tickets found',
-                              style: TextStyle(color: AppColors.slate500),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                             ),
                           ],
                         ),
@@ -496,12 +496,12 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      const Text(
+                                      Text(
                                         'AMC & TSS Status',
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
-                                          color: AppColors.slate900,
+                                          color: Theme.of(context).textTheme.titleMedium?.color ?? Theme.of(context).colorScheme.onSurface,
                                         ),
                                       ),
                                       Icon(
@@ -514,9 +514,9 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                                   const SizedBox(height: 4),
                                   Text(
                                     '${entries.length} customers with expiring or expired AMC/TSS and tickets in last 15 days.',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 13,
-                                      color: AppColors.slate600,
+                                      color: Theme.of(context).textTheme.bodyMedium?.color ?? Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ],
@@ -545,12 +545,12 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                         ),
                       const SizedBox(height: 24),
                       if (enableBoardView) ...[
-                        const Text(
+                        Text(
                           'Ticket Board',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.slate900,
+                            color: Theme.of(context).textTheme.titleMedium?.color ?? Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -593,12 +593,12 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
 
                           if (activeTickets.isEmpty) {
                             return [
-                              const Padding(
-                                padding: EdgeInsets.all(32.0),
+                              Padding(
+                                padding: const EdgeInsets.all(32.0),
                                 child: Center(
                                   child: Text(
                                     'No tickets in this category',
-                                    style: TextStyle(color: AppColors.slate500),
+                                    style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color ?? Theme.of(context).colorScheme.onSurfaceVariant),
                                   ),
                                 ),
                               )
@@ -617,20 +617,20 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                       // Live Ticket Board (Sorted by Response Time)
                       Row(
                         children: [
-                          const Text(
+                          Text(
                             'Live Ticket Grid',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.slate900,
+                              color: Theme.of(context).textTheme.titleMedium?.color ?? Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text(
+                          Text(
                             '(Sorted by Urgency)',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.slate500,
+                              color: Theme.of(context).textTheme.bodySmall?.color ?? Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -701,7 +701,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
           color: isActive ? color.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isActive ? color : AppColors.slate200,
+            color: isActive ? color : Theme.of(context).dividerColor,
             width: isActive ? 1.5 : 1,
           ),
         ),
@@ -723,7 +723,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                color: isActive ? color : AppColors.slate600,
+                color: isActive ? color : (Theme.of(context).textTheme.bodyMedium?.color ?? Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
           ],
@@ -775,10 +775,10 @@ class _KpiTile extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.slate500,
+                  color: Theme.of(context).textTheme.bodyMedium?.color ?? Theme.of(context).colorScheme.onSurfaceVariant,
                   letterSpacing: 0.2,
                 ),
                 maxLines: 1,
@@ -790,10 +790,10 @@ class _KpiTile extends StatelessWidget {
         const SizedBox(height: 16),
         Text(
           primaryValue,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.w700,
-            color: AppColors.slate900,
+            color: Theme.of(context).textTheme.headlineMedium?.color ?? Theme.of(context).colorScheme.onSurface,
             letterSpacing: -1,
             height: 1,
           ),
@@ -802,18 +802,18 @@ class _KpiTile extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: AppColors.slate50,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 secondaryLabel,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.slate500,
+                  color: Theme.of(context).textTheme.bodySmall?.color ?? Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -886,9 +886,9 @@ void _showExpiringAmcDialog(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Customers with expiring or expired AMC/TSS and tickets in the last 15 days.',
-                style: TextStyle(fontSize: 12, color: AppColors.slate600),
+                style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium?.color ?? Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 16),
               ...entries.map((entry) {
@@ -927,9 +927,9 @@ void _showExpiringAmcDialog(
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.slate50,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.slate200),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -940,19 +940,19 @@ void _showExpiringAmcDialog(
                             Expanded(
                               child: Text(
                                 name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
-                                  color: AppColors.slate900,
+                                  color: Theme.of(context).textTheme.titleSmall?.color ?? Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ),
                             Text(
                               '$ticketsLast15d tickets',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
-                                color: AppColors.slate500,
+                                color: Theme.of(context).textTheme.bodySmall?.color ?? Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],

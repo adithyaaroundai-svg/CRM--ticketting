@@ -59,9 +59,9 @@ class AppTextField extends StatelessWidget {
       focusNode: focusNode,
       onTap: onTap,
       readOnly: readOnly,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 14,
-        color: AppColors.slate900,
+        color: context.adaptiveSlate900,
         fontWeight: FontWeight.w400,
       ),
       decoration: InputDecoration(
@@ -97,7 +97,7 @@ class AppTextField extends StatelessWidget {
                   )
                 : null),
         filled: true,
-        fillColor: enabled ? Colors.white : AppColors.slate50,
+        fillColor: enabled ? context.adaptiveCard : context.adaptiveSlate50,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
@@ -198,7 +198,7 @@ class _AppSearchBarState extends State<AppSearchBar> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.adaptiveCard,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: _isFocused ? AppColors.primary : AppColors.border,
@@ -222,9 +222,9 @@ class _AppSearchBarState extends State<AppSearchBar> {
           controller: _controller,
           autofocus: widget.autofocus,
           onChanged: widget.onChanged,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
-            color: AppColors.slate900,
+            color: context.adaptiveSlate900,
             fontWeight: FontWeight.w400,
           ),
           decoration: InputDecoration(

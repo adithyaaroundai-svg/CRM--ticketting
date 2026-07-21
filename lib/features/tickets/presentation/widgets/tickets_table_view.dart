@@ -19,6 +19,8 @@ class TicketsTableView extends ConsumerStatefulWidget {
   final bool showOnlyUnclaimed;
   final bool groupResolved;
   final bool isUnclaimedTab;
+  final bool hasMore;
+  final VoidCallback? onLoadMore;
 
   const TicketsTableView({
     super.key,
@@ -28,6 +30,8 @@ class TicketsTableView extends ConsumerStatefulWidget {
     this.showOnlyUnclaimed = false,
     this.groupResolved = false,
     this.isUnclaimedTab = false,
+    this.hasMore = false,
+    this.onLoadMore,
   });
 
   @override
@@ -36,6 +40,7 @@ class TicketsTableView extends ConsumerStatefulWidget {
 
 class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _verticalScrollController = ScrollController();
   String? _addingTicketGroup;
   final TextEditingController _newCustomerController = TextEditingController();
   final TextEditingController _newContactController = TextEditingController();
@@ -49,8 +54,21 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
   bool _isSavingNewTicket = false;
 
   @override
+  void initState() {
+    super.initState();
+    _verticalScrollController.addListener(() {
+      if (widget.hasMore && 
+          widget.onLoadMore != null &&
+          _verticalScrollController.position.pixels >= _verticalScrollController.position.maxScrollExtent - 200) {
+        widget.onLoadMore!();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _scrollController.dispose();
+    _verticalScrollController.dispose();
     _newCustomerController.dispose();
     _newContactController.dispose();
     _newTaskController.dispose();
@@ -209,7 +227,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
           ),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.adaptiveCard,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.border),
         boxShadow: [
@@ -228,18 +246,18 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
         child: SingleChildScrollView(
           controller: _scrollController,
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.only(bottom: 16),
           child: SizedBox(
           width: 1600,
           child: Column(
             children: [
               // Table Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 Expanded(
                   flex: 2,
@@ -248,7 +266,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate600,
+                      color: context.adaptiveSlate600,
                     ),
                   ),
                 ),
@@ -260,7 +278,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate600,
+                      color: context.adaptiveSlate600,
                     ),
                   ),
                 ),
@@ -272,7 +290,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate600,
+                      color: context.adaptiveSlate600,
                     ),
                   ),
                 ),
@@ -284,7 +302,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate600,
+                      color: context.adaptiveSlate600,
                     ),
                   ),
                 ),
@@ -296,7 +314,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate600,
+                      color: context.adaptiveSlate600,
                     ),
                   ),
                 ),
@@ -308,7 +326,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate600,
+                      color: context.adaptiveSlate600,
                     ),
                   ),
                 ),
@@ -320,7 +338,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate600,
+                      color: context.adaptiveSlate600,
                     ),
                   ),
                 ),
@@ -332,7 +350,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate600,
+                      color: context.adaptiveSlate600,
                     ),
                   ),
                 ),
@@ -344,11 +362,11 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate600,
+                      color: context.adaptiveSlate600,
                     ),
                   ),
                 ),
-                const SizedBox(width: 34),
+                SizedBox(width: 34),
               ],
             ),
           ),
@@ -362,13 +380,13 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                         Icon(
                           LucideIcons.inbox,
                           size: 48,
-                          color: AppColors.slate300,
+                          color: context.adaptiveSlate300,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         Text(
                           'No tickets found',
                           style: TextStyle(
-                            color: AppColors.slate500,
+                            color: context.adaptiveSlate500,
                             fontSize: 16,
                           ),
                         ),
@@ -384,9 +402,16 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                           final customersMap = {for (final c in customers) c.id.toString(): c};
 
                           return ListView.builder(
+                            controller: _verticalScrollController,
                             padding: EdgeInsets.zero,
-                            itemCount: groupedTickets.length,
+                            itemCount: groupedTickets.length + (widget.hasMore ? 1 : 0),
                             itemBuilder: (context, index) {
+                              if (index >= groupedTickets.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(32.0),
+                                  child: Center(child: CircularProgressIndicator()),
+                                );
+                              }
                               final group = groupedTickets[index];
                               final groupDateKey = '${group['date']}-$index'; // Unique key for each group
                               final isAdding = _addingTicketGroup == groupDateKey;
@@ -397,7 +422,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                                 ),
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: context.adaptiveCard,
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(color: AppColors.border),
                                     boxShadow: [
@@ -416,39 +441,51 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                                       if (group['date'] != null)
                                         Container(
                                           width: double.infinity,
-                                          padding: const EdgeInsets.symmetric(
+                                          padding: EdgeInsets.symmetric(
                                             horizontal: 16,
                                             vertical: 10,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: AppColors.slate100,
+                                            color: context.adaptiveSlate100,
                                             border: Border(
                                               bottom: BorderSide(color: AppColors.border),
                                             ),
                                           ),
                                           child: Row(
                                             children: [
-                                              const Icon(
+                                              Icon(
                                                 LucideIcons.calendarDays,
                                                 size: 13,
-                                                color: AppColors.slate500,
+                                                color: context.adaptiveSlate500,
                                               ),
-                                              const SizedBox(width: 6),
+                                              SizedBox(width: 6),
                                               Text(
                                                 group['date'],
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w700,
-                                                  color: AppColors.slate700,
+                                                  color: context.adaptiveSlate700,
                                                   letterSpacing: 0.3,
                                                 ),
                                               ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                '${(group['tickets'] as List).length} ticket${(group['tickets'] as List).length == 1 ? '' : 's'}',
-                                                style: const TextStyle(
-                                                  fontSize: 11,
-                                                  color: AppColors.slate400,
+                                              SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: context.isDarkMode 
+                                                      ? Colors.white.withValues(alpha: 0.15) 
+                                                      : AppColors.primary.withValues(alpha: 0.1),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                child: Text(
+                                                  '${(group['tickets'] as List).length} ticket${(group['tickets'] as List).length == 1 ? '' : 's'}',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: context.isDarkMode 
+                                                        ? Colors.white 
+                                                        : AppColors.primary,
+                                                  ),
                                                 ),
                                               ),
                                             ],
@@ -471,7 +508,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                                         onTap: isAdding ? null : () => _startAddingTicket(groupDateKey),
                                         child: Container(
                                           width: double.infinity,
-                                          padding: const EdgeInsets.symmetric(
+                                          padding: EdgeInsets.symmetric(
                                             horizontal: 16,
                                             vertical: 12,
                                           ),
@@ -482,18 +519,18 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                                           ),
                                           child: Row(
                                             children: [
-                                              const Icon(
+                                              Icon(
                                                 LucideIcons.plus,
                                                 size: 16,
-                                                color: AppColors.primary,
+                                                color: context.isDarkMode ? const Color(0xFF60A5FA) : AppColors.primary,
                                               ),
-                                              const SizedBox(width: 8),
+                                              SizedBox(width: 8),
                                               Text(
                                                 isAdding ? 'Adding new ticket...' : 'Add item',
                                                 style: TextStyle(
                                                   fontSize: 13,
                                                   fontWeight: FontWeight.w500,
-                                                  color: AppColors.primary,
+                                                  color: context.isDarkMode ? const Color(0xFF60A5FA) : AppColors.primary,
                                                 ),
                                               ),
                                             ],
@@ -504,9 +541,9 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                                       if (isAdding)
                                         Container(
                                           width: double.infinity,
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                           decoration: BoxDecoration(
-                                            color: AppColors.slate50,
+                                            color: context.adaptiveSlate50,
                                             border: Border(
                                               top: BorderSide(color: AppColors.border),
                                             ),
@@ -708,7 +745,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                                                   ),
                                                 ],
                                               ),
-                                              const SizedBox(height: 12),
+                                              SizedBox(height: 12),
                                               // Save/Cancel buttons row - placed after all column fields
                                               Row(
                                                 mainAxisAlignment: MainAxisAlignment.end,
@@ -720,8 +757,8 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                                                       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                                     ),
                                                     child: _isSavingNewTicket
-                                                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                                        : Text('Save', style: TextStyle(fontSize: 12, color: Colors.white)),
+                                                        ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: context.adaptiveCard))
+                                                        : Text('Save', style: TextStyle(fontSize: 12, color: context.adaptiveCard)),
                                                   ),
                                                   SizedBox(width: 8),
                                                   ElevatedButton(
@@ -730,7 +767,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                                                       backgroundColor: Colors.grey,
                                                       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                                     ),
-                                                    child: Text('Cancel', style: TextStyle(fontSize: 12, color: Colors.white)),
+                                                    child: Text('Cancel', style: TextStyle(fontSize: 12, color: context.adaptiveCard)),
                                                   ),
                                                 ],
                                               ),
@@ -744,20 +781,20 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                             },
                           );
                         },
-                        loading: () => const Center(child: CircularProgressIndicator()),
+                        loading: () => Center(child: CircularProgressIndicator()),
                         error: (error, stack) => Center(
                           child: Text(
                             'Error loading agents: $error',
-                            style: const TextStyle(color: AppColors.error),
+                            style: TextStyle(color: AppColors.error),
                           ),
                         ),
                       );
                     },
-                    loading: () => const Center(child: CircularProgressIndicator()),
+                    loading: () => Center(child: CircularProgressIndicator()),
                     error: (error, stack) => Center(
                       child: Text(
                         'Error loading customers: $error',
-                        style: const TextStyle(color: AppColors.error),
+                        style: TextStyle(color: AppColors.error),
                       ),
                     ),
                   ),
@@ -831,7 +868,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.slate50,
+        color: context.adaptiveSlate50,
         borderRadius: BorderRadius.circular(12),
       ),
       child: customersAsync.when(
@@ -842,28 +879,28 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
               final customersMap = {for (final c in customers) c.id.toString(): c};
               if (groupedTickets.isEmpty) {
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 80),
+                  padding: EdgeInsets.only(bottom: 80),
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(LucideIcons.inbox, size: 48, color: AppColors.slate300),
-                        const SizedBox(height: 16),
-                        Text('No tickets found', style: TextStyle(color: AppColors.slate500, fontSize: 16)),
+                        Icon(LucideIcons.inbox, size: 48, color: context.adaptiveSlate300),
+                        SizedBox(height: 16),
+                        Text('No tickets found', style: TextStyle(color: context.adaptiveSlate500, fontSize: 16)),
                       ],
                     ),
                   ),
                 );
               }
               return ListView.builder(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
+                padding: EdgeInsets.fromLTRB(12, 12, 12, 100),
                 itemCount: groupedTickets.length,
                 itemBuilder: (context, index) {
                   final group = groupedTickets[index];
                   final groupDateKey = '${group['date']}-$index';
                   final isAdding = _addingTicketGroup == groupDateKey;
                   return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
+                    margin: EdgeInsets.only(bottom: 12),
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: AppColors.border)),
                     child: Column(
@@ -872,23 +909,38 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                         // Date header
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           decoration: BoxDecoration(
-                            color: AppColors.slate100,
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                            color: context.adaptiveSlate100,
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
                           ),
                           child: Row(
                             children: [
-                              const Icon(LucideIcons.calendarDays, size: 13, color: AppColors.slate500),
-                              const SizedBox(width: 6),
+                              Icon(LucideIcons.calendarDays, size: 13, color: context.adaptiveSlate500),
+                              SizedBox(width: 6),
                               Text(
                                 group['date'],
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.slate700),
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: context.adaptiveSlate700),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${(group['tickets'] as List).length} ticket${(group['tickets'] as List).length == 1 ? '' : 's'}',
-                                style: const TextStyle(fontSize: 11, color: AppColors.slate400),
+                              SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: context.isDarkMode 
+                                      ? Colors.white.withValues(alpha: 0.15) 
+                                      : AppColors.primary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${(group['tickets'] as List).length} ticket${(group['tickets'] as List).length == 1 ? '' : 's'}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: context.isDarkMode 
+                                        ? Colors.white 
+                                        : AppColors.primary,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -902,17 +954,17 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                           onTap: isAdding ? null : () => _startAddingTicket(groupDateKey),
                           child: Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
                               border: Border(top: BorderSide(color: AppColors.border)),
                             ),
                             child: Row(
                               children: [
-                                const Icon(LucideIcons.plus, size: 16, color: AppColors.primary),
-                                const SizedBox(width: 8),
+                                Icon(LucideIcons.plus, size: 16, color: context.isDarkMode ? const Color(0xFF60A5FA) : AppColors.primary),
+                                SizedBox(width: 8),
                                 Text(
                                   isAdding ? 'Adding new ticket...' : 'Add item',
-                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.primary),
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: context.isDarkMode ? const Color(0xFF60A5FA) : AppColors.primary),
                                 ),
                               ],
                             ),
@@ -925,15 +977,15 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                 },
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => Center(child: CircularProgressIndicator()),
             error: (error, stack) => Center(
-              child: Text('Error loading agents: $error', style: const TextStyle(color: AppColors.error)),
+              child: Text('Error loading agents: $error', style: TextStyle(color: AppColors.error)),
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(
-          child: Text('Error loading customers: $error', style: const TextStyle(color: AppColors.error)),
+          child: Text('Error loading customers: $error', style: TextStyle(color: AppColors.error)),
         ),
       ),
     );
@@ -953,14 +1005,14 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
     final customer = customersMap[ticket.customerId.toString()];
     final customerName = customer != null ? (customer.companyName ?? 'Unknown Customer') : 'Unknown Customer';
 
-    final statusColor = _statusColor(ticket.status);
+    final statusColor = _statusColor(context, ticket.status);
     final statusText = _statusText(ticket.status, ticket.assignedTo != null);
 
     return InkWell(
       onTap: () => context.push('/ticket/${ticket.ticketId}'),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
         ),
@@ -970,7 +1022,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                   child: Text(statusText, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor)),
                 ),
@@ -978,21 +1030,21 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                 Expanded(
                   child: Text(
                     '#${ticket.ticketId.length > 8 ? ticket.ticketId.substring(0, 8) : ticket.ticketId}',
-                    style: TextStyle(fontSize: 11, color: AppColors.slate400),
+                    style: TextStyle(fontSize: 11, color: context.adaptiveSlate400),
                     textAlign: TextAlign.right,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(customerName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.slate800)),
-            const SizedBox(height: 4),
+            SizedBox(height: 8),
+            Text(customerName, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.adaptiveSlate800)),
+            SizedBox(height: 4),
             _mobileInfoRow(LucideIcons.phone, ticket.contactPhone ?? 'N/A'),
             _mobileInfoRow(LucideIcons.user, assignedAgentName),
             _mobileInfoRow(LucideIcons.fileText, ticket.title, isLast: true),
             if (ticket.billAmount != null || (ticket.paymentCollected != null) || ticket.completedDate != null) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
@@ -1017,14 +1069,14 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
       padding: EdgeInsets.only(bottom: isLast ? 0 : 4),
       child: Row(
         children: [
-          Icon(icon, size: 12, color: AppColors.slate400),
-          const SizedBox(width: 6),
+          Icon(icon, size: 12, color: context.adaptiveSlate400),
+          SizedBox(width: 6),
           Expanded(
             child: Tooltip(
               message: value,
               child: Text(
                 value,
-                style: TextStyle(fontSize: 12, color: AppColors.slate600),
+                style: TextStyle(fontSize: 12, color: context.adaptiveSlate600),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -1036,21 +1088,21 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
 
   Widget _mobileTag(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.slate100,
+        color: context.adaptiveSlate100,
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(text, style: TextStyle(fontSize: 11, color: AppColors.slate600)),
+      child: Text(text, style: TextStyle(fontSize: 11, color: context.adaptiveSlate600)),
     );
   }
 
   Widget _buildMobileInlineAddForm(BuildContext context, List<dynamic> agents) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.slate50,
+        color: context.adaptiveSlate50,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
       child: Column(
@@ -1065,12 +1117,12 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                   initialValue: _newStatus,
                   decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
                   items: ['Open', 'In Progress', 'Resolved', 'Closed'].map((s) {
-                    return DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 12)));
+                    return DropdownMenuItem(value: s, child: Text(s, style: TextStyle(fontSize: 12)));
                   }).toList(),
                   onChanged: (v) => setState(() => _newStatus = v ?? 'Open'),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<String>(
                   isDense: true,
@@ -1080,7 +1132,7 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                   items: agents.map((agent) {
                     return DropdownMenuItem(
                       value: agent['id']?.toString(),
-                      child: Text(agent['full_name'] ?? agent['username'] ?? '', style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis),
+                      child: Text(agent['full_name'] ?? agent['username'] ?? '', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
                   onChanged: (v) => setState(() => _newClaimedById = v),
@@ -1088,37 +1140,37 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextFormField(
             controller: _newCustomerController,
             decoration: const InputDecoration(labelText: 'Customer Name', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
-            style: const TextStyle(fontSize: 12),
+            style: TextStyle(fontSize: 12),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextFormField(
             controller: _newContactController,
             decoration: const InputDecoration(labelText: 'Contact No.', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
-            style: const TextStyle(fontSize: 12),
+            style: TextStyle(fontSize: 12),
             keyboardType: TextInputType.phone,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextFormField(
             controller: _newTaskController,
             decoration: const InputDecoration(labelText: 'Task', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
-            style: const TextStyle(fontSize: 12),
+            style: TextStyle(fontSize: 12),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(
             children: [
               Expanded(
                 child: TextFormField(
                   controller: _newBillAmountController,
                   decoration: const InputDecoration(labelText: 'Bill Amount', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
-                  style: const TextStyle(fontSize: 12),
+                  style: TextStyle(fontSize: 12),
                   keyboardType: TextInputType.numberWithOptions(decimal: true),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<String>(
                   isDense: true,
@@ -1126,14 +1178,14 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                   initialValue: _newPaymentCollected,
                   decoration: const InputDecoration(labelText: 'Payment', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
                   items: ['Yes', 'No'].map((p) {
-                    return DropdownMenuItem(value: p, child: Text(p, style: const TextStyle(fontSize: 12)));
+                    return DropdownMenuItem(value: p, child: Text(p, style: TextStyle(fontSize: 12)));
                   }).toList(),
                   onChanged: (v) => setState(() => _newPaymentCollected = v ?? 'No'),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(
             children: [
               Expanded(
@@ -1146,12 +1198,12 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                     decoration: const InputDecoration(labelText: 'Completed Date', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
                     child: Text(
                       _newCompletedDate == null ? 'Select' : DateFormat('d/M/yy').format(_newCompletedDate!),
-                      style: const TextStyle(fontSize: 12),
+                      style: TextStyle(fontSize: 12),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: InkWell(
                   onTap: () async {
@@ -1162,29 +1214,29 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                     decoration: const InputDecoration(labelText: 'Reported Date', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
                     child: Text(
                       _newReportedDate == null ? 'Select' : DateFormat('d/M/yy').format(_newReportedDate!),
-                      style: const TextStyle(fontSize: 12),
+                      style: TextStyle(fontSize: 12),
                     ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: ElevatedButton(
                   onPressed: _saveNewTicket,
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(vertical: 10)),
-                  child: const Text('Save', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, padding: EdgeInsets.symmetric(vertical: 10)),
+                  child: Text('Save', style: TextStyle(color: context.adaptiveCard)),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton(
                   onPressed: _cancelAddingTicket,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.grey, padding: const EdgeInsets.symmetric(vertical: 10)),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.grey, padding: EdgeInsets.symmetric(vertical: 10)),
+                  child: Text('Cancel', style: TextStyle(color: context.adaptiveCard)),
                 ),
               ),
             ],
@@ -1194,33 +1246,34 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
     );
   }
 
-  Color _statusColor(String status) {
+  Color _statusColor(BuildContext context, String status) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     switch (status.toLowerCase()) {
       case 'new':
-        return const Color(0xFFDC2626);
+        return isDark ? Colors.red.shade300 : const Color(0xFFDC2626);
       case 'open':
-        return const Color(0xFF1E40AF);
+        return isDark ? Colors.blue.shade300 : const Color(0xFF1E40AF);
       case 'inprogress':
       case 'in_progress':
-        return const Color(0xFFEA580C);
+        return isDark ? Colors.orange.shade300 : const Color(0xFFEA580C);
       case 'resolved':
-        return const Color(0xFF16A34A);
+        return isDark ? Colors.green.shade300 : const Color(0xFF16A34A);
       case 'closed':
-        return AppColors.slate600;
+        return isDark ? AppColors.slate300 : AppColors.slate600;
       case 'onhold':
       case 'on_hold':
-        return const Color(0xFFD97706);
+        return isDark ? Colors.amber.shade300 : const Color(0xFFD97706);
       case 'waitingforcustomer':
       case 'waiting_for_customer':
-        return AppColors.slate600;
+        return isDark ? AppColors.slate300 : AppColors.slate600;
       case 'billraised':
       case 'bill_raised':
-        return const Color(0xFFDC2626);
+        return isDark ? Colors.red.shade300 : const Color(0xFFDC2626);
       case 'billprocessed':
       case 'bill_processed':
-        return const Color(0xFF059669);
+        return isDark ? Colors.green.shade400 : const Color(0xFF059669);
       default:
-        return AppColors.slate600;
+        return isDark ? AppColors.slate300 : AppColors.slate600;
     }
   }
 
@@ -1412,13 +1465,13 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Ticket'),
-        content: const Text('Are you sure you want to delete this ticket? This cannot be undone.'),
+        title: Text('Delete Ticket'),
+        content: Text('Are you sure you want to delete this ticket? This cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -1478,8 +1531,8 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
           ? null
           : () => context.push('/ticket/${ticket.ticketId}'),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: const BoxDecoration(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
               color: AppColors.border,
@@ -1516,13 +1569,13 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                         }
                       },
                       isDense: true,
-                      underline: const SizedBox(),
+                      underline: SizedBox(),
                       iconSize: 16,
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.slate800),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: context.adaptiveSlate800),
                     )
-                  : _buildStatusChip(ticket.status, isUnclaimedTab, ticket.assignedTo != null),
+                  : _buildStatusChip(context, ticket.status, isUnclaimedTab, ticket.assignedTo != null),
             ),
-            const SizedBox(width: 32),
+            SizedBox(width: 32),
             // Customer Name
             Expanded(
               flex: 2,
@@ -1534,7 +1587,7 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                               child: TextField(
                                 controller: _customerCtrl,
                                 autofocus: true,
-                                style: const TextStyle(fontSize: 13, color: AppColors.slate800),
+                                style: TextStyle(fontSize: 13, color: context.adaptiveSlate800),
                                 decoration: const InputDecoration(
                                   isDense: true,
                                   contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -1543,21 +1596,21 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                 onSubmitted: (_) => _saveCustomerName(ticket.customerId, _customerCtrl.text),
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             if (_savingCustomer)
-                              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                             else ...[
                               InkWell(
                                 onTap: () => _saveCustomerName(ticket.customerId, _customerCtrl.text),
-                                child: const Icon(LucideIcons.check, size: 16, color: Colors.green),
+                                child: Icon(LucideIcons.check, size: 16, color: Colors.green),
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               InkWell(
                                 onTap: () => setState(() {
                                   _editingCustomer = false;
                                   _customerCtrl.text = customerName;
                                 }),
-                                child: const Icon(LucideIcons.x, size: 16, color: Colors.grey),
+                                child: Icon(LucideIcons.x, size: 16, color: Colors.grey),
                               ),
                             ],
                           ],
@@ -1569,12 +1622,12 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                 message: customerName,
                                 child: Text(
                                   customerName,
-                                  style: const TextStyle(fontSize: 13, color: AppColors.slate800, fontWeight: FontWeight.w500),
+                                  style: TextStyle(fontSize: 13, color: context.adaptiveSlate800, fontWeight: FontWeight.w500),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             _EditButton(
                               onTap: () => setState(() {
                                 _suppressNextTap = true;
@@ -1591,12 +1644,12 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                       message: customerName,
                       child: Text(
                         customerName,
-                        style: const TextStyle(fontSize: 13, color: AppColors.slate800, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 13, color: context.adaptiveSlate800, fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
             ),
-            const SizedBox(width: 32),
+            SizedBox(width: 32),
             // Contact Number
             Expanded(
               flex: 2,
@@ -1608,7 +1661,7 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                               child: TextField(
                                 controller: _contactCtrl,
                                 autofocus: true,
-                                style: const TextStyle(fontSize: 13, color: AppColors.slate800),
+                                style: TextStyle(fontSize: 13, color: context.adaptiveSlate800),
                                 decoration: const InputDecoration(
                                   isDense: true,
                                   contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -1617,21 +1670,21 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                 onSubmitted: (_) => _saveContact(_contactCtrl.text),
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             if (_savingContact)
-                              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                             else ...[
                               InkWell(
                                 onTap: () => _saveContact(_contactCtrl.text),
-                                child: const Icon(LucideIcons.check, size: 16, color: Colors.green),
+                                child: Icon(LucideIcons.check, size: 16, color: Colors.green),
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               InkWell(
                                 onTap: () => setState(() {
                                   _editingContact = false;
                                   _contactCtrl.text = ticket.contactPhone ?? '';
                                 }),
-                                child: const Icon(LucideIcons.x, size: 16, color: Colors.grey),
+                                child: Icon(LucideIcons.x, size: 16, color: Colors.grey),
                               ),
                             ],
                           ],
@@ -1643,12 +1696,12 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                 message: ticket.contactPhone ?? 'N/A',
                                 child: Text(
                                   ticket.contactPhone ?? 'N/A',
-                                  style: const TextStyle(fontSize: 13, color: AppColors.slate600),
+                                  style: TextStyle(fontSize: 13, color: context.adaptiveSlate600),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             _EditButton(
                               onTap: () => setState(() {
                                 _suppressNextTap = true;
@@ -1665,12 +1718,12 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                       message: ticket.contactPhone ?? 'N/A',
                       child: Text(
                         ticket.contactPhone ?? 'N/A',
-                        style: const TextStyle(fontSize: 13, color: AppColors.slate600),
+                        style: TextStyle(fontSize: 13, color: context.adaptiveSlate600),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
             ),
-            const SizedBox(width: 32),
+            SizedBox(width: 32),
             // Allocated to
             Expanded(
               flex: 2,
@@ -1680,19 +1733,19 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                   assignedAgentName,
                   style: TextStyle(
                     fontSize: 13,
-                    color: AppColors.slate600,
+                    color: context.adaptiveSlate600,
                     fontWeight: ticket.assignedTo != null ? FontWeight.w500 : null,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
-            const SizedBox(width: 32),
+            SizedBox(width: 32),
             // Task (Title)
             Expanded(
               flex: 3,
               child: Padding(
-                padding: const EdgeInsets.only(left: 12),
+                padding: EdgeInsets.only(left: 12),
                 child: isClaimedByMe
                     ? _editingTask
                         ? Row(
@@ -1701,7 +1754,7 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                 child: TextField(
                                   controller: _taskCtrl,
                                   autofocus: true,
-                                  style: const TextStyle(fontSize: 13, color: AppColors.slate700),
+                                  style: TextStyle(fontSize: 13, color: context.adaptiveSlate700),
                                   decoration: const InputDecoration(
                                     isDense: true,
                                     contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -1710,21 +1763,21 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                   onSubmitted: (_) => _saveTask(_taskCtrl.text),
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               if (_savingTask)
-                                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                               else ...[
                                 InkWell(
                                   onTap: () => _saveTask(_taskCtrl.text),
-                                  child: const Icon(LucideIcons.check, size: 16, color: Colors.green),
+                                  child: Icon(LucideIcons.check, size: 16, color: Colors.green),
                                 ),
-                                const SizedBox(width: 4),
+                                SizedBox(width: 4),
                                 InkWell(
                                   onTap: () => setState(() {
                                     _editingTask = false;
                                     _taskCtrl.text = ticket.title;
                                   }),
-                                  child: const Icon(LucideIcons.x, size: 16, color: Colors.grey),
+                                  child: Icon(LucideIcons.x, size: 16, color: Colors.grey),
                                 ),
                               ],
                             ],
@@ -1736,13 +1789,13 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                   message: ticket.title,
                                   child: Text(
                                     ticket.title,
-                                    style: const TextStyle(fontSize: 13, color: AppColors.slate700),
+                                    style: TextStyle(fontSize: 13, color: context.adaptiveSlate700),
                                     overflow: TextOverflow.ellipsis,
                                     maxLines: 2,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               _EditButton(
                                 onTap: () => setState(() {
                                   _suppressNextTap = true;
@@ -1759,14 +1812,14 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                         message: ticket.title,
                         child: Text(
                           ticket.title,
-                          style: const TextStyle(fontSize: 13, color: AppColors.slate700),
+                          style: TextStyle(fontSize: 13, color: context.adaptiveSlate700),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 2,
                         ),
                       ),
               ),
             ),
-            const SizedBox(width: 32),
+            SizedBox(width: 32),
             // Billing Procedure (Bill Amount)
             Expanded(
               flex: 2,
@@ -1778,7 +1831,7 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                               child: TextField(
                                 controller: _billCtrl,
                                 autofocus: true,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                keyboardType: TextInputType.numberWithOptions(decimal: true),
                                 style: TextStyle(fontSize: 13, color: Colors.blue.shade600, fontWeight: FontWeight.w500),
                                 decoration: const InputDecoration(
                                   isDense: true,
@@ -1788,21 +1841,21 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                 onSubmitted: (_) => _saveBillAmount(_billCtrl.text),
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             if (_savingBill)
-                              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                             else ...[
                               InkWell(
                                 onTap: () => _saveBillAmount(_billCtrl.text),
-                                child: const Icon(LucideIcons.check, size: 16, color: Colors.green),
+                                child: Icon(LucideIcons.check, size: 16, color: Colors.green),
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               InkWell(
                                 onTap: () => setState(() {
                                   _editingBill = false;
                                   _billCtrl.text = ticket.billAmount?.toString() ?? '';
                                 }),
-                                child: const Icon(LucideIcons.x, size: 16, color: Colors.grey),
+                                child: Icon(LucideIcons.x, size: 16, color: Colors.grey),
                               ),
                             ],
                           ],
@@ -1822,7 +1875,7 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             _EditButton(
                               onTap: () => setState(() {
                                 _suppressNextTap = true;
@@ -1847,7 +1900,7 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                       overflow: TextOverflow.ellipsis,
                     ),
             ),
-            const SizedBox(width: 32),
+            SizedBox(width: 32),
             // Payment collected
             Expanded(
               flex: 1,
@@ -1864,11 +1917,11 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                             'No',
                             style: TextStyle(
                               fontSize: 13,
-                              color: AppColors.slate600,
+                              color: context.adaptiveSlate600,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const Text(
+                          Text(
                             'Yes',
                             style: TextStyle(
                               fontSize: 13,
@@ -1885,11 +1938,11 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                         }
                       },
                       isDense: true,
-                      underline: const SizedBox(),
+                      underline: SizedBox(),
                       iconSize: 20,
                       style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.slate700,
+                        color: context.adaptiveSlate700,
                         fontWeight: FontWeight.w500,
                       ),
                     )
@@ -1902,14 +1955,14 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                       ),
                     ),
             ),
-            const SizedBox(width: 32),
+            SizedBox(width: 32),
             // Completed Date
             Expanded(
               flex: 2,
               child: Row(
                 children: [
-                  Icon(LucideIcons.calendarDays, size: 14, color: AppColors.slate400),
-                  const SizedBox(width: 4),
+                  Icon(LucideIcons.calendarDays, size: 14, color: context.adaptiveSlate400),
+                  SizedBox(width: 4),
                   Text(
                     () {
                       // Use completedDate (completed_at) if available
@@ -1923,22 +1976,22 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                       }
                       return '';
                     }(),
-                    style: TextStyle(fontSize: 13, color: AppColors.slate600),
+                    style: TextStyle(fontSize: 13, color: context.adaptiveSlate600),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 32),
+            SizedBox(width: 32),
             // Reported Date
             Expanded(
               flex: 2,
               child: Row(
                 children: [
-                  Icon(LucideIcons.calendarDays, size: 14, color: AppColors.slate400),
-                  const SizedBox(width: 4),
+                  Icon(LucideIcons.calendarDays, size: 14, color: context.adaptiveSlate400),
+                  SizedBox(width: 4),
                   Text(
                     ticket.createdAt != null ? DateFormat('dd/MM/yyyy').format(ticket.createdAt!) : '',
-                    style: TextStyle(fontSize: 13, color: AppColors.slate600),
+                    style: TextStyle(fontSize: 13, color: context.adaptiveSlate600),
                   ),
                 ],
               ),
@@ -1946,23 +1999,24 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
             // Delete button (conditionally shown)
             if (canDelete)
               Padding(
-                padding: const EdgeInsets.only(left: 16),
+                padding: EdgeInsets.only(left: 16),
                 child: _isDeleting
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                     : InkWell(
                         onTap: _deleteTicket,
-                        child: const Icon(LucideIcons.trash2, size: 18, color: Colors.red),
+                        child: Icon(LucideIcons.trash2, size: 18, color: Colors.red),
                       ),
               )
             else
-              const SizedBox(width: 34), // Maintain spacing if no delete button
+              SizedBox(width: 34), // Maintain spacing if no delete button
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatusChip(String status, bool isUnclaimedTab, bool isClaimed) {
+  Widget _buildStatusChip(BuildContext context, String status, bool isUnclaimedTab, bool isClaimed) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     Color textColor;
     String displayText;
 
@@ -1971,52 +2025,52 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
         // If the ticket is claimed (has assignedTo), show "In Progress"
         // Otherwise show "Unclaimed"
         if (isClaimed) {
-          textColor = const Color(0xFFEA580C);
+          textColor = isDark ? Colors.orange.shade300 : const Color(0xFFEA580C);
           displayText = 'In Progress';
         } else {
-          textColor = const Color(0xFFDC2626);
+          textColor = isDark ? Colors.red.shade300 : const Color(0xFFDC2626);
           displayText = 'Unclaimed';
         }
         break;
       case 'open':
-        textColor = const Color(0xFF1E40AF);
+        textColor = isDark ? Colors.blue.shade300 : const Color(0xFF1E40AF);
         displayText = 'Open';
         break;
       case 'inprogress':
       case 'in_progress':
-        textColor = const Color(0xFFEA580C);
+        textColor = isDark ? Colors.orange.shade300 : const Color(0xFFEA580C);
         displayText = 'In Progress';
         break;
       case 'resolved':
-        textColor = const Color(0xFF16A34A);
+        textColor = isDark ? Colors.green.shade300 : const Color(0xFF16A34A);
         displayText = 'Resolved';
         break;
       case 'closed':
-        textColor = AppColors.slate600;
+        textColor = isDark ? AppColors.slate300 : AppColors.slate600;
         displayText = 'Closed';
         break;
       case 'onhold':
       case 'on_hold':
-        textColor = const Color(0xFFD97706);
+        textColor = isDark ? Colors.amber.shade300 : const Color(0xFFD97706);
         displayText = 'On Hold';
         break;
       case 'waitingforcustomer':
       case 'waiting_for_customer':
-        textColor = AppColors.slate600;
+        textColor = isDark ? AppColors.slate300 : AppColors.slate600;
         displayText = 'Waiting';
         break;
       case 'billraised':
       case 'bill_raised':
-        textColor = const Color(0xFFDC2626);
+        textColor = isDark ? Colors.red.shade300 : const Color(0xFFDC2626);
         displayText = 'Bill Raised';
         break;
       case 'billprocessed':
       case 'bill_processed':
-        textColor = const Color(0xFF059669);
+        textColor = isDark ? Colors.green.shade400 : const Color(0xFF059669);
         displayText = 'Billed';
         break;
       default:
-        textColor = AppColors.slate600;
+        textColor = isDark ? AppColors.slate300 : AppColors.slate600;
         displayText = status;
     }
 
@@ -2049,12 +2103,12 @@ class _EditButton extends StatelessWidget {
         child: Tooltip(
           message: 'Click to edit',
           child: Container(
-            padding: const EdgeInsets.all(4),
+            padding: EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: const Icon(LucideIcons.pencil, size: 12, color: AppColors.primary),
+            child: Icon(LucideIcons.pencil, size: 12, color: AppColors.primary),
           ),
         ),
       ),

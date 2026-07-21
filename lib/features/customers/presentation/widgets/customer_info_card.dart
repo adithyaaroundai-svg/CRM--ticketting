@@ -29,31 +29,31 @@ class CustomerInfoCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(
+                Icon(
                   LucideIcons.building2,
                   size: 18,
-                  color: AppColors.slate500,
+                  color: context.adaptiveSlate500,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     customer.companyName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate900,
+                      color: context.adaptiveSlate900,
                     ),
                   ),
                 ),
                 if (customer.contactPhone != null) ...[
                   const SizedBox(width: 12),
-                  Icon(LucideIcons.phone, size: 14, color: AppColors.slate400),
+                  Icon(LucideIcons.phone, size: 14, color: context.adaptiveSlate400),
                   const SizedBox(width: 4),
                   Text(
                     customer.contactPhone!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.slate600,
+                      color: context.adaptiveSlate600,
                     ),
                   ),
                 ],
@@ -64,7 +64,7 @@ class CustomerInfoCard extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   tooltip: 'Edit Customer',
-                  color: AppColors.slate400,
+                  color: context.adaptiveSlate400,
                 ),
               ],
             ),
@@ -87,9 +87,9 @@ class CustomerInfoCard extends StatelessWidget {
                 if (customer.tallySerialNo != null)
                   Text(
                     'SN: ${customer.tallySerialNo}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.slate500,
+                      color: context.adaptiveSlate500,
                       fontFamily: 'Monospace',
                     ),
                   ),
@@ -113,22 +113,22 @@ class CustomerInfoCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.slate100,
+                      color: context.adaptiveSlate100,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       LucideIcons.building2,
                       size: 20,
-                      color: AppColors.slate700,
+                      color: context.adaptiveSlate700,
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
+                  Text(
                     'Customer Information',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate900,
+                      color: context.adaptiveSlate900,
                     ),
                   ),
                 ],
@@ -211,12 +211,12 @@ class CustomerInfoCard extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Contact Information
-          const Text(
+          Text(
             'Contact Details',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: AppColors.slate700,
+              color: context.adaptiveSlate700,
             ),
           ),
           const SizedBox(height: 16),
@@ -265,7 +265,7 @@ class _InfoRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: AppColors.slate500),
+        Icon(icon, size: 18, color: context.adaptiveSlate500),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -273,15 +273,15 @@ class _InfoRow extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(fontSize: 12, color: AppColors.slate500),
+                style: TextStyle(fontSize: 12, color: context.adaptiveSlate500),
               ),
               const SizedBox(height: 2),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.slate900,
+                  color: context.adaptiveSlate900,
                 ),
               ),
             ],
@@ -298,8 +298,8 @@ class _StatusCard extends StatelessWidget {
   final bool isActive;
   final DateTime? expiryDate;
   final int daysRemaining;
-  final Color activeColor;
-  final Color expiredColor;
+  final Color? activeColor;
+  final Color? expiredColor;
 
   const _StatusCard({
     required this.icon,
@@ -307,13 +307,15 @@ class _StatusCard extends StatelessWidget {
     required this.isActive,
     required this.expiryDate,
     required this.daysRemaining,
-    this.activeColor = AppColors.success,
-    this.expiredColor = AppColors.error,
+    this.activeColor,
+    this.expiredColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? activeColor : expiredColor;
+    final actualActiveColor = activeColor ?? AppColors.success;
+    final actualExpiredColor = expiredColor ?? context.adaptiveError;
+    final color = isActive ? actualActiveColor : actualExpiredColor;
     final dateFormatter = DateFormat('dd MMM yyyy');
 
     return Container(
@@ -355,7 +357,7 @@ class _StatusCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               'Expires: ${dateFormatter.format(expiryDate!)}',
-              style: const TextStyle(fontSize: 10, color: AppColors.slate600),
+              style: TextStyle(fontSize: 10, color: context.adaptiveSlate600),
             ),
           ],
           if (isActive && daysRemaining > 0 && daysRemaining <= 30) ...[
@@ -365,7 +367,7 @@ class _StatusCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: daysRemaining <= 7 ? AppColors.error : AppColors.warning,
+                color: daysRemaining <= 7 ? context.adaptiveError : AppColors.warning,
               ),
             ),
           ],
@@ -392,7 +394,7 @@ class _CompactStatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = isActive
         ? (isTss ? AppColors.info : AppColors.success)
-        : AppColors.error;
+        : context.adaptiveError;
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

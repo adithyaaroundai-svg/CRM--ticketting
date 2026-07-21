@@ -80,9 +80,9 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     return MainLayout(
       currentPath: '/reports',
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: Colors.transparent,
         body: _isSettingsLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? Center(child: CircularProgressIndicator())
             : !_reportsEnabled
             ? Center(
                 child: Padding(
@@ -90,11 +90,11 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
-                    children: const [
+                    children: [
                       Icon(
                         LucideIcons.barChart,
                         size: 40,
-                        color: AppColors.slate300,
+                        color: context.adaptiveSlate300,
                       ),
                       SizedBox(height: 16),
                       Text(
@@ -102,7 +102,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.slate900,
+                          color: context.adaptiveSlate900,
                         ),
                       ),
                       SizedBox(height: 8),
@@ -111,7 +111,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
-                          color: AppColors.slate500,
+                          color: context.adaptiveSlate500,
                         ),
                       ),
                     ],
@@ -129,7 +129,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                       subtitle:
                           'View ticket statistics and performance metrics',
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: 32),
 
                     // Filters
                     Row(
@@ -140,14 +140,14 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Period',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.slate900,
+                                    color: context.adaptiveSlate900,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12),
                                 DropdownButtonFormField<ReportPeriod>(
                                   initialValue: _selectedPeriod,
                                   isExpanded: true,
@@ -186,21 +186,21 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(width: 16),
                         // Report Type Filter
                         Expanded(
                           child: AppCard(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Report Type',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.slate900,
+                                    color: context.adaptiveSlate900,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12),
                                 DropdownButtonFormField<ReportType>(
                                   isExpanded: true,
                                   initialValue: _selectedType,
@@ -244,7 +244,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Row(
                       children: [
                         // Priority Filter
@@ -253,14 +253,14 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Priority',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.slate900,
+                                    color: context.adaptiveSlate900,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12),
                                 DropdownButtonFormField<String>(
                                   isExpanded: true,
                                   initialValue: _priorityFilter,
@@ -306,21 +306,21 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(width: 16),
                         // Category Filter
                         Expanded(
                           child: AppCard(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Category',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.slate900,
+                                    color: context.adaptiveSlate900,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12),
                                 DropdownButtonFormField<String>(
                                   isExpanded: true,
                                   initialValue: _categoryFilter,
@@ -372,20 +372,20 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     // Status Filter
                     AppCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Status',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: AppColors.slate900,
+                              color: context.adaptiveSlate900,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           DropdownButtonFormField<String>(
                             isExpanded: true,
                             initialValue: _statusFilter,
@@ -426,7 +426,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: 32),
 
                     // Statistics Cards
                     ticketsAsync.when(
@@ -474,15 +474,15 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                                       Row(
                                         children: [
                                           Expanded(child: totalCard),
-                                          const SizedBox(width: 16),
+                                          SizedBox(width: 16),
                                           Expanded(child: resolvedCard),
                                         ],
                                       ),
-                                      const SizedBox(height: 16),
+                                      SizedBox(height: 16),
                                       Row(
                                         children: [
                                           Expanded(child: pendingCard),
-                                          const SizedBox(width: 16),
+                                          SizedBox(width: 16),
                                           Expanded(child: billedCard),
                                         ],
                                       ),
@@ -493,29 +493,29 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                                 return Row(
                                   children: [
                                     Expanded(child: totalCard),
-                                    const SizedBox(width: 16),
+                                    SizedBox(width: 16),
                                     Expanded(child: resolvedCard),
-                                    const SizedBox(width: 16),
+                                    SizedBox(width: 16),
                                     Expanded(child: pendingCard),
-                                    const SizedBox(width: 16),
+                                    SizedBox(width: 16),
                                     Expanded(child: billedCard),
                                   ],
                                 );
                               },
                             ),
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24),
 
                             if (_selectedType == ReportType.overview) ...[
                               _buildQueueHealth(
                                 filteredTickets,
                                 advancedSettings,
                               ),
-                              const SizedBox(height: 24),
+                              SizedBox(height: 24),
                               _buildResponseTimeAnalytics(
                                 filteredTickets,
                                 advancedSettings,
                               ),
-                              const SizedBox(height: 24),
+                              SizedBox(height: 24),
                             ],
 
                             // Detailed Report based on type
@@ -530,7 +530,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                                           filteredTickets,
                                           customers,
                                         ),
-                                    loading: () => const Padding(
+                                    loading: () => Padding(
                                       padding: EdgeInsets.all(24),
                                       child: Center(
                                         child: CircularProgressIndicator(),
@@ -540,7 +540,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                                       padding: const EdgeInsets.all(16),
                                       child: Text(
                                         'Error loading customers: $err',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           color: AppColors.error,
                                         ),
                                       ),
@@ -552,7 +552,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                           ],
                         );
                       },
-                      loading: () => const Center(
+                      loading: () => Center(
                         child: Padding(
                           padding: EdgeInsets.all(48.0),
                           child: CircularProgressIndicator(),
@@ -561,7 +561,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                       error: (error, _) => Center(
                         child: Text(
                           'Error loading reports: $error',
-                          style: const TextStyle(color: AppColors.error),
+                          style: TextStyle(color: AppColors.error),
                         ),
                       ),
                     ),
@@ -583,12 +583,12 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     if (openTickets.isEmpty) {
       return AppCard(
         child: Row(
-          children: const [
+          children: [
             Icon(LucideIcons.smile, size: 18, color: AppColors.success),
             SizedBox(width: 8),
             Text(
               'No active tickets in the queue – great job!',
-              style: TextStyle(fontSize: 13, color: AppColors.slate700),
+              style: TextStyle(fontSize: 13, color: context.adaptiveSlate700),
             ),
           ],
         ),
@@ -629,29 +629,29 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Queue Health',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.slate900,
+              color: context.adaptiveSlate900,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Average age of active tickets: ${avgAgeHours.toStringAsFixed(1)}h',
-            style: const TextStyle(fontSize: 13, color: AppColors.slate700),
+            style: TextStyle(fontSize: 13, color: context.adaptiveSlate700),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             '0–4h: ${bucket0to4h.toString()}   4–24h: ${bucket4to24h.toString()}   1–3d: ${bucket1to3d.toString()}   >3d: ${bucketOver3d.toString()}',
-            style: const TextStyle(fontSize: 12, color: AppColors.slate500),
+            style: TextStyle(fontSize: 12, color: context.adaptiveSlate500),
           ),
           if (responseTimeBreached > 0) ...[
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(
               'Tickets past response time target: $responseTimeBreached',
-              style: const TextStyle(fontSize: 12, color: AppColors.error),
+              style: TextStyle(fontSize: 12, color: AppColors.error),
             ),
           ],
         ],
@@ -710,28 +710,28 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Response Time Performance',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.slate900,
+              color: context.adaptiveSlate900,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Open tickets with a response time target: $openWithTarget',
-            style: const TextStyle(fontSize: 13, color: AppColors.slate700),
+            style: TextStyle(fontSize: 13, color: context.adaptiveSlate700),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             'Overdue: $openOverdue   At risk (next 60 min): $openAtRisk',
-            style: const TextStyle(fontSize: 12, color: AppColors.slate500),
+            style: TextStyle(fontSize: 12, color: context.adaptiveSlate500),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Closed tickets meeting response time target: $onTimePct%',
-            style: const TextStyle(fontSize: 13, color: AppColors.slate700),
+            style: TextStyle(fontSize: 13, color: context.adaptiveSlate700),
           ),
         ],
       ),
@@ -845,12 +845,12 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: AppColors.slate600,
+              color: context.adaptiveSlate600,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -901,15 +901,15 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Ticket Status Breakdown',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.slate900,
+              color: context.adaptiveSlate900,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _buildStatusRow(
             'New',
             tickets.where((t) => t.status == 'New').length,
@@ -934,20 +934,20 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                 )
                 .length,
           ),
-          const SizedBox(height: 24),
-          const Text(
+          SizedBox(height: 24),
+          Text(
             'Tickets per Day',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.slate900,
+              color: context.adaptiveSlate900,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           if (dailyEntries.isEmpty)
-            const Text(
+            Text(
               'No tickets in the selected period.',
-              style: TextStyle(fontSize: 13, color: AppColors.slate600),
+              style: TextStyle(fontSize: 13, color: context.adaptiveSlate600),
             )
           else
             ...dailyEntries.take(10).map((entry) {
@@ -957,20 +957,20 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                   '${date.month.toString().padLeft(2, '0')}';
               return _buildStatusRow(label, entry.value);
             }),
-          const SizedBox(height: 24),
-          const Text(
+          SizedBox(height: 24),
+          Text(
             'Category Breakdown',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.slate900,
+              color: context.adaptiveSlate900,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           if (categoryEntries.isEmpty)
-            const Text(
+            Text(
               'No categories available for the selected period.',
-              style: TextStyle(fontSize: 13, color: AppColors.slate600),
+              style: TextStyle(fontSize: 13, color: context.adaptiveSlate600),
             )
           else
             ...categoryEntries.take(8).map((entry) {
@@ -989,15 +989,15 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
           Expanded(
             child: Text(
               status,
-              style: const TextStyle(fontSize: 14, color: AppColors.slate700),
+              style: TextStyle(fontSize: 14, color: context.adaptiveSlate700),
             ),
           ),
           Text(
             count.toString(),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: AppColors.slate900,
+              color: context.adaptiveSlate900,
             ),
           ),
         ],
@@ -1050,19 +1050,19 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Customer-wise Ticket Distribution',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.slate900,
+              color: context.adaptiveSlate900,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (sortedCustomers.isEmpty)
-            const Text(
+            Text(
               'No tickets for the selected filters.',
-              style: TextStyle(fontSize: 13, color: AppColors.slate600),
+              style: TextStyle(fontSize: 13, color: context.adaptiveSlate600),
             )
           else
             ...sortedCustomers.take(10).map((entry) {
@@ -1099,32 +1099,32 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                         Expanded(
                           child: Text(
                             name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.slate900,
+                              color: context.adaptiveSlate900,
                             ),
                           ),
                         ),
                         Text(
                           '$total tickets',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: AppColors.slate700,
+                            color: context.adaptiveSlate700,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       'Open: $open   Resolved: $resolved   Billed: $billed',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.slate600,
+                        color: context.adaptiveSlate600,
                       ),
                     ),
                     if (amcLabel != null && amcColor != null) ...[
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Row(
                         children: [
                           Container(
@@ -1188,15 +1188,15 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Support Staff Performance',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.slate900,
+              color: context.adaptiveSlate900,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ...sortedStaff.map((entry) {
             final metrics = entry.value;
             final total = metrics['total'] ?? 0;
@@ -1214,13 +1214,13 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                         .when(
                           data: (agentData) => Text(
                             agentData?['username'] ?? 'Unknown',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
-                              color: AppColors.slate700,
+                              color: context.adaptiveSlate700,
                             ),
                           ),
-                          loading: () => const Text('Loading...'),
-                          error: (_, __) => const Text('Unknown'),
+                          loading: () => Text('Loading...'),
+                          error: (_, __) => Text('Unknown'),
                         ),
                   ),
                   Column(
@@ -1228,18 +1228,18 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                     children: [
                       Text(
                         'Total: $total',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.slate900,
+                          color: context.adaptiveSlate900,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         'Open: $open   In progress: $inProgress   Resolved: $resolved',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: AppColors.slate600,
+                          color: context.adaptiveSlate600,
                         ),
                       ),
                     ],

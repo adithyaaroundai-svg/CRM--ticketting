@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
@@ -17,8 +18,6 @@ import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
-
-
 
 import '../../../../core/design_system/design_system.dart';
 
@@ -41,16 +40,17 @@ import '../widgets/markdown_text_editing_controller.dart';
 
 IconData _getFileIcon(String? fileType) {
   if (fileType == null) return Icons.insert_drive_file;
-  
+
   final type = fileType.toLowerCase();
   if (type == 'pdf') return Icons.picture_as_pdf;
-  if (type == 'jpg' || type == 'jpeg' || type == 'png' || type == 'gif') return Icons.image;
+  if (type == 'jpg' || type == 'jpeg' || type == 'png' || type == 'gif')
+    return Icons.image;
   if (type == 'mp4' || type == 'mov' || type == 'avi') return Icons.videocam;
   if (type == 'mp3' || type == 'wav') return Icons.audio_file;
   if (type == 'doc' || type == 'docx') return Icons.description;
   if (type == 'xls' || type == 'xlsx') return Icons.table_chart;
   if (type == 'zip' || type == 'rar') return Icons.folder_zip;
-  
+
   return Icons.insert_drive_file;
 }
 
@@ -76,8 +76,8 @@ class DirectMessagePage extends ConsumerStatefulWidget {
 }
 
 class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
-
-  final MarkdownTextEditingController _textCtrl = MarkdownTextEditingController();
+  final MarkdownTextEditingController _textCtrl =
+      MarkdownTextEditingController();
   final FocusNode _messageFocusNode = FocusNode();
 
   final ScrollController _scrollCtrl = ScrollController();
@@ -110,13 +110,19 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     final selection = _textCtrl.selection;
     if (selection.baseOffset == -1) {
       _textCtrl.text = '$text$prefix$suffix';
-      _textCtrl.selection = TextSelection.collapsed(offset: _textCtrl.text.length - suffix.length);
+      _textCtrl.selection = TextSelection.collapsed(
+        offset: _textCtrl.text.length - suffix.length,
+      );
       return;
     }
-    
+
     final selectedText = text.substring(selection.start, selection.end);
-    final newText = text.replaceRange(selection.start, selection.end, '$prefix$selectedText$suffix');
-    
+    final newText = text.replaceRange(
+      selection.start,
+      selection.end,
+      '$prefix$selectedText$suffix',
+    );
+
     _textCtrl.value = TextEditingValue(
       text: newText,
       selection: TextSelection(
@@ -136,12 +142,16 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     if (selection.baseOffset == -1 || selection.start == selection.end) {
       final cursor = selection.baseOffset == -1 ? text.length : selection.start;
       final needsNewline = cursor > 0 && text[cursor - 1] != '\n';
-      final template = ordered ? '${needsNewline ? '\n' : ''}1. \n2. \n3. ' : '${needsNewline ? '\n' : ''}- \n- \n- ';
+      final template = ordered
+          ? '${needsNewline ? '\n' : ''}1. \n2. \n3. '
+          : '${needsNewline ? '\n' : ''}- \n- \n- ';
       final newText = text.replaceRange(cursor, cursor, template);
       _textCtrl.value = TextEditingValue(
         text: newText,
         // Place cursor after the first bullet
-        selection: TextSelection.collapsed(offset: cursor + (needsNewline ? 1 : 0) + (ordered ? 3 : 2)),
+        selection: TextSelection.collapsed(
+          offset: cursor + (needsNewline ? 1 : 0) + (ordered ? 3 : 2),
+        ),
       );
       _messageFocusNode.requestFocus();
       return;
@@ -150,13 +160,21 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     // Selection — prefix each line in the selection
     final selectedText = text.substring(selection.start, selection.end);
     final lines = selectedText.split('\n');
-    final numberedLines = lines.asMap().entries.map((e) {
-      final lineText = e.value;
-      if (lineText.trim().isEmpty) return lineText;
-      return ordered ? '${e.key + 1}. $lineText' : '- $lineText';
-    }).join('\n');
+    final numberedLines = lines
+        .asMap()
+        .entries
+        .map((e) {
+          final lineText = e.value;
+          if (lineText.trim().isEmpty) return lineText;
+          return ordered ? '${e.key + 1}. $lineText' : '- $lineText';
+        })
+        .join('\n');
 
-    final newText = text.replaceRange(selection.start, selection.end, numberedLines);
+    final newText = text.replaceRange(
+      selection.start,
+      selection.end,
+      numberedLines,
+    );
     _textCtrl.value = TextEditingValue(
       text: newText,
       selection: TextSelection(
@@ -184,7 +202,12 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
             _formatBtn(Icons.format_italic, 'Italic', '_', '_'),
             _formatBtn(Icons.format_underline, 'Underline', '<u>', '</u>'),
             _formatBtn(Icons.format_strikethrough, 'Strikethrough', '~~', '~~'),
-            Container(width: 1, height: 16, color: AppColors.slate300, margin: const EdgeInsets.symmetric(horizontal: 8)),
+            Container(
+              width: 1,
+              height: 16,
+              color: AppColors.slate300,
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+            ),
             _formatBtn(Icons.link, 'Link', '[', '](url)'),
             Tooltip(
               message: 'Ordered List',
@@ -193,7 +216,11 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                 borderRadius: BorderRadius.circular(4),
                 child: const Padding(
                   padding: EdgeInsets.all(6.0),
-                  child: Icon(Icons.format_list_numbered, size: 18, color: AppColors.slate600),
+                  child: Icon(
+                    Icons.format_list_numbered,
+                    size: 18,
+                    color: AppColors.slate600,
+                  ),
                 ),
               ),
             ),
@@ -204,12 +231,21 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                 borderRadius: BorderRadius.circular(4),
                 child: const Padding(
                   padding: EdgeInsets.all(6.0),
-                  child: Icon(Icons.format_list_bulleted, size: 18, color: AppColors.slate600),
+                  child: Icon(
+                    Icons.format_list_bulleted,
+                    size: 18,
+                    color: AppColors.slate600,
+                  ),
                 ),
               ),
             ),
             _formatBtn(Icons.format_quote, 'Blockquote', '\n> ', ''),
-            Container(width: 1, height: 16, color: AppColors.slate300, margin: const EdgeInsets.symmetric(horizontal: 8)),
+            Container(
+              width: 1,
+              height: 16,
+              color: AppColors.slate300,
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+            ),
             _formatBtn(Icons.code, 'Code', '`', '`'),
             _formatBtn(Icons.data_object, 'Code Block', '\n```\n', '\n```\n'),
           ],
@@ -218,7 +254,12 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     );
   }
 
-  Widget _formatBtn(IconData icon, String tooltip, String prefix, String suffix) {
+  Widget _formatBtn(
+    IconData icon,
+    String tooltip,
+    String prefix,
+    String suffix,
+  ) {
     return Tooltip(
       message: tooltip,
       child: InkWell(
@@ -232,14 +273,13 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     );
   }
 
-
-
   @override
   void initState() {
     super.initState();
     // Preload read receipts cache for instant access
     ReadReceiptsTracker.preload();
     _textCtrl.addListener(_onTextChanged);
+    _scrollCtrl.addListener(_onScroll);
 
     // Mark conversation as read when opened
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -247,72 +287,54 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     });
   }
 
-
+  void _onScroll() {
+    if (_scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 200) {
+      final notifier = ref.read(dmStreamProvider(widget.partnerId).notifier);
+      if (notifier.hasMore) {
+        notifier.loadMore();
+      }
+    }
+  }
 
   void _onTextChanged() {
-
     final text = _textCtrl.text;
 
     final selection = _textCtrl.selection;
 
     if (selection.baseOffset == -1) return;
 
-
-
     final textBeforeCursor = text.substring(0, selection.baseOffset);
 
     final lastAtSignIndex = textBeforeCursor.lastIndexOf('@');
 
-
-
     if (lastAtSignIndex != -1) {
-
       if (lastAtSignIndex == 0 ||
-
           textBeforeCursor[lastAtSignIndex - 1] == ' ') {
-
         final query = textBeforeCursor.substring(lastAtSignIndex + 1);
 
         if (!query.contains(' ')) {
-
           setState(() {
-
             _showMentions = true;
 
             _mentionQuery = query.toLowerCase();
 
             _mentionStartIndex = lastAtSignIndex;
-
           });
 
           return;
-
         }
-
       }
-
     }
-
-
 
     if (_showMentions) {
-
       setState(() {
-
         _showMentions = false;
-
       });
-
     }
-
   }
 
-
-
   @override
-
   void dispose() {
-
     _textCtrl.dispose();
     _messageFocusNode.dispose();
 
@@ -321,18 +343,12 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     _autoRefreshTimer?.cancel();
 
     super.dispose();
-
   }
 
-
-
   void _sendMessage() async {
-
     final plainText = _textCtrl.text.trim();
 
     if (plainText.isEmpty && _selectedFile == null) return;
-
-
 
     final agent = ref.read(authProvider);
 
@@ -346,13 +362,13 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
       setState(() {
         _isUploadingFile = true;
       });
-      
+
       fileUrl = await _uploadFile(_selectedFile!);
-      
+
       setState(() {
         _isUploadingFile = false;
       });
-      
+
       if (fileUrl == null) {
         // Upload failed
         return;
@@ -362,11 +378,8 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     }
 
     ref
-
         .read(chatControllerProvider.notifier)
-
         .sendMessage(
-
           senderId: agent.id,
 
           senderName: agent.fullName,
@@ -386,22 +399,16 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     ref.invalidate(dmUnreadCountProvider(widget.partnerId));
     ref.invalidate(dmConversationsProvider);
 
-
-
     final agentsAsync = ref.read(agentsListProvider);
 
     final agents = agentsAsync.value ?? [];
 
     for (final a in agents) {
-
       final String fullName = a['full_name'] ?? a['username'] ?? '';
 
       if (fullName.isNotEmpty && plainText.contains('@$fullName')) {
-
         try {
-
           await Supabase.instance.client.from('notifications').insert({
-
             'user_id': a['id'],
 
             'type': 'mention',
@@ -413,16 +420,10 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
             'link': '/chat',
 
             'is_read': false,
-
           });
-
         } catch (_) {}
-
       }
-
     }
-
-
 
     _textCtrl.clear();
 
@@ -431,28 +432,16 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
       _selectedFile = null;
       _showMentions = false;
     });
-
   }
-
-
 
   // ignore: unused_element
   Future<void> _showCreateTicketDialog() async {
-
     final createdTicket = await showDialog<Ticket>(
-
       context: context,
 
-      builder: (context) => CreateTicketDialog(
-
-        isSupport: false,
-        postToChat: false,
-
-      ),
-
+      builder: (context) =>
+          CreateTicketDialog(isSupport: false, postToChat: false),
     );
-
-
 
     if (createdTicket == null) return;
 
@@ -461,58 +450,40 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     ref.invalidate(chatUnreadCountProvider);
   }
 
-
-
   Future<void> _sendCreatedTicketMessage(Ticket ticket) async {
-
     final agent = ref.read(authProvider);
 
     if (agent == null) return;
 
-
-
     String companyName = 'Company';
 
     final customerData = await ref
-
         .read(ticketRepositoryProvider)
-
         .getCustomer(ticket.customerId);
 
     if (customerData != null) {
-
       final value = customerData['company_name']?.toString().trim();
 
       if (value != null && value.isNotEmpty) {
-
         companyName = value;
-
       }
-
     }
 
-
-
     final issue = (ticket.description?.trim().isNotEmpty == true)
-
         ? ticket.description!.trim()
-
         : ticket.title.trim();
 
     final content = [
-
       'Company: $companyName',
 
       'Issue: $issue',
 
       'TicketID: ${ticket.ticketId}',
-
     ].join('\n');
 
-
-
-    await ref.read(chatRepositoryProvider).sendMessage(
-
+    await ref
+        .read(chatRepositoryProvider)
+        .sendMessage(
           senderId: agent.id,
 
           senderName: agent.fullName,
@@ -520,19 +491,22 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
           senderRole: agent.role,
 
           content: content,
-
         );
-
   }
 
-  Future<void> _launchTeamsCall(String? teamsUserId, {required bool video}) async {
+  Future<void> _launchTeamsCall(
+    String? teamsUserId, {
+    required bool video,
+  }) async {
     final currentUser = ref.read(authProvider);
 
     if (teamsUserId == null || teamsUserId.trim().isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('This agent has not set up their Microsoft Teams ID yet.'),
+            content: Text(
+              'This agent has not set up their Microsoft Teams ID yet.',
+            ),
             backgroundColor: Colors.orange,
             duration: Duration(seconds: 3),
           ),
@@ -563,12 +537,17 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
 
     final uri = Uri.parse(url);
     if (await url_launcher.canLaunchUrl(uri)) {
-      await url_launcher.launchUrl(uri, mode: url_launcher.LaunchMode.externalApplication);
+      await url_launcher.launchUrl(
+        uri,
+        mode: url_launcher.LaunchMode.externalApplication,
+      );
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Could not open Microsoft Teams. Please make sure it is installed.'),
+            content: Text(
+              'Could not open Microsoft Teams. Please make sure it is installed.',
+            ),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 3),
           ),
@@ -577,14 +556,14 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(dmStreamProvider(widget.partnerId));
     final currentUser = ref.watch(authProvider);
-    
-    if (!_initialReadMarked && messagesAsync.hasValue && messagesAsync.value!.isNotEmpty) {
+
+    if (!_initialReadMarked &&
+        messagesAsync.hasValue &&
+        messagesAsync.value!.isNotEmpty) {
       _initialReadMarked = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _markConversationAsRead();
@@ -602,13 +581,16 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
       },
       orElse: () => <String, dynamic>{},
     );
-    final partnerName = (partnerData['full_name'] ?? partnerData['username'] ?? '').toString();
+    final partnerName =
+        (partnerData['full_name'] ?? partnerData['username'] ?? '').toString();
     final partnerAvatarUrl = partnerData['avatar_url'] as String?;
     final partnerTeamsId = partnerData['teams_user_id'] as String?;
 
     ref.listen(dmStreamProvider(widget.partnerId), (previous, next) {
       if (next is AsyncData<List<ChatMessage>> && next.value.isNotEmpty) {
-        final previousCount = previous is AsyncData<List<ChatMessage>> ? previous.value.length : 0;
+        final previousCount = previous is AsyncData<List<ChatMessage>>
+            ? previous.value.length
+            : 0;
         final currentCount = next.value.length;
 
         if (currentCount > previousCount) {
@@ -633,12 +615,10 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     });
 
     return MainLayout(
-
       currentPath: '/chat',
 
       child: Scaffold(
-
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: context.adaptiveBackground,
 
         appBar: AppBar(
           leading: IconButton(
@@ -652,7 +632,7 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
             icon: const Icon(Icons.arrow_back),
             tooltip: 'Back',
             style: IconButton.styleFrom(
-              foregroundColor: const Color(0xFF1E293B),
+              foregroundColor: context.adaptiveSlate900,
             ),
           ),
           title: Row(
@@ -694,16 +674,18 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                   children: [
                     Text(
                       partnerName.isNotEmpty ? partnerName : 'Direct Message',
-                      style: const TextStyle(
-                        color: AppColors.slate900,
+                      style: TextStyle(
+                        color: context.adaptiveSlate900,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      partnerName.isNotEmpty ? 'Direct Message' : 'Instant communication with the team',
-                      style: const TextStyle(
-                        color: AppColors.slate500,
+                      partnerName.isNotEmpty
+                          ? 'Direct Message'
+                          : 'Instant communication with the team',
+                      style: TextStyle(
+                        color: context.adaptiveSlate500,
                         fontSize: 11,
                         fontWeight: FontWeight.normal,
                       ),
@@ -714,12 +696,11 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
             ],
           ),
 
-          backgroundColor: Colors.white,
+          backgroundColor: context.adaptiveCard,
 
           elevation: 0,
 
           actions: [
-
             // Audio Call button
             _CallButton(
               icon: LucideIcons.phone,
@@ -735,17 +716,13 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
             ),
 
             const SizedBox(width: 8),
-
           ],
 
           bottom: PreferredSize(
-
             preferredSize: const Size.fromHeight(1),
 
             child: Container(color: AppColors.slate200, height: 1),
-
           ),
-
         ),
 
         body: Row(
@@ -789,17 +766,19 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
 
                         if (!_capturedEntryUnread && currentUser != null) {
                           _capturedEntryUnread = true;
-                          _entryFirstUnreadMessageId = _findFirstUnreadMessageId(
-                            messages,
-                            currentUser.id,
-                          );
+                          _entryFirstUnreadMessageId =
+                              _findFirstUnreadMessageId(
+                                messages,
+                                currentUser.id,
+                              );
                         }
 
                         if (!_hasInitialScrolled && messages.isNotEmpty) {
                           _hasInitialScrolled = true;
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (!mounted) return;
-                            if (_entryFirstUnreadMessageId != null && _unreadKey.currentContext != null) {
+                            if (_entryFirstUnreadMessageId != null &&
+                                _unreadKey.currentContext != null) {
                               Scrollable.ensureVisible(
                                 _unreadKey.currentContext!,
                                 alignment: 0.0,
@@ -811,6 +790,8 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                         }
 
                         _markVisibleMessagesRead(messages);
+                        
+                        final hasMore = ref.watch(dmStreamProvider(widget.partnerId).notifier).hasMore;
 
                         return ListView.builder(
                           controller: _scrollCtrl,
@@ -820,9 +801,21 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                           ),
                           reverse: true,
                           physics: const ClampingScrollPhysics(),
-                          itemCount: messages.length,
+                          itemCount: messages.length + (hasMore ? 1 : 0),
                           cacheExtent: 500,
                           itemBuilder: (context, rawIndex) {
+                            if (hasMore && rawIndex == messages.length) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 20),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 24, height: 24,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                ),
+                              );
+                            }
+
                             final index = messages.length - 1 - rawIndex;
                             final msg = messages[index];
                             final isMe = msg.senderId == currentUser?.id;
@@ -831,7 +824,10 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                               showDateHeader = true;
                             } else {
                               final prevMsg = messages[index - 1];
-                              if (!_isSameDay(msg.createdAt, prevMsg.createdAt)) {
+                              if (!_isSameDay(
+                                msg.createdAt,
+                                prevMsg.createdAt,
+                              )) {
                                 showDateHeader = true;
                               }
                             }
@@ -842,11 +838,14 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                                 showSender = false;
                               }
                             }
-                            final showUnreadLabel = msg.id == _entryFirstUnreadMessageId;
+                            final showUnreadLabel =
+                                msg.id == _entryFirstUnreadMessageId;
                             return Column(
                               children: [
-                                if (showDateHeader) _DateHeader(date: msg.createdAt),
-                                if (showUnreadLabel) _UnreadLabel(key: _unreadKey),
+                                if (showDateHeader)
+                                  _DateHeader(date: msg.createdAt),
+                                if (showUnreadLabel)
+                                  _UnreadLabel(key: _unreadKey),
                                 _ChatBubble(
                                   key: ValueKey(msg.id),
                                   message: msg,
@@ -864,7 +863,8 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                           },
                         );
                       },
-                      loading: () => const Center(child: CircularProgressIndicator()),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
                       error: (err, stack) => Center(child: Text('Error: $err')),
                     ),
                   ),
@@ -880,45 +880,28 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
   }
 
   bool _isSameDay(DateTime d1, DateTime d2) {
-
     return d1.year == d2.year && d1.month == d2.month && d1.day == d2.day;
-
   }
 
-
-
   void _markVisibleMessagesRead(List<ChatMessage> messages) {
-
     if (messages.isEmpty) return;
-
-
 
     final newestMessageAt = messages.last.createdAt.toUtc();
 
     if (_lastMarkedReadAt != null &&
-
         !newestMessageAt.isAfter(_lastMarkedReadAt!)) {
-
       return;
-
     }
 
     _lastMarkedReadAt = newestMessageAt;
 
-
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-
       if (!mounted) return;
 
       ref
-
           .read(chatUnreadCountProvider.notifier)
-
           .markAsRead(timestamp: newestMessageAt);
-
     });
-
   }
 
   void _markConversationAsRead() {
@@ -930,11 +913,13 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     messagesAsync.maybeWhen(
       data: (messages) {
         if (messages.isEmpty) return;
-        
+
         final newestMessageAt = messages.last.createdAt.toUtc();
-        
+
         // Update the global chat last seen
-        ref.read(chatUnreadCountProvider.notifier).markAsRead(timestamp: newestMessageAt);
+        ref
+            .read(chatUnreadCountProvider.notifier)
+            .markAsRead(timestamp: newestMessageAt);
 
         // Optimistically clear the unread badge locally for instant feedback
         markDmAsReadLocally(widget.partnerId, newestMessageAt);
@@ -960,8 +945,6 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     );
   }
 
-
-
   String? _findFirstUnreadMessageId(
     List<ChatMessage> messages,
     String currentUserId,
@@ -982,112 +965,76 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     return null;
   }
 
-
-
   // ignore: unused_element
   void _handleBack(BuildContext context, Agent? currentUser) {
-
     if (context.canPop()) {
-
       context.pop();
 
       return;
-
     }
-
-
 
     if (currentUser?.isAdmin == true) {
-
       context.go('/admin');
-
     } else if (currentUser?.isAccountant == true) {
-
       context.go('/accountant');
-
     } else if (currentUser?.isSupport == true) {
-
       context.go('/tickets');
-
     } else if (currentUser?.isSales == true) {
-
       context.go('/sales');
-
     } else {
-
       context.go('/');
-
     }
-
   }
 
-
-
   Widget _buildMentionsList() {
-
     final agentsAsync = ref.watch(agentsListProvider);
 
-
-
     return agentsAsync.when(
-
       data: (agents) {
+        final filteredAgents =
+            agents.where((a) {
+              final name = (a['full_name'] ?? a['username'] ?? '')
+                  .toString()
+                  .toLowerCase();
 
-        final filteredAgents = agents.where((a) {
+              final role = (a['role'] ?? '').toString().toLowerCase();
 
-          final name = (a['full_name'] ?? a['username'] ?? '')
-
-              .toString()
-
-              .toLowerCase();
-
-          final role = (a['role'] ?? '').toString().toLowerCase();
-
-          return name.contains(_mentionQuery) || role.contains(_mentionQuery);
-
-        }).toList()
-          ..sort((a, b) {
-            final nameA = (a['full_name'] ?? a['username'] ?? '').toString().toLowerCase();
-            final nameB = (b['full_name'] ?? b['username'] ?? '').toString().toLowerCase();
-            return nameA.compareTo(nameB);
-          });
-
-
+              return name.contains(_mentionQuery) ||
+                  role.contains(_mentionQuery);
+            }).toList()..sort((a, b) {
+              final nameA = (a['full_name'] ?? a['username'] ?? '')
+                  .toString()
+                  .toLowerCase();
+              final nameB = (b['full_name'] ?? b['username'] ?? '')
+                  .toString()
+                  .toLowerCase();
+              return nameA.compareTo(nameB);
+            });
 
         if (filteredAgents.isEmpty) return const SizedBox.shrink();
 
-
-
         return Container(
-
           constraints: const BoxConstraints(maxHeight: 200),
 
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
 
           decoration: BoxDecoration(
-
             color: Colors.white,
 
             borderRadius: BorderRadius.circular(8),
 
             boxShadow: [
-
               BoxShadow(
-
                 color: Colors.black.withValues(alpha: 0.1),
 
                 blurRadius: 4,
 
                 offset: const Offset(0, -2),
-
               ),
-
             ],
-
           ),
 
           child: ListView.builder(
-
             shrinkWrap: true,
 
             padding: EdgeInsets.zero,
@@ -1095,116 +1042,81 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
             itemCount: filteredAgents.length,
 
             itemBuilder: (context, index) {
-
               final agent = filteredAgents[index];
 
               final name = (agent['full_name'] ?? agent['username'] ?? '')
-
                   .toString();
 
               return ListTile(
-
                 dense: true,
 
                 leading: CircleAvatar(
-
                   radius: 12,
 
                   backgroundColor: _userColor(name).withValues(alpha: 0.15),
 
                   child: Text(
-
                     name.isNotEmpty ? name[0].toUpperCase() : '?',
 
                     style: TextStyle(
-
                       fontSize: 10,
 
                       color: _userColor(name),
 
                       fontWeight: FontWeight.w700,
-
                     ),
-
                   ),
-
                 ),
 
                 title: Text(
-
                   name,
 
                   style: TextStyle(
-
                     fontSize: 13,
 
                     fontWeight: FontWeight.w600,
 
                     color: _userColor(name),
-
                   ),
-
                 ),
 
                 subtitle: Text(
-
                   (agent['role'] ?? '').toString(),
 
                   style: const TextStyle(fontSize: 11),
-
                 ),
 
                 onTap: () => _insertMention(name),
-
               );
-
             },
-
           ),
-
         );
-
       },
 
       loading: () => const SizedBox.shrink(),
 
       error: (_, __) => const SizedBox.shrink(),
-
     );
-
   }
 
-
-
   void _insertMention(String name) {
-
     final text = _textCtrl.text;
 
     final newText = text.replaceRange(
-
       _mentionStartIndex,
 
       _textCtrl.selection.baseOffset,
 
       '@$name ',
-
     );
 
-
-
     _textCtrl.value = TextEditingValue(
-
       text: newText,
 
       selection: TextSelection.collapsed(
-
         offset: _mentionStartIndex + name.length + 2,
-
       ),
-
     );
-
-
 
     setState(() {
       _showMentions = false;
@@ -1214,374 +1126,418 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
   void _triggerMention() {
     final text = _textCtrl.text;
     final selection = _textCtrl.selection;
-    
+
     int insertOffset = selection.baseOffset;
     if (insertOffset == -1) {
       insertOffset = text.length;
     }
-    
+
     String prefix = '@';
     if (insertOffset > 0 && text[insertOffset - 1] != ' ') {
       prefix = ' @';
     }
-    
+
     final newText = text.replaceRange(insertOffset, insertOffset, prefix);
-    
+
     _textCtrl.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(offset: insertOffset + prefix.length),
     );
-    
+
     setState(() {
       _showMentions = true;
       _mentionQuery = '';
       _mentionStartIndex = insertOffset + (prefix.length - 1);
     });
-    
+
     _messageFocusNode.requestFocus();
   }
 
   Widget _buildInputArea() {
-
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(
-          16,
-          12,
-          16,
-          12,
-        ),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
 
-      decoration: const BoxDecoration(
-        color: Colors.transparent,
-      ),
+        decoration: const BoxDecoration(color: Colors.transparent),
 
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_showFormattingBar)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: _buildFormattingBar(),
-            ),
-          // Reply preview
-          if (_replyingToMessage != null)
-            Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_showFormattingBar)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: _buildFormattingBar(),
               ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.reply,
-                    size: 16,
-                    color: Color(0xFF64748B),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _replyingToMessage!.senderName,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF475569),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _replyingToMessage!.content,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF64748B),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.close,
-                      size: 16,
-                      color: Color(0xFF64748B),
-                    ),
-                    onPressed: _cancelReply,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-            ),
-          // File preview
-          if (_selectedFile != null)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Icon(_getFileIcon(_selectedFile!.extension), size: 32, color: AppColors.primary),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _selectedFile!.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (_selectedFile!.size > 0)
+            // Reply preview
+            if (_replyingToMessage != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.reply, size: 16, color: Color(0xFF64748B)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            '${(_selectedFile!.size / 1024).toStringAsFixed(1)} KB',
-                            style: const TextStyle(fontSize: 12, color: AppColors.slate500),
+                            _replyingToMessage!.senderName,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF475569),
+                            ),
                           ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            _replyingToMessage!.content,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF64748B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  if (_isUploadingFile)
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  else
                     IconButton(
-                      icon: const Icon(Icons.close, color: AppColors.slate500),
-                      onPressed: _clearFile,
+                      icon: const Icon(
+                        Icons.close,
+                        size: 16,
+                        color: Color(0xFF64748B),
+                      ),
+                      onPressed: _cancelReply,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.add, color: AppColors.slate500),
-                onPressed: _pickFile,
+            // File preview
+            if (_selectedFile != null)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 padding: const EdgeInsets.all(12),
-              ),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.slate200),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _getFileIcon(_selectedFile!.extension),
+                      size: 32,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _selectedFile!.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (_selectedFile!.size > 0)
+                            Text(
+                              '${(_selectedFile!.size / 1024).toStringAsFixed(1)} KB',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.slate500,
+                              ),
+                            ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Focus(
-                          onKeyEvent: (node, event) {
-                            if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
-                              if (HardwareKeyboard.instance.isShiftPressed) {
-                                return KeyEventResult.ignored;
-                              } else {
-                                _sendMessage();
-                                return KeyEventResult.handled;
+                    ),
+                    if (_isUploadingFile)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      IconButton(
+                        icon: const Icon(
+                          Icons.close,
+                          color: AppColors.slate500,
+                        ),
+                        onPressed: _clearFile,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                  ],
+                ),
+              ),
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.add, color: AppColors.slate500),
+                  onPressed: _pickFile,
+                  padding: const EdgeInsets.all(12),
+                ),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: context.adaptiveCard,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: context.adaptiveBorder),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Focus(
+                            onKeyEvent: (node, event) {
+                              if (event is KeyDownEvent &&
+                                  event.logicalKey ==
+                                      LogicalKeyboardKey.enter) {
+                                if (HardwareKeyboard.instance.isShiftPressed) {
+                                  return KeyEventResult.ignored;
+                                } else {
+                                  _sendMessage();
+                                  return KeyEventResult.handled;
+                                }
                               }
-                            }
-                            return KeyEventResult.ignored;
-                          },
-                          child: TextField(
-                            controller: _textCtrl,
-                            focusNode: _messageFocusNode,
-                            maxLines: MediaQuery.sizeOf(context).width < 800 ? 1 : 5,
-                            minLines: 1,
-                            keyboardType: TextInputType.multiline,
-                            textInputAction: TextInputAction.newline,
-                            style: const TextStyle(fontSize: 14),
-                            decoration: InputDecoration(
-                              hintText: 'Type a message...',
-                              hintStyle: const TextStyle(color: AppColors.slate400, fontSize: 14),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: MediaQuery.sizeOf(context).width < 800 ? 0 : 12,
+                              return KeyEventResult.ignored;
+                            },
+                            child: TextField(
+                              controller: _textCtrl,
+                              focusNode: _messageFocusNode,
+                              maxLines: MediaQuery.sizeOf(context).width < 800
+                                  ? 1
+                                  : 5,
+                              minLines: 1,
+                              keyboardType: TextInputType.multiline,
+                              textInputAction: TextInputAction.newline,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: context.isDarkMode
+                                    ? Colors.white
+                                    : AppColors.slate900,
                               ),
-                              prefixIconConstraints: const BoxConstraints(),
-                              prefixIcon: Padding(
-                                padding: const EdgeInsets.only(left: 12.0, right: 4.0),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    InkWell(
-                                      onTap: _showEmojiPicker,
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: const Padding(
-                                        padding: EdgeInsets.all(4.0),
-                                        child: Icon(Icons.emoji_emotions_outlined, color: AppColors.slate500, size: 20),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    InkWell(
-                                      onTap: () {
-                                        setState(() {
-                                          _showFormattingBar = !_showFormattingBar;
-                                        });
-                                      },
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(4.0),
-                                        child: Icon(_showFormattingBar ? Icons.text_format : Icons.text_format, color: _showFormattingBar ? AppColors.primary : AppColors.slate500, size: 20),
-                                      ),
-                                    ),
-                                  ],
+                              decoration: InputDecoration(
+                                hintText: 'Type a message...',
+                                hintStyle: TextStyle(
+                                  color: context.isDarkMode
+                                      ? Colors.white60
+                                      : AppColors.slate400,
+                                  fontSize: 14,
                                 ),
-                              ),
-                              suffixIconConstraints: const BoxConstraints(),
-                              suffixIcon: Padding(
-                                padding: const EdgeInsets.only(right: 12.0, left: 4.0),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    InkWell(
-                                      onTap: _triggerMention,
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: const Padding(
-                                        padding: EdgeInsets.all(4.0),
-                                        child: Icon(Icons.alternate_email, color: AppColors.slate500, size: 20),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical:
+                                      MediaQuery.sizeOf(context).width < 800
+                                      ? 0
+                                      : 12,
+                                ),
+                                prefixIconConstraints: const BoxConstraints(),
+                                prefixIcon: Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 12.0,
+                                    right: 4.0,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      InkWell(
+                                        onTap: _showEmojiPicker,
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(4.0),
+                                          child: Icon(
+                                            Icons.emoji_emotions_outlined,
+                                            color: context.isDarkMode
+                                                ? Colors.white70
+                                                : AppColors.slate500,
+                                            size: 20,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    InkWell(
-                                      onTap: _showGifPicker,
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: const Padding(
-                                        padding: EdgeInsets.all(4.0),
-                                        child: Icon(Icons.movie_outlined, color: AppColors.slate500, size: 20),
+                                      const SizedBox(width: 4),
+                                      InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            _showFormattingBar =
+                                                !_showFormattingBar;
+                                          });
+                                        },
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Padding(
+                                          padding: EdgeInsets.all(4.0),
+                                          child: Icon(
+                                            _showFormattingBar
+                                                ? Icons.text_format
+                                                : Icons.text_format,
+                                            color: _showFormattingBar
+                                                ? AppColors.primary
+                                                : (context.isDarkMode
+                                                      ? Colors.white70
+                                                      : AppColors.slate500),
+                                            size: 20,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
+                                ),
+                                suffixIconConstraints: const BoxConstraints(),
+                                suffixIcon: Padding(
+                                  padding: const EdgeInsets.only(
+                                    right: 12.0,
+                                    left: 4.0,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      InkWell(
+                                        onTap: _triggerMention,
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(4.0),
+                                          child: Icon(
+                                            Icons.alternate_email,
+                                            color: context.isDarkMode
+                                                ? Colors.white70
+                                                : AppColors.slate500,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      InkWell(
+                                        onTap: _showGifPicker,
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(4.0),
+                                          child: Icon(
+                                            Icons.movie_outlined,
+                                            color: context.isDarkMode
+                                                ? Colors.white70
+                                                : AppColors.slate500,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppColors.primary, AppColors.primaryDark],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppColors.primary, AppColors.primaryDark],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: _isUploadingFile
-                    ? const SizedBox(
-                        width: 36,
-                        height: 36,
-                        child: Padding(
-                          padding: EdgeInsets.all(9.0),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  child: _isUploadingFile
+                      ? const SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: Padding(
+                            padding: EdgeInsets.all(9.0),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
                           ),
+                        )
+                      : IconButton(
+                          icon: const Icon(
+                            LucideIcons.send,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          onPressed: _sendMessage,
                         ),
-                      )
-                    : IconButton(
-                        icon: const Icon(LucideIcons.send, color: Colors.white, size: 18),
-                        onPressed: _sendMessage,
-                      ),
-              ),
-            ],
-          ),
-        ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
-
-
+    );
+  }
 
   void _confirmDelete(BuildContext context, String messageId) {
-
     showDialog(
-
       context: context,
 
       builder: (context) => AlertDialog(
-
         title: const Text('Delete Message'),
 
         content: const Text('Are you sure you want to delete this message?'),
 
         actions: [
-
           TextButton(
-
             onPressed: () => Navigator.pop(context),
 
             child: const Text('Cancel'),
-
           ),
 
           TextButton(
-
             onPressed: () {
-
               ref
-
                   .read(chatControllerProvider.notifier)
-
                   .deleteMessage(messageId);
 
               Navigator.pop(context);
-
             },
 
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
-
           ),
-
         ],
-
       ),
-
     );
-
   }
 
   void _handleReply(ChatMessage message) {
@@ -1627,10 +1583,10 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
       final storage = Supabase.instance.client.storage;
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
       final filePath = fileName;
-      
+
       print('Reading file bytes...');
       Uint8List fileBytes;
-      
+
       if (file.bytes != null) {
         // Web platform - bytes are already available
         fileBytes = Uint8List.fromList(file.bytes!);
@@ -1643,17 +1599,19 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
         print('Error: No file bytes or path available');
         return null;
       }
-      
+
       print('Uploading to storage: $filePath');
-      await storage.from('chat_attachments').uploadBinary(
-        filePath,
-        fileBytes,
-        fileOptions: FileOptions(
-          contentType: _getMimeType(file.extension),
-          upsert: false,
-        ),
-      );
-      
+      await storage
+          .from('chat_attachments')
+          .uploadBinary(
+            filePath,
+            fileBytes,
+            fileOptions: FileOptions(
+              contentType: _getMimeType(file.extension),
+              upsert: false,
+            ),
+          );
+
       print('Upload successful, getting public URL...');
       final publicUrl = storage.from('chat_attachments').getPublicUrl(filePath);
       print('Public URL: $publicUrl');
@@ -1668,23 +1626,39 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     if (extension == null) return 'application/octet-stream';
     final ext = extension.toLowerCase();
     switch (ext) {
-      case 'pdf': return 'application/pdf';
+      case 'pdf':
+        return 'application/pdf';
       case 'jpg':
-      case 'jpeg': return 'image/jpeg';
-      case 'png': return 'image/png';
-      case 'gif': return 'image/gif';
-      case 'mp4': return 'video/mp4';
-      case 'mov': return 'video/quicktime';
-      case 'avi': return 'video/x-msvideo';
-      case 'mp3': return 'audio/mpeg';
-      case 'wav': return 'audio/wav';
-      case 'doc': return 'application/msword';
-      case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      case 'xls': return 'application/vnd.ms-excel';
-      case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      case 'zip': return 'application/zip';
-      case 'rar': return 'application/vnd.rar';
-      default: return 'application/octet-stream';
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'mp4':
+        return 'video/mp4';
+      case 'mov':
+        return 'video/quicktime';
+      case 'avi':
+        return 'video/x-msvideo';
+      case 'mp3':
+        return 'audio/mpeg';
+      case 'wav':
+        return 'audio/wav';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xls':
+        return 'application/vnd.ms-excel';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'zip':
+        return 'application/zip';
+      case 'rar':
+        return 'application/vnd.rar';
+      default:
+        return 'application/octet-stream';
     }
   }
 
@@ -1710,8 +1684,22 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
 
   void _showMoreReactions(BuildContext context, String messageId) {
     final moreReactions = [
-      '❤️', '🔥', '🎉', '👏', '🙌', '😂', '😮', '😢',
-      '🤔', '👀', '💯', '✨', '🚀', '💪', '🤝', '👋',
+      '❤️',
+      '🔥',
+      '🎉',
+      '👏',
+      '🙌',
+      '😂',
+      '😮',
+      '😢',
+      '🤔',
+      '👀',
+      '💯',
+      '✨',
+      '🚀',
+      '💪',
+      '🤝',
+      '👋',
     ];
 
     showDialog(
@@ -1742,10 +1730,7 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Center(
-                    child: Text(
-                      emoji,
-                      style: const TextStyle(fontSize: 24),
-                    ),
+                    child: Text(emoji, style: const TextStyle(fontSize: 24)),
                   ),
                 ),
               );
@@ -1764,12 +1749,484 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
 
   void _showEmojiPicker() {
     const categories = {
-      'Smileys': ['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','😓','🤗','🤔','🤭','🤫','🤥','😶','😐','😑','😬','🙄','😯','😦','😧','😮','😲','🥱','😴','🤤','😪','😵','🤐','🥴','🤢','🤮','🤧','😷','🤒','🤕'],
-      'Gestures': ['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','🧠','🫀','🫁','🦷','🦴','👀','👁️','👅','👄'],
-      'People': ['👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵','🙍','🙎','🙅','🙆','💁','🙋','🧏','🙇','🤦','🤷','👮','🕵️','💂','🥷','👷','🤴','👸','👳','👲','🧕','🤵','👰','🤰','🤱','👼','🎅','🤶','🦸','🦹','🧙','🧝','🧛','🧟','🧞','🧜','🧚','👯','🤺','🏇','⛷️','🏂','🪂','🏋️','🤸','🤾','🏌️','🏄','🚣','🧘'],
-      'Animals': ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐔','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐟','🐠','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐕‍🦺','🐈','🐈‍⬛','🪶','🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦫','🦦','🦥','🐁','🐀','🐿️','🦔'],
-      'Food': ['🍎','🍊','🍋','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🫒','🥑','🍆','🥦','🥬','🥒','🌶️','🫑','🧄','🧅','🥔','🍠','🫘','🌽','🍞','🥐','🥖','🫓','🥨','🥯','🧀','🥚','🍳','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫔','🌮','🌯','🥙','🧆','🥚','🍜','🍝','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥮','🍢','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🧃','🥤','🧋','☕','🍵','🧉','🍺','🍻','🥂','🍷'],
-      'Objects': ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉️','☸️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','🔱','📛','🔰','♻️','✅','❎','🆗','🆙','🆒','🆕','🆓','🔟','🔠','🔡','🔢','🔣','🔤','🅰️','🅱️','🆎','🅾️','🆑','🆘','⛔','📵','🚫','🔕','🔇','🔞','📵','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🟤'],
+      'Smileys': [
+        '😀',
+        '😃',
+        '😄',
+        '😁',
+        '😆',
+        '😅',
+        '😂',
+        '🤣',
+        '😊',
+        '😇',
+        '🙂',
+        '🙃',
+        '😉',
+        '😌',
+        '😍',
+        '🥰',
+        '😘',
+        '😗',
+        '😙',
+        '😚',
+        '😋',
+        '😛',
+        '😝',
+        '😜',
+        '🤪',
+        '🤨',
+        '🧐',
+        '🤓',
+        '😎',
+        '🤩',
+        '🥳',
+        '😏',
+        '😒',
+        '😞',
+        '😔',
+        '😟',
+        '😕',
+        '🙁',
+        '☹️',
+        '😣',
+        '😖',
+        '😫',
+        '😩',
+        '🥺',
+        '😢',
+        '😭',
+        '😤',
+        '😠',
+        '😡',
+        '🤬',
+        '🤯',
+        '😳',
+        '🥵',
+        '🥶',
+        '😱',
+        '😨',
+        '😰',
+        '😥',
+        '😓',
+        '🤗',
+        '🤔',
+        '🤭',
+        '🤫',
+        '🤥',
+        '😶',
+        '😐',
+        '😑',
+        '😬',
+        '🙄',
+        '😯',
+        '😦',
+        '😧',
+        '😮',
+        '😲',
+        '🥱',
+        '😴',
+        '🤤',
+        '😪',
+        '😵',
+        '🤐',
+        '🥴',
+        '🤢',
+        '🤮',
+        '🤧',
+        '😷',
+        '🤒',
+        '🤕',
+      ],
+      'Gestures': [
+        '👋',
+        '🤚',
+        '🖐️',
+        '✋',
+        '🖖',
+        '👌',
+        '🤌',
+        '🤏',
+        '✌️',
+        '🤞',
+        '🤟',
+        '🤘',
+        '🤙',
+        '👈',
+        '👉',
+        '👆',
+        '🖕',
+        '👇',
+        '☝️',
+        '👍',
+        '👎',
+        '✊',
+        '👊',
+        '🤛',
+        '🤜',
+        '👏',
+        '🙌',
+        '👐',
+        '🤲',
+        '🤝',
+        '🙏',
+        '✍️',
+        '💅',
+        '🤳',
+        '💪',
+        '🦾',
+        '🦿',
+        '🦵',
+        '🦶',
+        '👂',
+        '🦻',
+        '👃',
+        '🧠',
+        '🫀',
+        '🫁',
+        '🦷',
+        '🦴',
+        '👀',
+        '👁️',
+        '👅',
+        '👄',
+      ],
+      'People': [
+        '👶',
+        '🧒',
+        '👦',
+        '👧',
+        '🧑',
+        '👱',
+        '👨',
+        '🧔',
+        '👩',
+        '🧓',
+        '👴',
+        '👵',
+        '🙍',
+        '🙎',
+        '🙅',
+        '🙆',
+        '💁',
+        '🙋',
+        '🧏',
+        '🙇',
+        '🤦',
+        '🤷',
+        '👮',
+        '🕵️',
+        '💂',
+        '🥷',
+        '👷',
+        '🤴',
+        '👸',
+        '👳',
+        '👲',
+        '🧕',
+        '🤵',
+        '👰',
+        '🤰',
+        '🤱',
+        '👼',
+        '🎅',
+        '🤶',
+        '🦸',
+        '🦹',
+        '🧙',
+        '🧝',
+        '🧛',
+        '🧟',
+        '🧞',
+        '🧜',
+        '🧚',
+        '👯',
+        '🤺',
+        '🏇',
+        '⛷️',
+        '🏂',
+        '🪂',
+        '🏋️',
+        '🤸',
+        '🤾',
+        '🏌️',
+        '🏄',
+        '🚣',
+        '🧘',
+      ],
+      'Animals': [
+        '🐶',
+        '🐱',
+        '🐭',
+        '🐹',
+        '🐰',
+        '🦊',
+        '🐻',
+        '🐼',
+        '🐨',
+        '🐯',
+        '🦁',
+        '🐮',
+        '🐷',
+        '🐸',
+        '🐵',
+        '🙈',
+        '🙉',
+        '🙊',
+        '🐔',
+        '🐧',
+        '🐦',
+        '🐤',
+        '🦆',
+        '🦅',
+        '🦉',
+        '🦇',
+        '🐺',
+        '🐗',
+        '🐴',
+        '🦄',
+        '🐝',
+        '🐛',
+        '🦋',
+        '🐌',
+        '🐞',
+        '🐜',
+        '🦟',
+        '🦗',
+        '🕷️',
+        '🦂',
+        '🐢',
+        '🐍',
+        '🦎',
+        '🦖',
+        '🦕',
+        '🐙',
+        '🦑',
+        '🦐',
+        '🦞',
+        '🦀',
+        '🐡',
+        '🐟',
+        '🐠',
+        '🐬',
+        '🐳',
+        '🐋',
+        '🦈',
+        '🐊',
+        '🐅',
+        '🐆',
+        '🦓',
+        '🦍',
+        '🦧',
+        '🐘',
+        '🦛',
+        '🦏',
+        '🐪',
+        '🐫',
+        '🦒',
+        '🦘',
+        '🦬',
+        '🐃',
+        '🐂',
+        '🐄',
+        '🐎',
+        '🐖',
+        '🐏',
+        '🐑',
+        '🦙',
+        '🐐',
+        '🦌',
+        '🐕',
+        '🐩',
+        '🦮',
+        '🐕‍🦺',
+        '🐈',
+        '🐈‍⬛',
+        '🪶',
+        '🐓',
+        '🦃',
+        '🦤',
+        '🦚',
+        '🦜',
+        '🦢',
+        '🦩',
+        '🕊️',
+        '🐇',
+        '🦝',
+        '🦨',
+        '🦡',
+        '🦫',
+        '🦦',
+        '🦥',
+        '🐁',
+        '🐀',
+        '🐿️',
+        '🦔',
+      ],
+      'Food': [
+        '🍎',
+        '🍊',
+        '🍋',
+        '🍇',
+        '🍓',
+        '🫐',
+        '🍈',
+        '🍒',
+        '🍑',
+        '🥭',
+        '🍍',
+        '🥥',
+        '🥝',
+        '🍅',
+        '🫒',
+        '🥑',
+        '🍆',
+        '🥦',
+        '🥬',
+        '🥒',
+        '🌶️',
+        '🫑',
+        '🧄',
+        '🧅',
+        '🥔',
+        '🍠',
+        '🫘',
+        '🌽',
+        '🍞',
+        '🥐',
+        '🥖',
+        '🫓',
+        '🥨',
+        '🥯',
+        '🧀',
+        '🥚',
+        '🍳',
+        '🥞',
+        '🧇',
+        '🥓',
+        '🥩',
+        '🍗',
+        '🍖',
+        '🌭',
+        '🍔',
+        '🍟',
+        '🍕',
+        '🫔',
+        '🌮',
+        '🌯',
+        '🥙',
+        '🧆',
+        '🥚',
+        '🍜',
+        '🍝',
+        '🍛',
+        '🍣',
+        '🍱',
+        '🥟',
+        '🦪',
+        '🍤',
+        '🍙',
+        '🍚',
+        '🍘',
+        '🍥',
+        '🥮',
+        '🍢',
+        '🧁',
+        '🍰',
+        '🎂',
+        '🍮',
+        '🍭',
+        '🍬',
+        '🍫',
+        '🍿',
+        '🍩',
+        '🍪',
+        '🌰',
+        '🥜',
+        '🍯',
+        '🧃',
+        '🥤',
+        '🧋',
+        '☕',
+        '🍵',
+        '🧉',
+        '🍺',
+        '🍻',
+        '🥂',
+        '🍷',
+      ],
+      'Objects': [
+        '❤️',
+        '🧡',
+        '💛',
+        '💚',
+        '💙',
+        '💜',
+        '🖤',
+        '🤍',
+        '🤎',
+        '💔',
+        '❣️',
+        '💕',
+        '💞',
+        '💓',
+        '💗',
+        '💖',
+        '💘',
+        '💝',
+        '💟',
+        '☮️',
+        '✝️',
+        '☪️',
+        '🕉️',
+        '☸️',
+        '✡️',
+        '🔯',
+        '🕎',
+        '☯️',
+        '☦️',
+        '🛐',
+        '⛎',
+        '🔱',
+        '📛',
+        '🔰',
+        '♻️',
+        '✅',
+        '❎',
+        '🆗',
+        '🆙',
+        '🆒',
+        '🆕',
+        '🆓',
+        '🔟',
+        '🔠',
+        '🔡',
+        '🔢',
+        '🔣',
+        '🔤',
+        '🅰️',
+        '🅱️',
+        '🆎',
+        '🅾️',
+        '🆑',
+        '🆘',
+        '⛔',
+        '📵',
+        '🚫',
+        '🔕',
+        '🔇',
+        '🔞',
+        '📵',
+        '🔴',
+        '🟠',
+        '🟡',
+        '🟢',
+        '🔵',
+        '🟣',
+        '⚫',
+        '⚪',
+        '🟤',
+      ],
     };
 
     showDialog(
@@ -1778,7 +2235,9 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
         String selectedCategory = categories.keys.first;
         return StatefulBuilder(
           builder: (ctx, setInnerState) => Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: SizedBox(
               width: 380,
               height: 380,
@@ -1789,26 +2248,43 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                     height: 44,
                     child: ListView(
                       scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      children: categories.keys.map((cat) => GestureDetector(
-                        onTap: () => setInnerState(() => selectedCategory = cat),
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: selectedCategory == cat ? AppColors.primary : AppColors.slate100,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            cat,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: selectedCategory == cat ? Colors.white : AppColors.slate600,
-                              fontWeight: FontWeight.w500,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
+                      children: categories.keys
+                          .map(
+                            (cat) => GestureDetector(
+                              onTap: () =>
+                                  setInnerState(() => selectedCategory = cat),
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: selectedCategory == cat
+                                      ? AppColors.primary
+                                      : AppColors.slate100,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  cat,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: selectedCategory == cat
+                                        ? Colors.white
+                                        : AppColors.slate600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      )).toList(),
+                          )
+                          .toList(),
                     ),
                   ),
                   const Divider(height: 1),
@@ -1816,12 +2292,13 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                   Expanded(
                     child: GridView.builder(
                       padding: const EdgeInsets.all(8),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 8,
-                        childAspectRatio: 1,
-                        mainAxisSpacing: 4,
-                        crossAxisSpacing: 4,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 8,
+                            childAspectRatio: 1,
+                            mainAxisSpacing: 4,
+                            crossAxisSpacing: 4,
+                          ),
                       itemCount: categories[selectedCategory]!.length,
                       itemBuilder: (_, i) {
                         final emoji = categories[selectedCategory]![i];
@@ -1832,15 +2309,24 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
                             final pos = _textCtrl.selection.baseOffset;
                             final text = _textCtrl.text;
                             final insert = pos < 0 ? text.length : pos;
-                            final newText = text.replaceRange(insert, insert, emoji);
+                            final newText = text.replaceRange(
+                              insert,
+                              insert,
+                              emoji,
+                            );
                             _textCtrl.value = TextEditingValue(
                               text: newText,
-                              selection: TextSelection.collapsed(offset: insert + emoji.length),
+                              selection: TextSelection.collapsed(
+                                offset: insert + emoji.length,
+                              ),
                             );
                             _messageFocusNode.requestFocus();
                           },
                           child: Center(
-                            child: Text(emoji, style: const TextStyle(fontSize: 20)),
+                            child: Text(
+                              emoji,
+                              style: const TextStyle(fontSize: 20),
+                            ),
                           ),
                         );
                       },
@@ -1923,28 +2409,25 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
     final agent = ref.read(authProvider);
     if (agent == null) return;
 
-    ref.read(chatControllerProvider.notifier).sendMessage(
-      senderId: agent.id,
-      senderName: agent.fullName,
-      senderRole: agent.role,
-      content: '', // Empty content, as the image will show
-      receiverId: widget.partnerId,
-      senderAvatarUrl: agent.avatarUrl,
-      fileUrl: gifUrl,
-      fileName: 'giphy.gif',
-      fileType: 'gif',
-    );
+    ref
+        .read(chatControllerProvider.notifier)
+        .sendMessage(
+          senderId: agent.id,
+          senderName: agent.fullName,
+          senderRole: agent.role,
+          content: '', // Empty content, as the image will show
+          receiverId: widget.partnerId,
+          senderAvatarUrl: agent.avatarUrl,
+          fileUrl: gifUrl,
+          fileName: 'giphy.gif',
+          fileType: 'gif',
+        );
   }
 }
 
-
-
 // ── Per-user deterministic color ─────────────────────────────────────────────
 
-
-
 const _kUserColors = [
-
   Color(0xFF2563EB), // blue
 
   Color(0xFF7C3AED), // violet
@@ -1964,201 +2447,135 @@ const _kUserColors = [
   Color(0xFF9333EA), // purple
 
   Color(0xFFEA580C), // orange
-
 ];
 
-
-
 Color _userColor(String name) {
-
   if (name.isEmpty) return _kUserColors[0];
 
   int hash = 0;
 
   for (final c in name.codeUnits) {
-
     hash = (hash * 31 + c) & 0x7fffffff;
-
   }
 
   return _kUserColors[hash % _kUserColors.length];
-
 }
 
-
+Color _getAdaptiveUserColor(BuildContext context, String name) {
+  final color = _userColor(name);
+  if (context.isDarkMode) {
+    return Color.lerp(color, Colors.white, 0.35) ?? color;
+  }
+  return color;
+}
 
 // ── Date header ───────────────────────────────────────────────────────────────
 
-
-
 class _DateHeader extends StatelessWidget {
-
   final DateTime date;
 
   const _DateHeader({required this.date});
 
-
-
   @override
-
   Widget build(BuildContext context) {
-
     String text;
 
     final now = DateTime.now();
 
     if (date.year == now.year &&
-
         date.month == now.month &&
-
         date.day == now.day) {
-
       text = 'Today';
-
     } else if (date.year == now.year &&
-
         date.month == now.month &&
-
         date.day == now.day - 1) {
-
       text = 'Yesterday';
-
     } else {
-
       text = DateFormat('MMMM d, y').format(date);
-
     }
 
-
-
     return Padding(
-
       padding: const EdgeInsets.symmetric(vertical: 20),
 
       child: Row(
-
         children: [
-
           const Expanded(child: Divider(color: AppColors.slate200)),
 
           Padding(
-
             padding: const EdgeInsets.symmetric(horizontal: 16),
 
             child: Text(
-
               text,
 
               style: TextStyle(
-
                 fontSize: 11,
 
                 fontWeight: FontWeight.w600,
 
                 color: AppColors.slate500,
-
               ),
-
             ),
-
           ),
 
           const Expanded(child: Divider(color: AppColors.slate200)),
-
         ],
-
       ),
-
     );
-
   }
-
 }
-
-
 
 // ── Unread label ───────────────────────────────────────────────────────────────
 
-
-
 class _UnreadLabel extends StatelessWidget {
-
   const _UnreadLabel({super.key});
 
-
-
   @override
-
   Widget build(BuildContext context) {
-
     return Padding(
-
       padding: const EdgeInsets.only(bottom: 8),
 
       child: Row(
-
         children: [
-
           const Expanded(child: Divider(color: AppColors.slate200)),
 
           Padding(
-
             padding: const EdgeInsets.symmetric(horizontal: 16),
 
             child: Container(
-
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
 
               decoration: BoxDecoration(
-
                 color: AppColors.error.withValues(alpha: 0.1),
 
                 borderRadius: BorderRadius.circular(12),
 
                 border: Border.all(
-
                   color: AppColors.error.withValues(alpha: 0.3),
-
                 ),
-
               ),
 
               child: Text(
-
                 'Unread messages',
 
                 style: TextStyle(
-
                   fontSize: 11,
 
                   fontWeight: FontWeight.w600,
 
                   color: AppColors.error,
-
                 ),
-
               ),
-
             ),
-
           ),
 
           const Expanded(child: Divider(color: AppColors.slate200)),
-
         ],
-
       ),
-
     );
-
   }
-
 }
 
-
-
 class _ChatBubble extends ConsumerWidget {
-
   final ChatMessage message;
 
   final bool isMe;
@@ -2167,10 +2584,7 @@ class _ChatBubble extends ConsumerWidget {
   final VoidCallback onDelete;
   final VoidCallback onReply;
 
-
-
   const _ChatBubble({
-
     super.key,
 
     required this.message,
@@ -2180,15 +2594,10 @@ class _ChatBubble extends ConsumerWidget {
 
     required this.onDelete,
     required this.onReply,
-
   });
 
-
-
   Color _userColor(String name) {
-
     final colors = [
-
       AppColors.primary,
 
       AppColors.success,
@@ -2198,13 +2607,11 @@ class _ChatBubble extends ConsumerWidget {
       AppColors.error,
 
       AppColors.info,
-
     ];
 
     final index = name.hashCode.abs() % colors.length;
 
     return colors[index];
-
   }
 
   // ignore: unused_element
@@ -2214,94 +2621,76 @@ class _ChatBubble extends ConsumerWidget {
       (a) => (a['id']?.toString() ?? '') == senderId,
       orElse: () => <String, dynamic>{},
     );
-    final lastSeen = senderAgent['last_seen'] != null 
-        ? DateTime.tryParse(senderAgent['last_seen'].toString()) 
+    final lastSeen = senderAgent['last_seen'] != null
+        ? DateTime.tryParse(senderAgent['last_seen'].toString())
         : null;
     return lastSeen != null && now.difference(lastSeen).inMinutes < 5;
   }
 
-  
-
-
   String? _extractTicketId(String content) {
-
     print('=== TICKET ID EXTRACTION DEBUG ===');
 
-    print('Full content: ${content.length > 200 ? content.substring(0, 200) + '...' : content}');
-
-    
+    print(
+      'Full content: ${content.length > 200 ? content.substring(0, 200) + '...' : content}',
+    );
 
     // Method 1: Standard line-by-line extraction
 
     for (final line in content.split('\n')) {
-
       print('Checking line: "$line"');
 
       if (line.startsWith('TicketID: ')) {
-
         final ticketId = line.substring('TicketID: '.length).trim();
 
         print('✅ Found ticket ID (method 1): $ticketId');
 
         return ticketId;
-
       }
-
     }
-
-    
 
     // Method 2: Regex extraction
 
     if (content.contains('TicketID:')) {
-
       final match = RegExp(r'TicketID:\s*([^\s\n]+)').firstMatch(content);
 
       if (match != null) {
-
         final ticketId = match.group(1);
 
         print('✅ Found ticket ID (method 2): $ticketId');
 
         return ticketId;
-
       }
-
     }
-
-    
 
     // Method 3: Try to extract any UUID-like pattern
 
-    final uuidMatch = RegExp(r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})', caseSensitive: false).firstMatch(content);
+    final uuidMatch = RegExp(
+      r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})',
+      caseSensitive: false,
+    ).firstMatch(content);
 
     if (uuidMatch != null) {
-
       final ticketId = uuidMatch.group(1);
 
       print('✅ Found UUID-like ticket ID (method 3): $ticketId');
 
       return ticketId;
-
     }
-
-    
 
     // Method 4: Try to extract any alphanumeric ID that looks like a ticket ID
 
-    final idMatch = RegExp(r'([a-f0-9]{20,})', caseSensitive: false).firstMatch(content);
+    final idMatch = RegExp(
+      r'([a-f0-9]{20,})',
+      caseSensitive: false,
+    ).firstMatch(content);
 
     if (idMatch != null) {
-
       final ticketId = idMatch.group(1);
 
       print('✅ Found long alphanumeric ID (method 4): $ticketId');
 
       return ticketId;
-
     }
-
-    
 
     // Method 5: Fallback - try to find ticket by matching content with existing tickets
 
@@ -2309,162 +2698,141 @@ class _ChatBubble extends ConsumerWidget {
 
     // This will be handled in the calling function where we have access to the tickets list
 
-    
-
     print('❌ No ticket ID found in content');
 
     print('=== END EXTRACTION DEBUG ===');
 
     return null;
-
   }
-
-
 
   String _extractIssueFromContent(String content) {
-
     for (final line in content.split('\n')) {
-
       if (line.startsWith('Issue: ')) {
-
         return line.substring('Issue: '.length).trim();
-
       }
-
     }
 
     return '';
-
   }
 
-
-
   String _extractCompanyFromContent(String content) {
-
     for (final line in content.split('\n')) {
-
       if (line.startsWith('Company: ')) {
-
         return line.substring('Company: '.length).trim();
-
       }
-
     }
 
     return '';
-
   }
 
   bool _isResolvedStatus(String? status) {
-    return status == 'Resolved' || status == 'Closed' || status == 'BillRaised' || status == 'BillProcessed';
+    return status == 'Resolved' ||
+        status == 'Closed' ||
+        status == 'BillRaised' ||
+        status == 'BillProcessed';
   }
 
   Color _statusBorderColor(String? status, {bool isClaimed = false}) {
-
     // If ticket is resolved/completed, show green border regardless of claim status
 
     if (_isResolvedStatus(status)) {
-
       return AppColors.success; // Green for resolved/completed tickets
-
     }
-
-
 
     // If ticket is claimed, show yellow border
 
     if (isClaimed) {
-
       return AppColors.warning; // Yellow for claimed tickets
-
     }
-
-    
 
     // For unclaimed tickets, show red border
 
     switch (status) {
-
       case 'New':
-
       case 'Open':
-
       case 'InProgress':
-
       case 'OnHold':
-
       case 'WaitingForCustomer':
-
       case 'Reopened':
-
       case null:
-
         return AppColors.error; // Red for tickets with no status (unclaimed)
 
       default:
-
         return AppColors.error; // Red for unknown status (unclaimed)
-
     }
-
   }
 
+  Color _getAdaptiveStatusBorderColor(
+    BuildContext context,
+    String? status, {
+    bool isClaimed = false,
+  }) {
+    final color = _statusBorderColor(status, isClaimed: isClaimed);
+    if (context.isDarkMode) {
+      return Color.lerp(color, Colors.white, 0.3) ?? color;
+    }
+    return color;
+  }
 
+  Color _getAdaptiveStatusColor(BuildContext context, String? status) {
+    if (context.isDarkMode) {
+      switch (status) {
+        case 'New':
+        case 'Open':
+          return Colors.red.shade200;
+        case 'InProgress':
+        case 'OnHold':
+        case 'WaitingForCustomer':
+          return Colors.orange.shade300;
+        case 'BillRaised':
+          return Colors.red.shade200;
+        case 'Resolved':
+        case 'Closed':
+        case 'Reopened':
+        case 'BillProcessed':
+          return Colors.green.shade300;
+        default:
+          return Colors.grey.shade400;
+      }
+    }
+    return _getStatusColor(status);
+  }
 
   Color _getStatusColor(String? status) {
-
     switch (status) {
-
       case 'New':
-
       case 'Open':
-
         return AppColors.error;
 
       case 'InProgress':
-
       case 'OnHold':
-
       case 'WaitingForCustomer':
-
         return AppColors.warning;
 
       case 'Resolved':
-
       case 'Closed':
-
       case 'Reopened':
-
       case 'BillRaised':
-
       case 'BillProcessed':
-
         return AppColors.success;
 
       default:
-
         return Colors.grey;
-
     }
-
   }
-
-
 
   // ignore: unused_element
   String _visibleTicketContent(String content) {
-
     return content
-
         .split('\n')
-
         .where((line) => !line.startsWith('TicketID: '))
-
         .join('\n');
-
   }
 
-  String _getAssignedAgentName(String? assignedTo, List<Map<String, dynamic>> agents) {
+  String _getAssignedAgentName(
+    String? assignedTo,
+    List<Map<String, dynamic>> agents,
+  ) {
     if (assignedTo == null || assignedTo.isEmpty) {
       return 'Claimed';
     }
@@ -2495,60 +2863,40 @@ class _ChatBubble extends ConsumerWidget {
     }
   }
 
-
-
-  
-
-  Future<void> _claimTicketFromChat(BuildContext context, WidgetRef ref, String? ticketId) async {
-
+  Future<void> _claimTicketFromChat(
+    BuildContext context,
+    WidgetRef ref,
+    String? ticketId,
+  ) async {
     if (ticketId == null) {
-
       ScaffoldMessenger.of(context).showSnackBar(
-
         const SnackBar(
-
           content: Text('Ticket ID not found'),
 
           backgroundColor: AppColors.error,
-
         ),
-
       );
 
       return;
-
     }
-
-    
 
     final currentUser = ref.read(authProvider);
 
     if (currentUser == null) {
-
       ScaffoldMessenger.of(context).showSnackBar(
-
         const SnackBar(
-
           content: Text('User not authenticated'),
 
           backgroundColor: AppColors.error,
-
         ),
-
       );
 
       return;
-
     }
-
-
 
     print('Attempting to claim ticket: $ticketId by user: ${currentUser.id}');
 
-
-
     try {
-
       print('=== TICKET CLAIM DEBUG ===');
 
       print('Ticket ID: "$ticketId"');
@@ -2565,167 +2913,121 @@ class _ChatBubble extends ConsumerWidget {
 
       print('Is Agent: ${currentUser.isAgent}');
 
-      
-
       if (ticketId.isEmpty) {
-
         print('❌ Invalid ticket ID: "$ticketId"');
 
         ScaffoldMessenger.of(context).showSnackBar(
-
           const SnackBar(
-
             content: Text('Invalid ticket ID - cannot claim'),
 
             backgroundColor: AppColors.error,
-
           ),
-
         );
 
         return;
-
       }
-
-      
 
       print('Calling assignTicket...');
 
-      final success = await ref.read(ticketAssignerProvider.notifier).assignTicket(ticketId, currentUser.id);
+      final success = await ref
+          .read(ticketAssignerProvider.notifier)
+          .assignTicket(ticketId, currentUser.id);
 
       print('assignTicket returned: $success');
 
-
-
       if (!context.mounted) return;
 
-
-
       if (success) {
-
         print('✅ Ticket claimed successfully: $ticketId');
 
         ScaffoldMessenger.of(context).showSnackBar(
-
           const SnackBar(
-
             content: Text('Ticket claimed successfully!'),
 
             backgroundColor: AppColors.success,
-
           ),
-
         );
 
         // Force refresh the tickets stream to update the UI
 
         ref.invalidate(rawTicketsStreamProvider);
 
-
-
         // Navigate directly to the ticket resolving page
 
         context.push('/ticket/$ticketId');
-
       } else {
-
-        print('❌ Failed to claim ticket: $ticketId - assignTicket returned false');
+        print(
+          '❌ Failed to claim ticket: $ticketId - assignTicket returned false',
+        );
 
         ScaffoldMessenger.of(context).showSnackBar(
-
           const SnackBar(
-
             content: Text('Failed to claim ticket - please try again'),
 
             backgroundColor: AppColors.error,
-
           ),
-
         );
-
       }
 
       print('=== END CLAIM DEBUG ===');
-
     } catch (e) {
-
       print('❌ Exception while claiming ticket: $e');
 
       print('Stack trace: ${StackTrace.current}');
 
       if (!context.mounted) return;
 
-      
-
       ScaffoldMessenger.of(context).showSnackBar(
-
         SnackBar(
-
           content: Text('Error claiming ticket: ${e.toString()}'),
 
           backgroundColor: AppColors.error,
-
         ),
-
       );
-
     }
-
   }
 
-
-
-  
-
   @override
-
   Widget build(BuildContext context, WidgetRef ref) {
-
     // Call activity messages — rendered as centered notification cards
     if (message.content.startsWith('__CALL_') && !message.isDeleted) {
-      return _CallActivityCard(content: message.content, createdAt: message.createdAt);
+      return _CallActivityCard(
+        content: message.content,
+        createdAt: message.createdAt,
+      );
     }
 
     if (message.isDeleted) {
-
       return Container(
-
         padding: const EdgeInsets.symmetric(vertical: 8),
 
         alignment: Alignment.center,
 
         child: Text(
-
           'Message deleted',
 
           style: TextStyle(
-
             fontSize: 11,
 
             color: AppColors.slate400,
 
             fontStyle: FontStyle.italic,
-
           ),
-
         ),
-
       );
-
     }
 
     return Container(
-
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
 
       child: Row(
-
         crossAxisAlignment: CrossAxisAlignment.center,
 
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
 
         children: [
-
           // Message content
           Flexible(
             child: ConstrainedBox(
@@ -2741,234 +3043,259 @@ class _ChatBubble extends ConsumerWidget {
                   clipBehavior: Clip.none,
                   children: [
                     Column(
-                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                      crossAxisAlignment: isMe
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
 
-                children: [
-                  // Header with name and timestamp
-                  if (showSender)
-                    Wrap(
-                      alignment: isMe ? WrapAlignment.end : WrapAlignment.start,
-                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                      if (!isMe) ...[
-                        Text(
-                          message.senderName,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            height: 1.1,
-                            color: _userColor(message.senderName),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      if (isMe) ...[
-                        Text(
-                          'You',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            height: 1.1,
-                            color: _userColor(message.senderName),
-                          ),
-                        ),
-                      ],
-                      if (message.senderRole.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _userColor(message.senderName)
-                                .withValues(alpha: 0.10),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            message.senderRole.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 8,
-                              fontWeight: FontWeight.w600,
-                              color: _userColor(message.senderName),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-
-                  // Message content with ticket handling
-                  _buildSlackStyleMessageContent(context, ref),
-
-                  // File attachment display
-                  if (message.fileUrl != null && message.fileUrl!.isNotEmpty)
-                    if (message.fileType?.toLowerCase() == 'gif')
-                      // Render GIF as animated inline image
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          message.fileUrl!,
-                          width: 200,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (_, child, progress) => progress == null
-                              ? child
-                              : SizedBox(
-                                  width: 200,
-                                  height: 120,
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      value: progress.expectedTotalBytes != null
-                                          ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
-                                          : null,
+                        // Header with name and timestamp
+                        if (showSender)
+                          Wrap(
+                            alignment: isMe
+                                ? WrapAlignment.end
+                                : WrapAlignment.start,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              if (!isMe) ...[
+                                Text(
+                                  message.senderName,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.1,
+                                    color: _getAdaptiveUserColor(
+                                      context,
+                                      message.senderName,
                                     ),
                                   ),
                                 ),
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 200,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Center(child: Icon(Icons.gif, size: 32, color: AppColors.slate400)),
-                          ),
-                        ),
-                      )
-                    else
-                      GestureDetector(
-                        onTap: () => _downloadFile(message.fileUrl!, message.fileName ?? 'file'),
-                        child: Container(
-                          margin: const EdgeInsets.only(top: 4, bottom: 8),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(_getFileIcon(message.fileType),
-                                  size: 16, color: AppColors.slate500),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  message.fileName ?? 'File',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 12),
+                                const SizedBox(width: 8),
+                              ],
+                              if (isMe) ...[
+                                Text(
+                                  'You',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.1,
+                                    color: _getAdaptiveUserColor(
+                                      context,
+                                      message.senderName,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 6),
-                              Icon(LucideIcons.download,
-                                  size: 14, color: AppColors.slate500),
+                              ],
+                              if (message.senderRole.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getAdaptiveUserColor(
+                                      context,
+                                      message.senderName,
+                                    ).withValues(alpha: 0.10),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    message.senderRole.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w600,
+                                      color: _getAdaptiveUserColor(
+                                        context,
+                                        message.senderName,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
-                        ),
-                      ),
 
-                  const SizedBox(height: 6),
+                        // Message content with ticket handling
+                        _buildSlackStyleMessageContent(context, ref),
 
-                  // Reactions display
-                  if (message.reactions.isNotEmpty)
-                    _buildReactionsDisplay(context, ref),
+                        // File attachment display
+                        if (message.fileUrl != null &&
+                            message.fileUrl!.isNotEmpty)
+                          if (message.fileType?.toLowerCase() == 'gif')
+                            // Render GIF as animated inline image
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                message.fileUrl!,
+                                width: 200,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (_, child, progress) =>
+                                    progress == null
+                                    ? child
+                                    : SizedBox(
+                                        width: 200,
+                                        height: 120,
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            value:
+                                                progress.expectedTotalBytes !=
+                                                    null
+                                                ? progress.cumulativeBytesLoaded /
+                                                      progress
+                                                          .expectedTotalBytes!
+                                                : null,
+                                          ),
+                                        ),
+                                      ),
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 200,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade200,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.gif,
+                                      size: 32,
+                                      color: AppColors.slate400,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            GestureDetector(
+                              onTap: () => _downloadFile(
+                                message.fileUrl!,
+                                message.fileName ?? 'file',
+                              ),
+                              child: Container(
+                                margin: const EdgeInsets.only(
+                                  top: 4,
+                                  bottom: 8,
+                                ),
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: context.isDarkMode
+                                      ? context.adaptiveSlate800
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: context.isDarkMode
+                                        ? context.adaptiveSlate700
+                                        : Colors.grey.shade300,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _getFileIcon(message.fileType),
+                                      size: 16,
+                                      color: context.adaptiveSlate400,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        message.fileName ?? 'File',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: context.isDarkMode
+                                              ? Colors.white
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Icon(
+                                      LucideIcons.download,
+                                      size: 14,
+                                      color: context.adaptiveSlate400,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                        const SizedBox(height: 6),
+
+                        // Reactions display
+                        if (message.reactions.isNotEmpty)
+                          _buildReactionsDisplay(context, ref),
+                      ],
+                    ),
+                    Positioned(
+                      top: -12,
+                      right: isMe ? null : 0,
+                      left: isMe ? 0 : null,
+                      child: const _HoverableActionMenu(),
+                    ),
                   ],
                 ),
-                Positioned(
-                  top: -12,
-                  right: isMe ? null : 0,
-                  left: isMe ? 0 : null,
-                  child: const _HoverableActionMenu(),
-                ),
-              ],
-            ),
+              ),
             ),
           ),
-        ),
         ],
       ),
-
     );
-
   }
 
-
-
   Widget _buildSlackStyleMessageContent(BuildContext context, WidgetRef ref) {
-
-    final isTicketMessage = message.content.startsWith('Company: ') &&
-
+    final isTicketMessage =
+        message.content.startsWith('Company: ') &&
         message.content.contains('\nIssue: ');
 
-
-
     if (isTicketMessage) {
-
       final ticketId = _extractTicketId(message.content);
 
       final currentUser = ref.read(authProvider);
 
-      
-
       // Debug info
 
-      print('Ticket message detected: ${message.content.length > 50 ? message.content.substring(0, 50) : message.content}...');
+      print(
+        'Ticket message detected: ${message.content.length > 50 ? message.content.substring(0, 50) : message.content}...',
+      );
 
       print('Extracted ticket ID: $ticketId');
 
-
-
       return Consumer(
-
         builder: (context, ref, child) {
-
           final ticketsAsync = ref.watch(ticketsStreamProvider);
 
           final agentsAsync = ref.watch(agentsListProvider);
 
-
-
           return ticketsAsync.when(
-
             data: (tickets) {
-
               Ticket? ticket;
-
-              
 
               // Method 1: Try to find by extracted ticket ID
 
               if (ticketId != null) {
-
                 for (final item in tickets) {
-
                   if (item.ticketId == ticketId) {
-
                     ticket = item;
 
                     print('✅ Found ticket by ID: $ticketId');
 
                     break;
-
                   }
-
                 }
-
               }
-
-              
 
               // Method 2: Enhanced fallback with timestamp-based matching to prevent cross-assignment
 
               if (ticket == null && ticketId == null) {
-
                 print('🔍 Trying fallback content matching...');
 
                 final messageIssue = _extractIssueFromContent(message.content);
 
-                final messageCompany = _extractCompanyFromContent(message.content);
+                final messageCompany = _extractCompanyFromContent(
+                  message.content,
+                );
 
                 print('Looking for issue: "$messageIssue"');
 
@@ -2976,171 +3303,139 @@ class _ChatBubble extends ConsumerWidget {
 
                 print('Message timestamp: ${message.createdAt}');
 
-                
-
                 // Print all available tickets for debugging
 
                 print('=== ALL AVAILABLE TICKETS ===');
 
-                for (final item in tickets.take(5)) { // Show first 5 tickets
+                for (final item in tickets.take(5)) {
+                  // Show first 5 tickets
 
-                  print('Ticket: ${item.ticketId} | Issue: "${item.description?.trim() ?? item.title.trim()}" | Status: ${item.status} | Assigned: ${item.assignedTo} | Created: ${item.createdAt}');
-
+                  print(
+                    'Ticket: ${item.ticketId} | Issue: "${item.description?.trim() ?? item.title.trim()}" | Status: ${item.status} | Assigned: ${item.assignedTo} | Created: ${item.createdAt}',
+                  );
                 }
 
                 print('=== END TICKETS ===');
-
-                
 
                 // Create a list of potential matches with scores
 
                 List<Map<String, dynamic>> potentialMatches = [];
 
-                
-
                 for (final item in tickets) {
-
-                  final ticketIssue = item.description?.trim() ?? item.title.trim();
+                  final ticketIssue =
+                      item.description?.trim() ?? item.title.trim();
 
                   double score = 0;
-
-                  
 
                   // Exact issue match gets highest score
 
                   if (ticketIssue.toLowerCase() == messageIssue.toLowerCase()) {
-
                     score += 100;
 
                     print('🎯 Exact issue match for ticket ${item.ticketId}');
-
                   }
-
                   // Partial match gets medium score
-
-                  else if (ticketIssue.toLowerCase().contains(messageIssue.toLowerCase()) ||
-
-                           messageIssue.toLowerCase().contains(ticketIssue.toLowerCase())) {
-
+                  else if (ticketIssue.toLowerCase().contains(
+                        messageIssue.toLowerCase(),
+                      ) ||
+                      messageIssue.toLowerCase().contains(
+                        ticketIssue.toLowerCase(),
+                      )) {
                     score += 50;
 
                     print('🔍 Partial issue match for ticket ${item.ticketId}');
-
                   }
-
-                  
 
                   // Company match adds bonus
 
                   if (messageCompany.isNotEmpty) {
-
                     // This would need company info from ticket - skipping for now
-
                   }
-
-                  
 
                   // Time proximity - tickets created around the same time get bonus
 
                   if (item.createdAt != null) {
+                    final timeDiff = item.createdAt!
+                        .difference(message.createdAt)
+                        .inMinutes
+                        .abs();
 
-                    final timeDiff = item.createdAt!.difference(message.createdAt).inMinutes.abs();
-
-                    if (timeDiff < 5) { // Within 5 minutes
+                    if (timeDiff < 5) {
+                      // Within 5 minutes
 
                       score += 20;
 
-                      print('⏰ Time proximity bonus for ticket ${item.ticketId} (${timeDiff}min diff)');
-
+                      print(
+                        '⏰ Time proximity bonus for ticket ${item.ticketId} (${timeDiff}min diff)',
+                      );
                     }
-
                   }
 
-                  
-
                   if (score > 0) {
-
                     potentialMatches.add({
-
                       'ticket': item,
 
                       'score': score,
 
-                      'claimed': item.assignedTo != null && item.assignedTo!.isNotEmpty,
-
+                      'claimed':
+                          item.assignedTo != null &&
+                          item.assignedTo!.isNotEmpty,
                     });
 
                     print('📊 Ticket ${item.ticketId} scored ${score} points');
-
                   }
-
                 }
-
-                
 
                 // Sort by score (highest first) and prefer unclaimed tickets
 
                 potentialMatches.sort((a, b) {
-
                   // First prioritize claimed status (unclaimed first)
 
                   if (a['claimed'] != b['claimed']) {
-
                     return a['claimed'] ? 1 : -1;
-
                   }
 
                   // Then by score
 
                   return b['score'].compareTo(a['score']);
-
                 });
-
-                
 
                 // Select the best match
 
                 if (potentialMatches.isNotEmpty) {
-
                   final bestMatch = potentialMatches.first['ticket'] as Ticket;
 
                   final score = potentialMatches.first['score'] as int;
 
                   final wasClaimed = potentialMatches.first['claimed'] as bool;
 
-                  
-
                   ticket = bestMatch;
 
-                  print('✅ Selected ticket ${bestMatch.ticketId} with score $score');
+                  print(
+                    '✅ Selected ticket ${bestMatch.ticketId} with score $score',
+                  );
 
-                  print('✅ Ticket status: ${bestMatch.status} | Assigned: ${bestMatch.assignedTo} | Was claimed: $wasClaimed');
-
+                  print(
+                    '✅ Ticket status: ${bestMatch.status} | Assigned: ${bestMatch.assignedTo} | Was claimed: $wasClaimed',
+                  );
                 } else {
-
                   print('❌ No suitable matches found for this message');
-
                 }
-
               }
-
-              
 
               // Method 3: Only show warning if this looks like a new ticket with no matches
 
-              if (ticket == null && message.content.contains('Company:') && message.content.contains('Issue:')) {
-
-                print('🚨 INFO: This appears to be a new ticket message not yet matched to any ticket');
+              if (ticket == null &&
+                  message.content.contains('Company:') &&
+                  message.content.contains('Issue:')) {
+                print(
+                  '🚨 INFO: This appears to be a new ticket message not yet matched to any ticket',
+                );
 
                 print('🚨 Message timestamp: ${message.createdAt}');
 
                 print('🚨 Message content: ${message.content}');
-
-
-
               }
-
-              
 
               // Debug info
 
@@ -3151,522 +3446,570 @@ class _ChatBubble extends ConsumerWidget {
               print('Ticket found: ${ticket != null}');
 
               if (ticket != null) {
-
-                print('Ticket status: ${ticket.status}, assigned to: ${ticket.assignedTo}');
-
+                print(
+                  'Ticket status: ${ticket.status}, assigned to: ${ticket.assignedTo}',
+                );
               }
 
+              final isClaimed =
+                  ticket?.assignedTo != null && ticket!.assignedTo!.isNotEmpty;
 
-
-              final isClaimed = ticket?.assignedTo != null && ticket!.assignedTo!.isNotEmpty;
-
-
-              final canClaim = currentUser != null; // Anyone can claim tickets now
-
-
+              final canClaim =
+                  currentUser != null; // Anyone can claim tickets now
 
               // Show claim button only if ticket is not claimed by anyone
 
               // final showClaimButton = !isClaimed; // Now handled directly in the button condition
 
-
-
               return Column(
-
                 crossAxisAlignment: CrossAxisAlignment.start,
 
                 children: [
-
                   // Compact ticket content
-
                   InkWell(
-                    onTap: ticket != null &&
-                        // Allow click if ticket is unclaimed OR claimed by current user
-                        (ticket.assignedTo == null ||
-                         ticket.assignedTo!.isEmpty ||
-                         ticket.assignedTo == currentUser?.id)
+                    onTap:
+                        ticket != null &&
+                            // Allow click if ticket is unclaimed OR claimed by current user
+                            (ticket.assignedTo == null ||
+                                ticket.assignedTo!.isEmpty ||
+                                ticket.assignedTo == currentUser?.id)
                         ? () => context.push('/ticket/${ticket?.ticketId}')
                         : null,
                     borderRadius: BorderRadius.circular(6),
                     child: Container(
-
-
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 0,
+                      ),
 
                       decoration: BoxDecoration(
-
                         color: Colors.white,
 
                         borderRadius: BorderRadius.circular(6),
 
                         border: Border.all(
-
-
-
-                          color: _statusBorderColor(ticket?.status, isClaimed: isClaimed),
+                          color: _statusBorderColor(
+                            ticket?.status,
+                            isClaimed: isClaimed,
+                          ),
 
                           width: 1.5,
-
                         ),
 
                         boxShadow: [
-
                           BoxShadow(
-
                             color: Colors.black.withValues(alpha: 0.03),
 
                             blurRadius: 2,
 
                             offset: const Offset(0, 1),
-
                           ),
-
                         ],
-
                       ),
 
-                    child: Row(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
 
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Ticket icon and content
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
 
-                      children: [
+                              mainAxisSize: MainAxisSize.min,
 
-                        // Ticket icon and content
+                              children: [
+                                // Compact ticket info
+                                Row(
+                                  children: [
+                                    Icon(
+                                      LucideIcons.ticket,
 
-                        Expanded(
+                                      size: 12,
 
-                          child: Column(
-
-                            crossAxisAlignment: CrossAxisAlignment.start,
-
-                            mainAxisSize: MainAxisSize.min,
-
-                            children: [
-
-                              // Compact ticket info
-
-                              Row(
-
-                                children: [
-
-                                  Icon(
-
-                                    LucideIcons.ticket,
-
-                                    size: 12,
-
-                                    color: _statusBorderColor(ticket?.status, isClaimed: isClaimed),
-
-                                  ),
-
-                                  const SizedBox(width: 4),
-
-                                  Expanded(
-
-                                    child: Text(
-
-                                      _extractIssueFromContent(message.content),
-
-                                      style: const TextStyle(
-
-                                        color: Color(0xFF1F2937),
-
-                                        fontSize: 13,
-
-                                        fontWeight: FontWeight.bold,
-
+                                      color: _getAdaptiveStatusBorderColor(
+                                        context,
+                                        ticket?.status,
+                                        isClaimed: isClaimed,
                                       ),
-
-                                      maxLines: 1,
-
-                                      overflow: TextOverflow.ellipsis,
-
                                     ),
-
-                                  ),
-
-                                ],
-
-                              ),
-
-                              // Claimed by text in the center
-                              if (isClaimed)
-                                Center(
-                                  child: Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: 'Claimed by ',
-                                          style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 10,
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        ),
-                                        TextSpan(
-                                          text: _getAssignedAgentName(ticket.assignedTo, agentsAsync.value ?? []),
-                                          style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 12,
-                                            fontStyle: FontStyle.italic,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        TextSpan(
-                                          text: ' - ${_getFormattedStatus(ticket.status)}',
-                                          style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 10,
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                              // Company and status info
-
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-
-                                  Flexible(
-                                    child: Text(
-
-                                    _extractCompanyFromContent(message.content),
-
-                                    style: TextStyle(
-
-                                      color: Colors.grey.shade600,
-
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-
-                                    ),
-
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-
-                                  ),
-                                  ),
-
-                                  if (ticket != null) ...[
 
                                     const SizedBox(width: 4),
 
-                                    // Hide "New" status for tickets older than 5 hours
-                                    if (!(ticket.status == 'New' &&
-                                        ticket.createdAt != null &&
-                                        DateTime.now().difference(ticket.createdAt!).inHours > 5))
-                                      Container(
-
-                                        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 0),
-
-                                        decoration: BoxDecoration(
-
-                                          color: _getStatusColor(ticket.status).withValues(alpha: 0.1),
-
-                                          borderRadius: BorderRadius.circular(8),
-
+                                    Expanded(
+                                      child: Text(
+                                        _extractIssueFromContent(
+                                          message.content,
                                         ),
 
-                                        child: Text(
+                                        style: const TextStyle(
+                                          color: Color(0xFF1F2937),
 
-                                          ticket.status,
+                                          fontSize: 13,
 
-                                          style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
 
-                                            color: _getStatusColor(ticket.status),
+                                        maxLines: 1,
 
-                                            fontSize: 9,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
 
-                                            fontWeight: FontWeight.w500,
+                                // Claimed by text in the center
+                                if (isClaimed)
+                                  Center(
+                                    child: Text.rich(
+                                      TextSpan(
+                                        children: [
+                                          TextSpan(
+                                            text: 'Claimed by ',
+                                            style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 10,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                          TextSpan(
+                                            text: _getAssignedAgentName(
+                                              ticket.assignedTo,
+                                              agentsAsync.value ?? [],
+                                            ),
+                                            style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 12,
+                                              fontStyle: FontStyle.italic,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          TextSpan(
+                                            text:
+                                                ' - ${_getFormattedStatus(ticket.status)}',
+                                            style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 10,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
 
+                                // Company and status info
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        _extractCompanyFromContent(
+                                          message.content,
+                                        ),
+
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ),
+
+                                    if (ticket != null) ...[
+                                      const SizedBox(width: 4),
+
+                                      // Hide "New" status for tickets older than 5 hours
+                                      if (!(ticket.status == 'New' &&
+                                          ticket.createdAt != null &&
+                                          DateTime.now()
+                                                  .difference(ticket.createdAt!)
+                                                  .inHours >
+                                              5))
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 3,
+                                            vertical: 0,
                                           ),
 
+                                          decoration: BoxDecoration(
+                                            color: _getAdaptiveStatusColor(
+                                              context,
+                                              ticket.status,
+                                            ).withValues(alpha: 0.2),
+
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+
+                                          child: Text(
+                                            ticket.status,
+
+                                            style: TextStyle(
+                                              color: _getAdaptiveStatusColor(
+                                                context,
+                                                ticket.status,
+                                              ),
+
+                                              fontSize: 9,
+
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
                                         ),
-
-                                      ),
-
+                                    ],
                                   ],
-
-                                ],
-
-                              ),
-
-                            ],
-
+                                ),
+                              ],
+                            ),
                           ),
 
-                        ),
-
-                        // Claim button logic - check claimed status first
-                        if (isClaimed)
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _isResolvedStatus(ticket.status)
-                                    ? AppColors.success
-                                    : Colors.grey[500],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                _isResolvedStatus(ticket.status) ? 'Resolved' : 'Claimed',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                          // Claim button logic - check claimed status first
+                          if (isClaimed)
+                            Container(
+                              margin: const EdgeInsets.only(left: 8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _isResolvedStatus(ticket.status)
+                                      ? AppColors.success
+                                      : Colors.grey[500],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  _isResolvedStatus(ticket.status)
+                                      ? 'Resolved'
+                                      : 'Claimed',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                            ),
-                          )
-                        else if (canClaim && 
-                            message.content.contains('Company:') && 
-                            message.content.contains('Issue:') &&
-                            ticket?.status != 'Resolved')
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  String? finalTicketId = ticket?.ticketId ?? ticketId;
-                                  
-                                  // Fallback: if no ticket ID but we have a ticket object, use its ID
-                                  if (finalTicketId == null && ticket != null) {
-                                    finalTicketId = ticket.ticketId;
-                                    print('?? Using fallback ticket ID from ticket object: $finalTicketId');
-                                  }
-                                  
-                                  // Final fallback: try to find ticket by content matching
-                                  if (finalTicketId == null) {
-                                    print('?? No ticket ID found, trying content-based claim...');
-                                    final messageIssue = _extractIssueFromContent(message.content);
-                                    print('?? Looking for ticket with issue: "$messageIssue"');
-                                    
-                                    // Find the best matching ticket for claiming
-                                    for (final item in tickets) {
-                                      final ticketIssue = item.description?.trim() ?? item.title.trim();
-                                      if (ticketIssue.toLowerCase() == messageIssue.toLowerCase()) {
-                                        finalTicketId = item.ticketId;
-                                        print('? Found matching ticket for claim: ${item.ticketId}');
-                                        break;
+                            )
+                          else if (canClaim &&
+                              message.content.contains('Company:') &&
+                              message.content.contains('Issue:') &&
+                              ticket?.status != 'Resolved')
+                            Container(
+                              margin: const EdgeInsets.only(left: 8),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    String? finalTicketId =
+                                        ticket?.ticketId ?? ticketId;
+
+                                    // Fallback: if no ticket ID but we have a ticket object, use its ID
+                                    if (finalTicketId == null &&
+                                        ticket != null) {
+                                      finalTicketId = ticket.ticketId;
+                                      print(
+                                        '?? Using fallback ticket ID from ticket object: $finalTicketId',
+                                      );
+                                    }
+
+                                    // Final fallback: try to find ticket by content matching
+                                    if (finalTicketId == null) {
+                                      print(
+                                        '?? No ticket ID found, trying content-based claim...',
+                                      );
+                                      final messageIssue =
+                                          _extractIssueFromContent(
+                                            message.content,
+                                          );
+                                      print(
+                                        '?? Looking for ticket with issue: "$messageIssue"',
+                                      );
+
+                                      // Find the best matching ticket for claiming
+                                      for (final item in tickets) {
+                                        final ticketIssue =
+                                            item.description?.trim() ??
+                                            item.title.trim();
+                                        if (ticketIssue.toLowerCase() ==
+                                            messageIssue.toLowerCase()) {
+                                          finalTicketId = item.ticketId;
+                                          print(
+                                            '? Found matching ticket for claim: ${item.ticketId}',
+                                          );
+                                          break;
+                                        }
                                       }
                                     }
-                                  }
-                                  
-                                  if (finalTicketId != null) {
-                                    print('?? Attempting to claim with ticket ID: $finalTicketId');
-                                    print('?? Ticket object found: ${ticket != null}');
-                                    if (ticket != null) {
-                                      print('?? Ticket details: ID=${ticket.ticketId}, Status=${ticket.status}, Assigned=${ticket.assignedTo}');
+
+                                    if (finalTicketId != null) {
+                                      print(
+                                        '?? Attempting to claim with ticket ID: $finalTicketId',
+                                      );
+                                      print(
+                                        '?? Ticket object found: ${ticket != null}',
+                                      );
+                                      if (ticket != null) {
+                                        print(
+                                          '?? Ticket details: ID=${ticket.ticketId}, Status=${ticket.status}, Assigned=${ticket.assignedTo}',
+                                        );
+                                      }
+                                      _claimTicketFromChat(
+                                        context,
+                                        ref,
+                                        finalTicketId,
+                                      );
+                                    } else {
+                                      print(
+                                        '? Could not find any ticket ID to claim',
+                                      );
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Could not find ticket to claim - please try again',
+                                          ),
+                                          backgroundColor: AppColors.error,
+                                        ),
+                                      );
                                     }
-                                    _claimTicketFromChat(context, ref, finalTicketId);
-                                  } else {
-                                    print('? Could not find any ticket ID to claim');
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Could not find ticket to claim - please try again'),
-                                        backgroundColor: AppColors.error,
+                                  },
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFCC00),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      'Claim',
+                                      style: TextStyle(
+                                        color: Color(0xFFE65100),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 1.5,
                                       ),
-                                    );
-                                  }
-                                },
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFCC00),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text(
-                                    'Claim',
-                                    style: TextStyle(
-                                      color: Color(0xFFE65100),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.5,
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          )                      ],
-
+                        ],
+                      ),
                     ),
-
                   ),
-                ),
                 ],
-
               );
-
             },
 
             loading: () => const SizedBox(
-
               height: 40,
 
               child: Center(child: CircularProgressIndicator()),
-
             ),
 
             error: (error, stack) => Text(
-
               'Error loading tickets: ${error.toString()}',
 
               style: TextStyle(color: AppColors.error, fontSize: 12),
-
             ),
-
           );
-
         },
-
       );
-
     }
-
-
 
     // Regular message
     if (message.content.isEmpty && message.replyToMessageId == null) {
       return const SizedBox.shrink();
     }
 
-    return Container(
-      padding: const EdgeInsets.only(left: 14, right: 14, top: 1, bottom: 8),
-      decoration: BoxDecoration(
-        color: isMe ? AppColors.primary : const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(16),
-          topRight: const Radius.circular(16),
-          bottomLeft: Radius.circular(isMe ? 16 : 4),
-          bottomRight: Radius.circular(isMe ? 4 : 16),
-        ),
+    return ClipRRect(
+      borderRadius: BorderRadius.only(
+        topLeft: const Radius.circular(16),
+        topRight: const Radius.circular(16),
+        bottomLeft: Radius.circular(isMe ? 16 : 4),
+        bottomRight: Radius.circular(isMe ? 4 : 16),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Reply quote — inside the bubble, WhatsApp style
-          if (message.replyToMessageId != null && message.replyToContent != null) ...[
-            Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
-                color: isMe
-                    ? Colors.white.withValues(alpha: 0.15)
-                    : Colors.black.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(8),
-                border: Border(
-                  left: BorderSide(
-                    color: isMe
-                        ? Colors.white.withValues(alpha: 0.7)
-                        : AppColors.primary.withValues(alpha: 0.6),
-                    width: 3,
-                  ),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    message.replyToSenderName ?? 'Unknown',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: isMe
-                          ? Colors.white.withValues(alpha: 0.95)
-                          : AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    message.replyToContent!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isMe
-                          ? Colors.white.withValues(alpha: 0.8)
-                          : const Color(0xFF6B7280),
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.only(
+            left: 14,
+            right: 14,
+            top: 1,
+            bottom: 8,
+          ),
+          decoration: BoxDecoration(
+            color: isMe
+                ? (context.isDarkMode
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : const Color(0xFFDBEAFE))
+                : (context.isDarkMode
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : const Color(0xFFF3F4F6).withValues(alpha: 0.85)),
+            border: Border.all(
+              color: isMe
+                  ? (context.isDarkMode
+                        ? Colors.white.withValues(alpha: 0.2)
+                        : Colors.transparent)
+                  : (context.isDarkMode
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.transparent),
+              width: 0.5,
             ),
-          ],
-          Builder(
-            builder: (context) {
-              String displayContent = message.content;
-              String? mentionId;
-              final mentionRegExp = RegExp(r'\[MentionID:([^\]]+)\]');
-              final match = mentionRegExp.firstMatch(displayContent);
-              if (match != null) {
-                mentionId = match.group(1);
-                displayContent = displayContent.replaceAll(match.group(0)!, '').trim();
-              }
-              
-              return Column(
-                crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Reply quote — inside the bubble, WhatsApp style
+              if (message.replyToMessageId != null &&
+                  message.replyToContent != null) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isMe
+                        ? (context.isDarkMode
+                              ? Colors.white.withValues(alpha: 0.15)
+                              : Colors.white)
+                        : (context.isDarkMode
+                              ? Colors.black.withValues(alpha: 0.2)
+                              : Colors.black.withValues(alpha: 0.04)),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border(
+                      left: BorderSide(
+                        color: isMe
+                            ? (context.isDarkMode
+                                  ? Colors.white.withValues(alpha: 0.7)
+                                  : AppColors.primary)
+                            : AppColors.primary.withValues(alpha: 0.6),
+                        width: 3,
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        child: _RichMessageText(
-                          content: displayContent,
-                          isMe: isMe,
-                          richTextDelta: message.richTextDelta,
+                      Text(
+                        message.replyToSenderName ?? 'Unknown',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isMe
+                              ? (context.isDarkMode
+                                    ? Colors.white.withValues(alpha: 0.95)
+                                    : AppColors.primaryDark)
+                              : AppColors.primary,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(height: 2),
                       Text(
-                        DateFormat('h:mm a').format(message.createdAt.toLocal()),
+                        message.replyToContent!,
                         style: TextStyle(
-                          fontSize: 10,
-                          color: isMe ? Colors.white70 : AppColors.slate400,
+                          fontSize: 12,
+                          color: isMe
+                              ? (context.isDarkMode
+                                    ? Colors.white.withValues(alpha: 0.8)
+                                    : AppColors.primary.withValues(alpha: 0.8))
+                              : const Color(0xFF6B7280),
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                  if (mentionId != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.arrow_forward_ios, size: 14),
-                        label: const Text('Go to Message'),
-                        onPressed: () {
-                          GoRouter.of(context).go('/chat?highlightMsgId=$mentionId');
-                        },
-                        style: ElevatedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          textStyle: const TextStyle(fontSize: 12),
-                          elevation: 0,
-                        ),
+                ),
+              ],
+              Builder(
+                builder: (context) {
+                  String displayContent = message.content;
+                  String? mentionId;
+                  final mentionRegExp = RegExp(r'\[MentionID:([^\]]+)\]');
+                  final match = mentionRegExp.firstMatch(displayContent);
+                  if (match != null) {
+                    mentionId = match.group(1);
+                    displayContent = displayContent
+                        .replaceAll(match.group(0)!, '')
+                        .trim();
+                  }
+
+                  return Column(
+                    crossAxisAlignment: isMe
+                        ? CrossAxisAlignment.end
+                        : CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Flexible(
+                            child: _RichMessageText(
+                              content: displayContent,
+                              isMe: isMe,
+                              richTextDelta: message.richTextDelta,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            DateFormat(
+                              'h:mm a',
+                            ).format(message.createdAt.toLocal()),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isMe
+                                  ? (context.isDarkMode ? Colors.white70 : AppColors.primary.withValues(alpha: 0.6))
+                                  : (context.isDarkMode
+                                        ? Colors.white54
+                                        : AppColors.slate400),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                ],
-              );
-            },
+                      if (mentionId != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                            label: const Text('Go to Message'),
+                            onPressed: () {
+                              GoRouter.of(
+                                context,
+                              ).go('/chat?highlightMsgId=$mentionId');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              textStyle: const TextStyle(fontSize: 12),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
-
   }
 
   Widget _buildReactionsDisplay(BuildContext context, WidgetRef ref) {
@@ -3696,7 +4039,8 @@ class _ChatBubble extends ConsumerWidget {
         return InkWell(
           onTap: () {
             // Toggle reaction
-            final state = context.findAncestorStateOfType<_DirectMessagePageState>();
+            final state = context
+                .findAncestorStateOfType<_DirectMessagePageState>();
             state?._addReaction(context, emoji, message.id);
           },
           child: Container(
@@ -3715,10 +4059,7 @@ class _ChatBubble extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  emoji,
-                  style: const TextStyle(fontSize: 14),
-                ),
+                Text(emoji, style: const TextStyle(fontSize: 14)),
                 const SizedBox(width: 4),
                 Text(
                   count.toString(),
@@ -3735,7 +4076,6 @@ class _ChatBubble extends ConsumerWidget {
       }).toList(),
     );
   }
-
 }
 
 // ── Hoverable message wrapper (detects hover over entire message) ───────────────
@@ -3800,9 +4140,12 @@ class _HoverableMessageRowState extends State<_HoverableMessageRow> {
             isMe: widget.isMe,
             onReply: widget.onReply,
             onDelete: widget.onDelete,
-            onAddReaction: (context, reaction, messageId) => _addReaction(context, reaction, messageId),
-            onShowMoreReactions: (context, messageId) => _showMoreReactions(context, messageId),
-            onHandleStarMessage: (context, messageId) => _handleStarMessage(context, messageId),
+            onAddReaction: (context, reaction, messageId) =>
+                _addReaction(context, reaction, messageId),
+            onShowMoreReactions: (context, messageId) =>
+                _showMoreReactions(context, messageId),
+            onHandleStarMessage: (context, messageId) =>
+                _handleStarMessage(context, messageId),
             isHovering: _isHovering,
             messageId: widget.message.id,
             child: widget.child,
@@ -3837,7 +4180,8 @@ class _HoverableActionMenuContext extends InheritedWidget {
   }) : super(child: child);
 
   static _HoverableActionMenuContext of(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<_HoverableActionMenuContext>()!;
+    return context
+        .dependOnInheritedWidgetOfExactType<_HoverableActionMenuContext>()!;
   }
 
   @override
@@ -3854,7 +4198,7 @@ class _HoverableActionMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final hoverContext = _HoverableActionMenuContext.of(context);
     final isMobile = MediaQuery.of(context).size.width < 900;
-    
+
     return AnimatedOpacity(
       opacity: hoverContext.isHovering ? 1.0 : 0.0,
       duration: const Duration(milliseconds: 150),
@@ -3877,22 +4221,37 @@ class _HoverableActionMenu extends StatelessWidget {
             _buildReactionButton(
               emoji: '👍',
               tooltip: 'Thumbs up',
-              onTap: () => hoverContext.onAddReaction(context, '👍', hoverContext.messageId),
+              onTap: () => hoverContext.onAddReaction(
+                context,
+                '👍',
+                hoverContext.messageId,
+              ),
             ),
             _buildReactionButton(
               emoji: '😊',
               tooltip: 'Smile',
-              onTap: () => hoverContext.onAddReaction(context, '😊', hoverContext.messageId),
+              onTap: () => hoverContext.onAddReaction(
+                context,
+                '😊',
+                hoverContext.messageId,
+              ),
             ),
             _buildReactionButton(
               emoji: '✅',
               tooltip: 'Check',
-              onTap: () => hoverContext.onAddReaction(context, '✅', hoverContext.messageId),
+              onTap: () => hoverContext.onAddReaction(
+                context,
+                '✅',
+                hoverContext.messageId,
+              ),
             ),
             // More reactions button
             _buildMoreReactionsButton(
               tooltip: 'More reactions',
-              onTap: () => hoverContext.onShowMoreReactions(context, hoverContext.messageId),
+              onTap: () => hoverContext.onShowMoreReactions(
+                context,
+                hoverContext.messageId,
+              ),
             ),
             const SizedBox(width: 4),
             // Actions
@@ -3925,10 +4284,7 @@ class _HoverableActionMenu extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(8),
-          child: Text(
-            emoji,
-            style: const TextStyle(fontSize: 16),
-          ),
+          child: Text(emoji, style: const TextStyle(fontSize: 16)),
         ),
       ),
     );
@@ -3949,12 +4305,7 @@ class _HoverableActionMenu extends StatelessWidget {
             height: 24,
             child: Stack(
               children: [
-                const Center(
-                  child: Text(
-                    '😀',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ),
+                const Center(child: Text('😀', style: TextStyle(fontSize: 16))),
                 Positioned(
                   top: 0,
                   right: 0,
@@ -4016,8 +4367,12 @@ class _RichMessageText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Fallback to markdown-style rendering for plain text or if delta parsing fails
-    final textColor = isMe ? Colors.white : const Color(0xFF1F2937);
-    final mutedColor = isMe ? Colors.white70 : const Color(0xFF6B7280);
+    final textColor = isMe
+        ? (context.isDarkMode ? Colors.white : AppColors.primary)
+        : (context.isDarkMode ? Colors.white : const Color(0xFF1F2937));
+    final mutedColor = isMe
+        ? (context.isDarkMode ? Colors.white70 : AppColors.primary.withValues(alpha: 0.7))
+        : (context.isDarkMode ? Colors.white70 : const Color(0xFF6B7280));
     final base = TextStyle(color: textColor, fontSize: 14, height: 1.4);
 
     // Split into lines and group consecutive list/quote/code-block runs
@@ -4030,27 +4385,29 @@ class _RichMessageText extends StatelessWidget {
 
     void flushCodeBlock() {
       if (codeBuffer.isNotEmpty) {
-        spans.add(WidgetSpan(
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isMe
-                  ? Colors.white.withValues(alpha: 0.15)
-                  : const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              codeBuffer.toString().trimRight(),
-              style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 12,
-                color: isMe ? Colors.white : const Color(0xFF1E293B),
-                height: 1.5,
+        spans.add(
+          WidgetSpan(
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isMe
+                    ? Colors.white.withValues(alpha: 0.15)
+                    : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                codeBuffer.toString().trimRight(),
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  color: isMe ? Colors.white : const Color(0xFF1E293B),
+                  height: 1.5,
+                ),
               ),
             ),
           ),
-        ));
+        );
         codeBuffer.clear();
       }
     }
@@ -4062,18 +4419,20 @@ class _RichMessageText extends StatelessWidget {
 
     void flushList() {
       if (listItemSpans.isNotEmpty) {
-        spans.add(WidgetSpan(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: listItemSpans
-                  .map((s) => Text.rich(TextSpan(children: [s])))
-                  .toList(),
+        spans.add(
+          WidgetSpan(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: listItemSpans
+                    .map((s) => Text.rich(TextSpan(children: [s])))
+                    .toList(),
+              ),
             ),
           ),
-        ));
+        );
         listItemSpans.clear();
       }
       listCounter = null;
@@ -4119,12 +4478,16 @@ class _RichMessageText extends StatelessWidget {
           style: base.copyWith(fontWeight: FontWeight.bold, color: mutedColor),
         );
         final contentSpan = _InlineParser(text: itemText, base: base).parse();
-        listItemSpans.add(TextSpan(children: [
-          WidgetSpan(child: const SizedBox(width: 4)),
-          numSpan,
-          contentSpan,
-          const TextSpan(text: '\n'),
-        ]));
+        listItemSpans.add(
+          TextSpan(
+            children: [
+              WidgetSpan(child: const SizedBox(width: 4)),
+              numSpan,
+              contentSpan,
+              const TextSpan(text: '\n'),
+            ],
+          ),
+        );
         continue;
       }
 
@@ -4141,12 +4504,16 @@ class _RichMessageText extends StatelessWidget {
           style: base.copyWith(fontWeight: FontWeight.bold, color: mutedColor),
         );
         final contentSpan = _InlineParser(text: itemText, base: base).parse();
-        listItemSpans.add(TextSpan(children: [
-          WidgetSpan(child: const SizedBox(width: 4)),
-          bulletSpan,
-          contentSpan,
-          const TextSpan(text: '\n'),
-        ]));
+        listItemSpans.add(
+          TextSpan(
+            children: [
+              WidgetSpan(child: const SizedBox(width: 4)),
+              bulletSpan,
+              contentSpan,
+              const TextSpan(text: '\n'),
+            ],
+          ),
+        );
         continue;
       }
 
@@ -4157,29 +4524,37 @@ class _RichMessageText extends StatelessWidget {
       final quoteMatch = RegExp(r'^>\s*(.*)$').firstMatch(line);
       if (quoteMatch != null) {
         final quoteText = quoteMatch.group(1)!;
-        spans.add(WidgetSpan(
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(
-                  color: isMe ? Colors.white54 : AppColors.primary.withValues(alpha: 0.5),
-                  width: 3,
+        spans.add(
+          WidgetSpan(
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                    color: isMe
+                        ? (context.isDarkMode
+                              ? Colors.white54
+                              : AppColors.primary.withValues(alpha: 0.5))
+                        : AppColors.primary.withValues(alpha: 0.5),
+                    width: 3,
+                  ),
                 ),
               ),
-            ),
-            child: Text.rich(
-              _InlineParser(
-                text: quoteText,
-                base: base.copyWith(
-                  fontStyle: FontStyle.italic,
-                  color: isMe ? Colors.white70 : const Color(0xFF6B7280),
-                ),
-              ).parse(),
+              child: Text.rich(
+                _InlineParser(
+                  text: quoteText,
+                  base: base.copyWith(
+                    fontStyle: FontStyle.italic,
+                    color: isMe
+                        ? (context.isDarkMode ? Colors.white70 : AppColors.primary.withValues(alpha: 0.7))
+                        : const Color(0xFF6B7280),
+                  ),
+                ).parse(),
+              ),
             ),
           ),
-        ));
+        );
         if (i < lines.length - 1) spans.add(const TextSpan(text: '\n'));
         continue;
       }
@@ -4226,7 +4601,7 @@ class _InlineParser {
     r'|~~'
     r'|<u>'
     r'|<\/u>'
-    r'|`[^`]+`',   // inline code
+    r'|`[^`]+`', // inline code
   );
 
   TextSpan parse() {
@@ -4241,8 +4616,8 @@ class _InlineParser {
       }
 
       final tokenStart = pos + match.start;
-      final tokenEnd   = pos + match.end;
-      final token      = match.group(0)!;
+      final tokenEnd = pos + match.end;
+      final token = match.group(0)!;
 
       if (tokenStart > pos) {
         spans.add(_plain(text.substring(pos, tokenStart)));
@@ -4251,41 +4626,51 @@ class _InlineParser {
       // ── Inline code ──
       if (token.startsWith('`') && token.endsWith('`') && token.length > 1) {
         final codeText = token.substring(1, token.length - 1);
-        spans.add(WidgetSpan(
-          baseline: TextBaseline.alphabetic,
-          alignment: PlaceholderAlignment.baseline,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-            decoration: BoxDecoration(
-              color: base.color?.withValues(alpha: 0.12) ?? Colors.grey.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              codeText,
-              style: base.copyWith(fontFamily: 'monospace', fontSize: 12),
+        spans.add(
+          WidgetSpan(
+            baseline: TextBaseline.alphabetic,
+            alignment: PlaceholderAlignment.baseline,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color:
+                    base.color?.withValues(alpha: 0.12) ??
+                    Colors.grey.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                codeText,
+                style: base.copyWith(fontFamily: 'monospace', fontSize: 12),
+              ),
             ),
           ),
-        ));
+        );
         pos = tokenEnd;
         continue;
       }
 
       String? closeToken;
-      bool newBold      = bold;
-      bool newItalic    = italic;
-      bool newStrike    = strikethrough;
+      bool newBold = bold;
+      bool newItalic = italic;
+      bool newStrike = strikethrough;
       bool newUnderline = underline;
 
       if (token == '***') {
-        closeToken = '***'; newBold = true; newItalic = true;
+        closeToken = '***';
+        newBold = true;
+        newItalic = true;
       } else if (token == '**' || token == '__') {
-        closeToken = token; newBold = true;
+        closeToken = token;
+        newBold = true;
       } else if (token == '*' || token == '_') {
-        closeToken = token; newItalic = true;
+        closeToken = token;
+        newItalic = true;
       } else if (token == '~~') {
-        closeToken = '~~'; newStrike = true;
+        closeToken = '~~';
+        newStrike = true;
       } else if (token == '<u>') {
-        closeToken = '</u>'; newUnderline = true;
+        closeToken = '</u>';
+        newUnderline = true;
       } else if (token == '</u>') {
         pos = tokenEnd;
         continue;
@@ -4300,12 +4685,12 @@ class _InlineParser {
 
       final inner = text.substring(tokenEnd, closeIdx);
       final innerSpan = _InlineParser(
-        text:          inner,
-        base:          base,
-        bold:          newBold,
-        italic:        newItalic,
+        text: inner,
+        base: base,
+        bold: newBold,
+        italic: newItalic,
         strikethrough: newStrike,
-        underline:     newUnderline,
+        underline: newUnderline,
       ).parse();
 
       spans.add(innerSpan);
@@ -4314,7 +4699,10 @@ class _InlineParser {
 
     TextDecoration? deco;
     if (strikethrough && underline) {
-      deco = TextDecoration.combine([TextDecoration.lineThrough, TextDecoration.underline]);
+      deco = TextDecoration.combine([
+        TextDecoration.lineThrough,
+        TextDecoration.underline,
+      ]);
     } else if (strikethrough) {
       deco = TextDecoration.lineThrough;
     } else if (underline) {
@@ -4322,9 +4710,9 @@ class _InlineParser {
     }
 
     final style = base.copyWith(
-      fontWeight:      bold   ? FontWeight.bold   : null,
-      fontStyle:       italic ? FontStyle.italic  : null,
-      decoration:      deco,
+      fontWeight: bold ? FontWeight.bold : null,
+      fontStyle: italic ? FontStyle.italic : null,
+      decoration: deco,
       decorationColor: deco != null ? base.color : null,
     );
 
@@ -4336,21 +4724,23 @@ class _InlineParser {
   TextStyle _currentStyle() {
     TextDecoration? deco;
     if (strikethrough && underline) {
-      deco = TextDecoration.combine([TextDecoration.lineThrough, TextDecoration.underline]);
+      deco = TextDecoration.combine([
+        TextDecoration.lineThrough,
+        TextDecoration.underline,
+      ]);
     } else if (strikethrough) {
       deco = TextDecoration.lineThrough;
     } else if (underline) {
       deco = TextDecoration.underline;
     }
     return base.copyWith(
-      fontWeight:      bold   ? FontWeight.bold   : null,
-      fontStyle:       italic ? FontStyle.italic  : null,
-      decoration:      deco,
+      fontWeight: bold ? FontWeight.bold : null,
+      fontStyle: italic ? FontStyle.italic : null,
+      decoration: deco,
       decorationColor: deco != null ? base.color : null,
     );
   }
 }
-
 
 // ── Outlined text — white fill with black stroke ──────────────────────────────
 
@@ -4426,11 +4816,23 @@ class _CallButton extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.green.shade50,
+            color: context.isDarkMode
+                ? Colors.green.withValues(alpha: 0.1)
+                : Colors.green.shade50,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.green.shade200),
+            border: Border.all(
+              color: context.isDarkMode
+                  ? Colors.green.withValues(alpha: 0.3)
+                  : Colors.green.shade200,
+            ),
           ),
-          child: Icon(icon, size: 18, color: Colors.green.shade700),
+          child: Icon(
+            icon,
+            size: 18,
+            color: context.isDarkMode
+                ? Colors.green.shade300
+                : Colors.green.shade700,
+          ),
         ),
       ),
     );
@@ -4476,7 +4878,10 @@ class _CallActivityCard extends StatelessWidget {
               if (info.duration != null) ...[
                 Text(
                   ' · ${info.duration}',
-                  style: TextStyle(fontSize: 12, color: info.color.withValues(alpha: 0.7)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: info.color.withValues(alpha: 0.7),
+                  ),
                 ),
               ],
               const SizedBox(width: 10),
@@ -4497,7 +4902,9 @@ class _CallActivityCard extends StatelessWidget {
     // Extract optional duration after last ':'
     String? duration;
     final colonIdx = content.lastIndexOf(':');
-    if (colonIdx != -1 && colonIdx < content.length - 1 && !content.substring(colonIdx + 1).startsWith('//')) {
+    if (colonIdx != -1 &&
+        colonIdx < content.length - 1 &&
+        !content.substring(colonIdx + 1).startsWith('//')) {
       duration = content.substring(colonIdx + 1).trim();
       if (duration.isEmpty) duration = null;
     }
@@ -4540,6 +4947,10 @@ class _CallInfo {
   final String label;
   final Color color;
   final String? duration;
-  const _CallInfo({required this.icon, required this.label, required this.color, this.duration});
+  const _CallInfo({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.duration,
+  });
 }
-

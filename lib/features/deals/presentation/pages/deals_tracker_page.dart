@@ -1,21 +1,25 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/design_system/design_system.dart';
+import '../../../../core/design_system/widgets/glass_card.dart';
 import '../widgets/deals_table.dart';
 import '../widgets/animated_create_deal_fab.dart';
 import '../widgets/create_deal_dialog.dart';
 
-class DealsTrackerPage extends StatelessWidget {
+class DealsTrackerPage extends ConsumerWidget {
   const DealsTrackerPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final currentPath = GoRouterState.of(context).uri.toString();
+    final gc = GlassColors.of(context, ref);
 
     return MainLayout(
       currentPath: currentPath,
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: Colors.transparent,
         floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
         floatingActionButton: AnimatedCreateDealFab(
           onPressed: () {
@@ -29,36 +33,45 @@ class DealsTrackerPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Top Nav / Tabs Area
-            Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(bottom: BorderSide(color: AppColors.slate200)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: AppColors.primary, width: 2),
+            ClipRect(
+              child: BackdropFilter(
+                filter: gc.isGlass
+                    ? ImageFilter.blur(sigmaX: 12, sigmaY: 12)
+                    : ImageFilter.blur(sigmaX: 0, sigmaY: 0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: gc.isGlass
+                        ? Colors.white.withValues(alpha: 0.07)
+                        : gc.surface,
+                    border: Border(bottom: BorderSide(color: gc.border)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(color: gc.primary, width: 2),
+                            ),
+                          ),
+                          child: Text(
+                            'Deals',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: gc.primary,
+                            ),
+                          ),
                         ),
-                      ),
-                      child: const Text(
-                        'Deals',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-            
+
             // Main Content Area
             Expanded(
               child: SingleChildScrollView(
@@ -66,25 +79,25 @@ class DealsTrackerPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Deals Tracker',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.slate900,
+                        color: gc.onSurface,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Track all your incoming deals and their current statuses.',
                       style: TextStyle(
                         fontSize: 14,
-                        color: AppColors.slate500,
+                        color: gc.onSurfaceMuted,
                       ),
                     ),
                     const SizedBox(height: 24),
                     const DealsTable(),
-                    const SizedBox(height: 80), // Padding for the FAB
+                    const SizedBox(height: 80),
                   ],
                 ),
               ),

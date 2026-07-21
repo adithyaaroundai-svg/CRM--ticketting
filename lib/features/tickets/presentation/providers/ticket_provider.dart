@@ -109,6 +109,7 @@ bool _isResolvedOrBilled(String? status) {
 final overdueClaimedTicketsProvider =
     fr.StreamProvider<List<TicketAlertEntry>>((ref) {
   final supabase = Supabase.instance.client;
+  final currentUser = ref.watch(authProvider);
   return _realtimeQuery(
     supabase: supabase,
     table: 'tickets',
@@ -123,6 +124,7 @@ final overdueClaimedTicketsProvider =
     for (final raw in rows) {
       final assignedTo = raw['assigned_to'];
       if (assignedTo == null || assignedTo.toString().isEmpty) continue;
+      if (currentUser == null || assignedTo.toString() != currentUser.id) continue;
       final status = raw['status']?.toString();
       if (_isResolvedOrBilled(status)) continue;
       final assignmentAt = _extractLastAssignmentAt(raw['assignment_history']) ??
@@ -200,6 +202,129 @@ class TicketSearchQuery extends _$TicketSearchQuery {
     state = query;
   }
 }
+
+@riverpod
+Future<String> debouncedTicketSearchQuery(Ref ref) async {
+  final query = ref.watch(ticketSearchQueryProvider);
+  var didDispose = false;
+  ref.onDispose(() => didDispose = true);
+  await Future.delayed(const Duration(milliseconds: 500));
+  if (didDispose) throw Exception('Cancelled');
+  return query;
+}
+
+@Riverpod(keepAlive: true)
+class PaginatedTickets extends _$PaginatedTickets {
+  StreamSubscription? _eventSub;
+  bool _hasMore = true;
+  bool get hasMore => _hasMore;
+  
+  @override
+  FutureOr<List<Ticket>> build() async {
+    final repository = ref.watch(ticketRepositoryProvider);
+    final statusFilter = ref.watch(ticketFilterProvider);
+    final priorityFilter = ref.watch(ticketPriorityFilterProvider);
+    final assigneeFilter = ref.watch(ticketAssigneeFilterProvider);
+    final searchQuery = await ref.watch(debouncedTicketSearchQueryProvider.future);
+    final currentUser = ref.watch(authProvider);
+
+    // Initial limit: e.g., last 3 days
+    final limit = 50;
+    final before = DateTime.now().add(const Duration(days: 1)); // Just to ensure we get latest
+    
+    // We could filter by "created_at >= now - 3 days" but the user said "limit of last 3 day ticekt initally, and when scrolled down load others"
+    // Since we order by created_at DESC, if we just use a limit of 50, it gets the latest 50. If we want exactly 3 days, we'd need a date filter, but limit 50 is safer for UI.
+    // I will use limit 50, but we can also add a 3 days filter. Let's just use limit 50 which acts like "recent tickets". The prompt said "limit of last 3 day ticekt initally".
+    // I will fetch tickets created in the last 3 days, but limit to 50 so it's not huge.
+    
+    final tickets = await repository.getPaginatedTickets(
+      statusFilter: statusFilter,
+      priorityFilter: priorityFilter,
+      assigneeFilter: assigneeFilter,
+      searchQuery: searchQuery,
+      currentUserId: currentUser?.id,
+      limit: limit,
+    );
+    
+    // Filter to only include tickets from last 3 days initially
+    final threeDaysAgo = DateTime.now().subtract(const Duration(days: 3));
+    final initialTickets = tickets.where((t) => t.createdAt != null && t.createdAt!.isAfter(threeDaysAgo)).toList();
+    
+    // If there are less than 50 in the last 3 days, we might have more. If there are 50, we definitely have more.
+    _hasMore = tickets.length == limit;
+
+    // We use the full `tickets` list if the 3 days filter results in too few tickets (e.g. 0), but to strictly follow the prompt we only take the 3 days ones.
+    // Actually, just fetching limit=50 is standard pagination. Let's stick to the 3-day filtered list, but if it's empty we still use it.
+    
+    _eventSub?.cancel();
+    _eventSub = repository.ticketEvents.listen(_handleEvent);
+    
+    ref.onDispose(() {
+      _eventSub?.cancel();
+    });
+    
+    return initialTickets.isNotEmpty ? initialTickets : tickets; // fallback if no tickets in 3 days
+  }
+
+  void _handleEvent(Map<String, dynamic> event) {
+    final eventType = event['eventType'] as String;
+    final newRecord = event['newRecord'] as Map<String, dynamic>?;
+    final oldRecord = event['oldRecord'] as Map<String, dynamic>?;
+    
+    if (eventType == 'INSERT' && newRecord != null) {
+      final newTicket = Ticket.fromJson(newRecord);
+      final currentList = state.value ?? [];
+      if (!currentList.any((t) => t.ticketId == newTicket.ticketId)) {
+        state = AsyncData([newTicket, ...currentList]);
+      }
+    } else if (eventType == 'UPDATE' && newRecord != null) {
+      final updatedTicket = Ticket.fromJson(newRecord);
+      final currentList = state.value ?? [];
+      final index = currentList.indexWhere((t) => t.ticketId == updatedTicket.ticketId);
+      if (index != -1) {
+        final newList = List<Ticket>.from(currentList);
+        newList[index] = updatedTicket;
+        state = AsyncData(newList);
+      }
+    } else if (eventType == 'DELETE' && oldRecord != null) {
+      final deletedId = oldRecord['ticket_id']; // The DB column is ticket_id
+      final currentList = state.value ?? [];
+      state = AsyncData(currentList.where((t) => t.ticketId != deletedId).toList());
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (!_hasMore) return;
+    final currentList = state.value ?? [];
+    if (currentList.isEmpty) return;
+
+    final oldestTicket = currentList.last; // Since it's sorted newest first
+    final repository = ref.read(ticketRepositoryProvider);
+    final statusFilter = ref.read(ticketFilterProvider);
+    final priorityFilter = ref.read(ticketPriorityFilterProvider);
+    final assigneeFilter = ref.read(ticketAssigneeFilterProvider);
+    final searchQuery = ref.read(ticketSearchQueryProvider);
+    final currentUser = ref.read(authProvider);
+
+    final limit = 50;
+    final olderTickets = await repository.getPaginatedTickets(
+      statusFilter: statusFilter,
+      priorityFilter: priorityFilter,
+      assigneeFilter: assigneeFilter,
+      searchQuery: searchQuery,
+      currentUserId: currentUser?.id,
+      before: oldestTicket.createdAt,
+      limit: limit,
+    );
+
+    if (olderTickets.length < limit) {
+      _hasMore = false;
+    }
+    
+    state = AsyncData([...currentList, ...olderTickets]);
+  }
+}
+
 
 @riverpod
 class TicketPriorityFilter extends _$TicketPriorityFilter {

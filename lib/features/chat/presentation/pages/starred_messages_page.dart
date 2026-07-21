@@ -34,26 +34,16 @@ class StarredMessagesPage extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    LucideIcons.star,
-                    size: 64,
-                    color: Colors.grey.shade300,
-                  ),
+                  Icon(LucideIcons.star, size: 64, color: Colors.grey.shade300),
                   const SizedBox(height: 16),
                   Text(
                     'No starred messages',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Star important messages to find them easily',
-                    style: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                   ),
                 ],
               ),
@@ -73,9 +63,7 @@ class StarredMessagesPage extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text('Error: $error'),
-        ),
+        error: (error, stack) => Center(child: Text('Error: $error')),
       ),
     );
   }
@@ -85,10 +73,7 @@ class _StarredMessageCard extends ConsumerWidget {
   final ChatMessage message;
   final dynamic currentUser;
 
-  const _StarredMessageCard({
-    required this.message,
-    required this.currentUser,
-  });
+  const _StarredMessageCard({required this.message, required this.currentUser});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -141,20 +126,16 @@ class _StarredMessageCard extends ConsumerWidget {
                   icon: const Icon(LucideIcons.star, color: Colors.amber),
                   onPressed: () {
                     if (currentUser?.id != null) {
-                      ref.read(chatRepositoryProvider).toggleStarred(
-                        message.id,
-                        currentUser!.id,
-                      );
+                      ref
+                          .read(chatRepositoryProvider)
+                          .toggleStarred(message.id, currentUser!.id);
                     }
                   },
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              message.content,
-              style: const TextStyle(fontSize: 14),
-            ),
+            Text(message.content, style: const TextStyle(fontSize: 14)),
           ],
         ),
       ),

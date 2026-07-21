@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/design_system/theme/app_theme.dart';
+import 'core/design_system/theme/app_colors.dart';
+import 'core/design_system/theme/theme_provider.dart';
 import 'features/dashboard/presentation/pages/agent_dashboard_page.dart';
 import 'features/dashboard/presentation/pages/admin_dashboard_page.dart';
 import 'features/chat/presentation/pages/global_chat_page.dart';
@@ -41,6 +43,7 @@ import 'features/productivity/presentation/pages/notifications_page.dart';
 import 'features/productivity/presentation/pages/deals_page.dart';
 import 'features/dashboard/presentation/providers/app_settings_provider.dart';
 import 'features/sales/presentation/pages/proposal_generator_page.dart';
+import 'features/tickets/presentation/pages/ticket_alerts_page.dart';
 
 import 'core/services/local_notification_service.dart';
 
@@ -283,6 +286,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/past-tickets',
         builder: (context, state) => const PastTicketsPage(),
       ),
+      GoRoute(
+        path: '/alerts',
+        builder: (context, state) => const TicketAlertsPage(),
+      ),
       GoRoute(path: '/bills', builder: (context, state) => const BillsPage()),
       GoRoute(
         path: '/customers',
@@ -440,14 +447,38 @@ class TallyCareApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final appThemeType = ref.watch(themeProvider);
+    final themeMode = appThemeType == AppThemeType.white ? ThemeMode.light : ThemeMode.dark;
 
     return MaterialApp.router(
       title: 'TallyCare',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.light,
+      themeMode: themeMode,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        final isDark = themeMode == ThemeMode.dark;
+        final isPink = appThemeType == AppThemeType.pink;
+        
+        return Container(
+          decoration: BoxDecoration(
+            color: isPink ? AppColors.pinkThemeMain : null,
+            gradient: isDark && !isPink
+                ? const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF0F172A),
+                      Color(0xFF1E3A8A),
+                      Color(0xFF020617),
+                    ],
+                  )
+                : null,
+          ),
+          child: child ?? const SizedBox(),
+        );
+      },
     );
   }
 }

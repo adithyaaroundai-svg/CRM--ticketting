@@ -404,6 +404,8 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage>
             style: TextStyle(fontSize: 13, color: AppColors.slate500),
           ),
           const SizedBox(height: 24),
+          _buildThemeToggleCard(),
+          const SizedBox(height: 16),
           _buildSettingCard(
             title: 'Chat',
             description: 'Enable or disable chat functionality',
@@ -508,6 +510,58 @@ class _AppSettingsPageState extends ConsumerState<AppSettingsPage>
         slaMinutes: _slaMinutes,
         visibleStatuses: _visibleStatuses,
         onSave: _saveWorkflowConfig,
+      ),
+    );
+  }
+
+  Widget _buildThemeToggleCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.slate200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.slate100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(LucideIcons.sun, size: 20, color: AppColors.slate600),
+          ),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Theme',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.slate900,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Light mode is currently active',
+                  style: TextStyle(fontSize: 12, color: AppColors.slate500),
+                ),
+              ],
+            ),
+          ),
+          const Text(
+            'Light',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: AppColors.slate600,
+            ),
+          ),
+        ],
       ),
     );
   }

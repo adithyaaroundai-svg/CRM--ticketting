@@ -38,5 +38,17 @@ abstract class TicketRepository {
     required String body,
     required bool isInternal,
   });
+
+  Future<List<Ticket>> getPaginatedTickets({
+    String? statusFilter,
+    String? priorityFilter,
+    String? assigneeFilter,
+    String? searchQuery,
+    String? currentUserId, // For assignee filters (e.g. 'me')
+    DateTime? before,
+    int limit = 50,
+  });
+
+  Stream<Map<String, dynamic>> get ticketEvents;
 }
 

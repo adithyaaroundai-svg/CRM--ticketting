@@ -75,6 +75,11 @@ class AppColors {
     ],
   );
 
+  // Pink Theme Colors (Aubergine inspired)
+  static const Color pinkThemeSidebar = Color(0xFF3F0E40); // Deep plum/aubergine for sidebars
+  static const Color pinkThemeNav = Color(0xFF350D36); // Slightly darker for top nav
+  static const Color pinkThemeMain = Color(0xFF1A1D21); // Dark gray for main chat/screen
+
   // Text
   static const Color textPrimary = slate900;
   static const Color textSecondary = slate500;
@@ -129,4 +134,23 @@ class AppColors {
         return slate400;
     }
   }
+}
+
+extension ThemeColorExtension on BuildContext {
+  bool get isDarkMode => Theme.of(this).brightness == Brightness.dark;
+
+  Color get adaptiveSlate900 => isDarkMode ? AppColors.slate200 : AppColors.slate900;
+  Color get adaptiveSlate800 => isDarkMode ? AppColors.slate300 : AppColors.slate800;
+  Color get adaptiveSlate700 => isDarkMode ? AppColors.slate300 : AppColors.slate700;
+  Color get adaptiveSlate600 => isDarkMode ? AppColors.slate400 : AppColors.slate600;
+  Color get adaptiveSlate500 => isDarkMode ? AppColors.slate400 : AppColors.slate500;
+  Color get adaptiveSlate400 => isDarkMode ? AppColors.slate600 : AppColors.slate400;
+  Color get adaptiveSlate300 => isDarkMode ? AppColors.slate600 : AppColors.slate300;
+  Color get adaptiveSlate200 => isDarkMode ? Colors.white.withValues(alpha: 0.06) : AppColors.slate200;
+  Color get adaptiveSlate100 => isDarkMode ? Colors.white.withValues(alpha: 0.04) : AppColors.slate100;
+  Color get adaptiveSlate50 => isDarkMode ? Colors.white.withValues(alpha: 0.02) : AppColors.slate50;
+  Color get adaptiveCard => isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.white;
+  Color get adaptiveBackground => isDarkMode ? Colors.transparent : AppColors.background;
+  Color get adaptiveBorder => isDarkMode ? Colors.white.withValues(alpha: 0.1) : AppColors.border;
+  Color get adaptiveError => isDarkMode ? const Color(0xFFF87171) : AppColors.error;
 }

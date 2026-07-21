@@ -163,13 +163,13 @@ class ProposalHistoryItem {
   };
 
   factory ProposalHistoryItem.fromJson(Map<String, dynamic> json) => ProposalHistoryItem(
-    id: json['id'],
-    clientName: json['clientName'],
-    clientPhone: json['clientPhone'],
-    clientEmail: json['clientEmail'] ?? '',
-    docNumber: json['docNumber'],
-    totalAmount: json['totalAmount'].toDouble(),
-    downloadedAt: DateTime.parse(json['downloadedAt']),
+    id: json['id']?.toString() ?? '',
+    clientName: json['clientName']?.toString() ?? '',
+    clientPhone: json['clientPhone']?.toString() ?? '',
+    clientEmail: json['clientEmail']?.toString() ?? '',
+    docNumber: json['docNumber']?.toString() ?? '',
+    totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0,
+    downloadedAt: json['downloadedAt'] != null ? DateTime.parse(json['downloadedAt'].toString()) : DateTime.now(),
   );
 }
 
@@ -679,13 +679,13 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
       setState(() {
         _proposalHistory = (response as List)
             .map((e) => ProposalHistoryItem(
-                  id: e['id'],
-                  clientName: e['company_name'] ?? '',
-                  clientPhone: e['phone_number'] ?? '',
-                  clientEmail: e['email'] ?? '',
-                  docNumber: e['document_number'] ?? '',
+                  id: e['id']?.toString() ?? '',
+                  clientName: e['company_name']?.toString() ?? '',
+                  clientPhone: e['phone_number']?.toString() ?? '',
+                  clientEmail: e['email']?.toString() ?? '',
+                  docNumber: e['document_number']?.toString() ?? '',
                   totalAmount: (e['total_amount'] as num?)?.toDouble() ?? 0,
-                  downloadedAt: DateTime.parse(e['downloaded_at']),
+                  downloadedAt: e['downloaded_at'] != null ? DateTime.parse(e['downloaded_at'].toString()) : DateTime.now(),
                 ))
             .toList();
       });
@@ -776,48 +776,81 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
   }
 
   void _showHistoryDialog() {
-    // Refresh history when opening dialog
-    _loadHistory();
-    
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: Row(
-              children: [
-                const Icon(LucideIcons.history, size: 24),
-                const SizedBox(width: 8),
-                const Expanded(child: Text('Proposal History')),
-                if (_isLoadingHistory)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else
+      builder: (context) {
+        // We'll use a local key to force refresh of FutureBuilder if needed
+        Key futureBuilderKey = UniqueKey();
+        
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(LucideIcons.history, size: 24),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('Proposal History')),
                   IconButton(
                     icon: const Icon(LucideIcons.refreshCw, size: 18),
-                    onPressed: () async {
-                      await _loadHistory();
-                      setDialogState(() {});
+                    onPressed: () {
+                      setDialogState(() {
+                        futureBuilderKey = UniqueKey();
+                      });
                     },
                   ),
-              ],
-            ),
-            content: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500, maxHeight: 400),
-              child: _proposalHistory.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No proposals downloaded yet',
-                        style: TextStyle(color: cGray500),
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _proposalHistory.length,
+                ],
+              ),
+              content: SizedBox(
+                width: 500,
+                height: 400,
+                child: FutureBuilder(
+                  key: futureBuilderKey,
+                  future: Supabase.instance.client
+                      .from('history')
+                      .select()
+                      .order('downloaded_at', ascending: false)
+                      .limit(50),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      );
+                    }
+                    
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error loading history: ${snapshot.error}',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      );
+                    }
+
+                    final data = snapshot.data as List<dynamic>? ?? [];
+                    final history = data.map((e) => ProposalHistoryItem(
+                      id: e['id']?.toString() ?? '',
+                      clientName: e['company_name']?.toString() ?? '',
+                      clientPhone: e['phone_number']?.toString() ?? '',
+                      clientEmail: e['email']?.toString() ?? '',
+                      docNumber: e['document_number']?.toString() ?? '',
+                      totalAmount: (e['total_amount'] as num?)?.toDouble() ?? 0,
+                      downloadedAt: e['downloaded_at'] != null ? DateTime.parse(e['downloaded_at'].toString()) : DateTime.now(),
+                    )).toList();
+
+                    if (history.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No proposals downloaded yet',
+                          style: TextStyle(color: cGray500),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: history.length,
                       itemBuilder: (context, index) {
-                        final item = _proposalHistory[index];
+                        final item = history[index];
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
                           child: InkWell(
@@ -911,9 +944,11 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
                           ),
                         );
                       },
-                    ),
-            ),
-            actions: [
+                    );
+                  },
+                ),
+              ),
+              actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Close'),
@@ -921,8 +956,8 @@ class _ProposalGeneratorPageState extends ConsumerState<ProposalGeneratorPage> {
             ],
           );
         },
-      ),
-    );
+      );
+    });
   }
 
   // PDF GENERATION: All pages are pre-rendered, capture is instant
@@ -1214,9 +1249,16 @@ Sidharth IT Solutions''';
     }
 
     return Scaffold(
-      backgroundColor: cGray100,
-      body: Column(
-        children: [
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Column(
+          children: [
           // HEADER
           Container(
             decoration: const BoxDecoration(
@@ -1460,25 +1502,39 @@ Sidharth IT Solutions''';
                       );
 
                       final editorPanel = isEditing
-                          ? Container(
-                              width: isNarrow ? double.infinity : 380,
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: cGray200),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Edit Details',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                          ? Theme(
+                              data: ThemeData.dark(),
+                              child: Container(
+                                width: isNarrow ? double.infinity : 380,
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   ),
-                                  const SizedBox(height: 20),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.white12),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black26,
+                                      blurRadius: 10,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Edit Details',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
                                   _buildInput('Client Name', clientNameCtrl),
                                   _buildInput('Client Phone', clientPhoneCtrl),
                                   _buildInput('Client Email', clientEmailCtrl),
@@ -1515,8 +1571,9 @@ Sidharth IT Solutions''';
                                   _buildCustomPagesManager(themeColors),
                                 ],
                               ),
-                            )
-                          : const SizedBox.shrink();
+                            ),
+                          )
+                        : const SizedBox.shrink();
 
                       if (isNarrow) {
                         return Column(
@@ -1561,6 +1618,7 @@ Sidharth IT Solutions''';
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -2794,7 +2852,7 @@ Sidharth IT Solutions''';
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: cGray700,
+              color: Colors.white70,
             ),
           ),
           const SizedBox(height: 4),
@@ -2803,7 +2861,20 @@ Sidharth IT Solutions''';
             keyboardType: isNumber ? TextInputType.number : TextInputType.text,
             decoration: InputDecoration(
               isDense: true,
-              border: const OutlineInputBorder(),
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.05),
+              border: OutlineInputBorder(
+                borderSide: const BorderSide(color: Colors.white24),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderSide: const BorderSide(color: Colors.white24),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderSide: const BorderSide(color: Colors.white),
+                borderRadius: BorderRadius.circular(6),
+              ),
               contentPadding: const EdgeInsets.all(12),
             ),
             onChanged: (_) => setState(() {}),
@@ -2822,10 +2893,10 @@ Sidharth IT Solutions''';
           children: [
             Text(
               'Custom Products',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: themeColors['secondary'],
+                color: Colors.white,
               ),
             ),
             const Spacer(),
@@ -2879,10 +2950,10 @@ Sidharth IT Solutions''';
           children: [
             Text(
               'Extra Pages',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: themeColors['secondary'],
+                color: Colors.white,
               ),
             ),
             const Spacer(),

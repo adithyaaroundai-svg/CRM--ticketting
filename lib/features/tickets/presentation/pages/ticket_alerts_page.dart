@@ -7,8 +7,51 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../../../../core/design_system/design_system.dart';
 import '../../presentation/providers/ticket_provider.dart';
 
-class OverdueClaimedTicketsPage extends ConsumerWidget {
-  const OverdueClaimedTicketsPage({super.key});
+class TicketAlertsPage extends StatelessWidget {
+  const TicketAlertsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MainLayout(
+      currentPath: '/alerts',
+      child: DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: Text(
+              'Ticket Alerts',
+              style: TextStyle(
+                color: context.adaptiveSlate900,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            bottom: TabBar(
+              labelColor: context.isDarkMode ? Colors.white : AppColors.primary,
+              unselectedLabelColor: context.adaptiveSlate500,
+              indicatorColor: context.isDarkMode ? Colors.white : AppColors.primary,
+              tabs: [
+                Tab(text: 'Stale Unclaimed (1h+)'),
+                Tab(text: 'Overdue Claimed (12h+)'),
+              ],
+            ),
+          ),
+          body: const TabBarView(
+            children: [
+              _StaleUnclaimedView(),
+              _OverdueClaimedView(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OverdueClaimedView extends ConsumerWidget {
+  const _OverdueClaimedView();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -16,7 +59,6 @@ class OverdueClaimedTicketsPage extends ConsumerWidget {
     final agentsAsync = ref.watch(agentsListProvider);
 
     return _TicketAlertsShell(
-      currentPath: '/alerts/claimed-overdue',
       title: 'Overdue Claimed Tickets',
       subtitle: 'Claimed tickets that are still unresolved/billed even after 12 hours.',
       emptyMessage: 'All caught up! No claimed tickets waiting beyond 12 hours.',
@@ -32,8 +74,8 @@ class OverdueClaimedTicketsPage extends ConsumerWidget {
   }
 }
 
-class StaleUnclaimedTicketsPage extends ConsumerWidget {
-  const StaleUnclaimedTicketsPage({super.key});
+class _StaleUnclaimedView extends ConsumerWidget {
+  const _StaleUnclaimedView();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,7 +83,6 @@ class StaleUnclaimedTicketsPage extends ConsumerWidget {
     final agentsAsync = ref.watch(agentsListProvider);
 
     return _TicketAlertsShell(
-      currentPath: '/alerts/unclaimed',
       title: 'Unclaimed Tickets (1h+)',
       subtitle: 'Tickets that stayed unclaimed for more than an hour after creation.',
       emptyMessage: 'Every new ticket has been picked up within the first hour. Great job!',
@@ -58,7 +99,6 @@ class StaleUnclaimedTicketsPage extends ConsumerWidget {
 }
 
 class _TicketAlertsShell extends StatelessWidget {
-  final String currentPath;
   final String title;
   final String subtitle;
   final String emptyMessage;
@@ -72,7 +112,6 @@ class _TicketAlertsShell extends StatelessWidget {
   final String thresholdLabel;
 
   const _TicketAlertsShell({
-    required this.currentPath,
     required this.title,
     required this.subtitle,
     required this.emptyMessage,
@@ -88,65 +127,59 @@ class _TicketAlertsShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MainLayout(
-      currentPath: currentPath,
-      child: Scaffold(
-        backgroundColor: AppColors.slate50,
-        body: Column(
-          children: [
-            _Header(
-              title: title,
-              subtitle: subtitle,
-              icon: icon,
-              accentColor: accentColor,
-              highlights: highlights,
-              thresholdLabel: thresholdLabel,
-            ),
-            const Divider(height: 1, color: AppColors.slate200),
-            Expanded(
-              child: alertsAsync.when(
-                data: (alerts) {
-                  final agents = agentsAsync.asData?.value ??
-                      const <Map<String, dynamic>>[];
-                  final agentsById = {
-                    for (final agent in agents)
-                      if (agent['id'] != null) agent['id'].toString(): agent,
-                  };
+    return Column(
+      children: [
+        _Header(
+          title: title,
+          subtitle: subtitle,
+          icon: icon,
+          accentColor: accentColor,
+          highlights: highlights,
+          thresholdLabel: thresholdLabel,
+        ),
+        Divider(height: 1, color: context.adaptiveBorder),
+        Expanded(
+          child: alertsAsync.when(
+            data: (alerts) {
+              final agents = agentsAsync.asData?.value ??
+                  const <Map<String, dynamic>>[];
+              final agentsById = {
+                for (final agent in agents)
+                  if (agent['id'] != null) agent['id'].toString(): agent,
+              };
 
-                  if (alerts.isEmpty) {
-                    return _EmptyState(message: emptyMessage);
-                  }
+              if (alerts.isEmpty) {
+                return _EmptyState(message: emptyMessage);
+              }
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(24),
-                    itemCount: alerts.length,
-                    itemBuilder: (context, index) {
-                      final entry = alerts[index];
-                      final ticket = entry.ticket;
-                      final assignedTo = ticket.assignedTo;
-                      final agentName = assignedTo == null || assignedTo.isEmpty
-                          ? 'Unassigned'
-                          : (agentsById[assignedTo]?['full_name'] ?? 'Unknown agent');
+              return ListView.builder(
+                padding: const EdgeInsets.all(24),
+                itemCount: alerts.length,
+                itemBuilder: (context, index) {
+                  final entry = alerts[index];
+                  final ticket = entry.ticket;
+                  final assignedTo = ticket.assignedTo;
+                  final agentName = assignedTo == null || assignedTo.isEmpty
+                      ? 'Unassigned'
+                      : (agentsById[assignedTo]?['full_name'] ?? 'Unknown agent');
 
-                      return _TicketAlertCard(
-                        entry: entry,
-                        agentName: agentName,
-                        showAssignee: showAssignee,
-                        referenceLabel: referenceLabel,
-                        accentColor: accentColor,
-                      );
-                    },
+                  return _TicketAlertCard(
+                    entry: entry,
+                    agentName: agentName,
+                    showAssignee: showAssignee,
+                    referenceLabel: referenceLabel,
+                    accentColor: accentColor,
                   );
                 },
-                loading: () => const Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                error: (error, stack) => _ErrorState(message: error.toString()),
-              ),
+              );
+            },
+            loading: () => const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
             ),
-          ],
+            error: (error, stack) => _ErrorState(message: error.toString()),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -171,7 +204,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: context.adaptiveCard,
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,18 +226,18 @@ class _Header extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.slate900,
+                        color: context.adaptiveSlate900,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.slate600,
+                        color: context.adaptiveSlate600,
                       ),
                     ),
                   ],
@@ -265,7 +298,7 @@ class _HighlightPill extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: accentColor.withValues(alpha: 0.3)),
-        color: Colors.white,
+        color: context.adaptiveCard,
         boxShadow: [
           BoxShadow(
             color: accentColor.withValues(alpha: 0.08),
@@ -281,9 +314,9 @@ class _HighlightPill extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: AppColors.slate700,
+              color: context.adaptiveSlate700,
             ),
           ),
         ],
@@ -330,9 +363,10 @@ class _TicketAlertCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 16),
       child: Card(
         elevation: 0,
+        color: context.adaptiveCard,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: AppColors.border),
+          side: BorderSide(color: context.adaptiveBorder),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
@@ -351,18 +385,18 @@ class _TicketAlertCard extends StatelessWidget {
                         children: [
                           Text(
                             ticket.title.isEmpty ? 'Untitled Ticket' : ticket.title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.slate900,
+                              color: context.adaptiveSlate900,
                             ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             'ID: ${ticket.ticketId}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.slate500,
+                              color: context.adaptiveSlate500,
                             ),
                           ),
                         ],
@@ -430,9 +464,9 @@ class _TicketAlertCard extends StatelessWidget {
                     ticket.description!,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.slate600,
+                      color: context.adaptiveSlate600,
                     ),
                   ),
                 ],
@@ -442,14 +476,46 @@ class _TicketAlertCard extends StatelessWidget {
                     TextButton.icon(
                       onPressed: () => context.push('/ticket/${ticket.ticketId}'),
                       icon: const Icon(LucideIcons.externalLink, size: 16),
-                      label: const Text('Open ticket'),
+                      label: Text('Open ticket'),
                     ),
+                    if (ticket.assignedTo != null && ticket.assignedTo!.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+                        onPressed: () => context.push('/chat/dm/${ticket.assignedTo!}'),
+                        icon: const Icon(LucideIcons.messageSquare, size: 16),
+                        label: const Text('Nudge Agent'),
+                      ),
+                    ],
+                    if (ticket.priority != 'Urgent') ...[
+                      const SizedBox(width: 8),
+                      Consumer(
+                        builder: (context, ref, child) {
+                          return TextButton.icon(
+                            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                            onPressed: () async {
+                              final updated = ticket.copyWith(priority: 'Urgent');
+                              final error = await ref.read(ticketUpdaterProvider.notifier).updateTicket(updated);
+                              if (context.mounted) {
+                                if (error != null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ticket escalated to Urgent')));
+                                }
+                              }
+                            },
+                            icon: const Icon(LucideIcons.flame, size: 16),
+                            label: const Text('Escalate'),
+                          );
+                        }
+                      ),
+                    ],
                     const Spacer(),
                     Text(
                       'Updated ${timeago.format((ticket.updatedAt ?? ticket.createdAt ?? entry.referenceTime).toLocal())}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.slate500,
+                        color: context.adaptiveSlate500,
                       ),
                     ),
                   ],
@@ -480,27 +546,27 @@ class _InfoChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.white,
-        border: Border.all(color: AppColors.border),
+        color: context.adaptiveCard,
+        border: Border.all(color: context.adaptiveBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.slate500),
+          Icon(icon, size: 14, color: context.adaptiveSlate500),
           const SizedBox(width: 6),
           Text(
             '$label: ',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              color: AppColors.slate500,
+              color: context.adaptiveSlate500,
             ),
           ),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppColors.slate800,
+              color: context.adaptiveSlate800,
             ),
           ),
         ],
@@ -523,21 +589,21 @@ class _EmptyState extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.adaptiveCard,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.adaptiveBorder),
             ),
             child: Column(
               children: [
-                const Icon(LucideIcons.sparkles,
-                    size: 36, color: AppColors.slate400),
+                Icon(LucideIcons.sparkles,
+                    size: 36, color: context.adaptiveSlate400),
                 const SizedBox(height: 16),
                 Text(
                   message,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.slate600,
+                    color: context.adaptiveSlate600,
                   ),
                 ),
               ],
@@ -562,7 +628,7 @@ class _ErrorState extends StatelessWidget {
         children: [
           const Icon(LucideIcons.alertCircle, size: 32, color: AppColors.error),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Unable to load alerts',
             style: TextStyle(
               fontWeight: FontWeight.w600,
@@ -573,9 +639,9 @@ class _ErrorState extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: AppColors.slate600,
+              color: context.adaptiveSlate600,
             ),
           ),
         ],

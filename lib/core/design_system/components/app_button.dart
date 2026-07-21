@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/theme_provider.dart';
 
 enum AppButtonVariant { primary, secondary, ghost, destructive, success }
 enum AppButtonSize { small, medium, large }
@@ -141,7 +142,7 @@ class AppButton extends StatelessWidget {
             ],
           );
 
-    final style = _getButtonStyle();
+    final style = _getButtonStyle(context);
 
     Widget button = ElevatedButton(
       onPressed: isLoading ? null : onPressed,
@@ -175,7 +176,7 @@ class AppButton extends StatelessWidget {
         : button;
   }
 
-  ButtonStyle _getButtonStyle() {
+  ButtonStyle _getButtonStyle(BuildContext context) {
     final borderRadius = BorderRadius.circular(10);
     
     switch (variant) {
@@ -191,25 +192,25 @@ class AppButton extends StatelessWidget {
         );
       case AppButtonVariant.secondary:
         return ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: AppColors.slate800,
+          backgroundColor: context.isDarkMode ? context.adaptiveSlate100 : Colors.white,
+          foregroundColor: context.adaptiveSlate800,
           elevation: 0,
           padding: _padding,
-          side: const BorderSide(color: AppColors.border, width: 1.5),
+          side: BorderSide(color: context.adaptiveBorder, width: 1.5),
           shape: RoundedRectangleBorder(borderRadius: borderRadius),
         ).copyWith(
-          overlayColor: WidgetStateProperty.all(AppColors.slate100),
+          overlayColor: WidgetStateProperty.all(context.adaptiveSlate200),
         );
       case AppButtonVariant.ghost:
         return ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
-          foregroundColor: AppColors.slate700,
+          foregroundColor: context.adaptiveSlate700,
           elevation: 0,
           padding: _padding,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: borderRadius),
         ).copyWith(
-          overlayColor: WidgetStateProperty.all(AppColors.slate100),
+          overlayColor: WidgetStateProperty.all(context.adaptiveSlate200),
         );
       case AppButtonVariant.destructive:
         return ElevatedButton.styleFrom(

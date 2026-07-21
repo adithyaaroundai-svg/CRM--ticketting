@@ -15,10 +15,76 @@ part 'chat_provider.g.dart';
 // ── Chat stream — keepAlive so it never resets on navigation ─────────────────
 @Riverpod(keepAlive: true)
 class ChatStream extends _$ChatStream {
+  RealtimeChannel? _channelSub;
+  bool _hasMore = true;
+  bool get hasMore => _hasMore;
+  
   @override
-  Stream<List<ChatMessage>> build(String channel) {
+  FutureOr<List<ChatMessage>> build(String channel) async {
     final repository = ref.watch(chatRepositoryProvider);
-    return repository.getMessages(channelName: channel);
+    final messages = await repository.getPaginatedMessages(channelName: channel, limit: 30);
+    _hasMore = messages.length == 30;
+    
+    _channelSub = repository.subscribeToMessages(
+      channelName: channel,
+      onEvent: _handlePostgresEvent,
+    );
+    
+    ref.onDispose(() {
+      _channelSub?.unsubscribe();
+    });
+    
+    return messages;
+  }
+
+  void _handlePostgresEvent(PostgresChangePayload payload) {
+    if (payload.eventType == PostgresChangeEvent.insert) {
+      final newMsg = ChatMessage.fromJson(payload.newRecord);
+      if (newMsg.channel != channel || newMsg.receiverId != null) return;
+      final currentList = state.value ?? [];
+      // Make sure we don't add duplicates (sometimes realtime events and manual inserts race)
+      if (!currentList.any((m) => m.id == newMsg.id)) {
+        state = AsyncData([...currentList, newMsg]);
+      }
+    } else if (payload.eventType == PostgresChangeEvent.update) {
+      final updatedMsg = ChatMessage.fromJson(payload.newRecord);
+      if (updatedMsg.channel != channel || updatedMsg.receiverId != null) return;
+      final currentList = state.value ?? [];
+      final index = currentList.indexWhere((m) => m.id == updatedMsg.id);
+      if (index != -1) {
+        final newList = List<ChatMessage>.from(currentList);
+        newList[index] = updatedMsg;
+        state = AsyncData(newList);
+      }
+    } else if (payload.eventType == PostgresChangeEvent.delete) {
+      final deletedId = payload.oldRecord['id'] as String?;
+      if (deletedId != null) {
+        final currentList = state.value ?? [];
+        if (currentList.any((m) => m.id == deletedId)) {
+          state = AsyncData(currentList.where((m) => m.id != deletedId).toList());
+        }
+      }
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (!_hasMore) return;
+    final currentList = state.value ?? [];
+    if (currentList.isEmpty) return;
+
+    final oldestMsg = currentList.first;
+    final repository = ref.read(chatRepositoryProvider);
+    final olderMessages = await repository.getPaginatedMessages(
+      channelName: channel,
+      before: oldestMsg.createdAt,
+      limit: 30,
+    );
+
+    if (olderMessages.length < 30) {
+      _hasMore = false;
+    }
+    
+    state = AsyncData([...olderMessages, ...currentList]);
   }
 
   void refresh() {
@@ -29,14 +95,93 @@ class ChatStream extends _$ChatStream {
 // ── DM Chat stream — keepAlive so it never resets on navigation ──────────────
 @Riverpod(keepAlive: true)
 class DmStream extends _$DmStream {
+  RealtimeChannel? _channelSub;
+  bool _hasMore = true;
+  bool get hasMore => _hasMore;
+  
   @override
-  Stream<List<ChatMessage>> build(String chatPartnerId) {
+  FutureOr<List<ChatMessage>> build(String chatPartnerId) async {
     final repository = ref.watch(chatRepositoryProvider);
     final myId = ref.watch(authProvider)?.id;
-    return repository.getMessages(
+    
+    final messages = await repository.getPaginatedMessages(
       currentUserId: myId,
       chatPartnerId: chatPartnerId,
+      limit: 30,
     );
+    _hasMore = messages.length == 30;
+    
+    _channelSub = repository.subscribeToMessages(
+      channelName: 'dm',
+      currentUserId: myId,
+      chatPartnerId: chatPartnerId,
+      onEvent: _handlePostgresEvent,
+    );
+    
+    ref.onDispose(() {
+      _channelSub?.unsubscribe();
+    });
+    
+    return messages;
+  }
+
+  void _handlePostgresEvent(PostgresChangePayload payload) {
+    final myId = ref.read(authProvider)?.id;
+    if (myId == null) return;
+
+    if (payload.eventType == PostgresChangeEvent.insert) {
+      final newMsg = ChatMessage.fromJson(payload.newRecord);
+      final isRelevant = (newMsg.senderId == myId && newMsg.receiverId == chatPartnerId) ||
+                         (newMsg.senderId == chatPartnerId && newMsg.receiverId == myId);
+      if (!isRelevant) return;
+      final currentList = state.value ?? [];
+      if (!currentList.any((m) => m.id == newMsg.id)) {
+        state = AsyncData([...currentList, newMsg]);
+      }
+    } else if (payload.eventType == PostgresChangeEvent.update) {
+      final updatedMsg = ChatMessage.fromJson(payload.newRecord);
+      final isRelevant = (updatedMsg.senderId == myId && updatedMsg.receiverId == chatPartnerId) ||
+                         (updatedMsg.senderId == chatPartnerId && updatedMsg.receiverId == myId);
+      if (!isRelevant) return;
+      final currentList = state.value ?? [];
+      final index = currentList.indexWhere((m) => m.id == updatedMsg.id);
+      if (index != -1) {
+        final newList = List<ChatMessage>.from(currentList);
+        newList[index] = updatedMsg;
+        state = AsyncData(newList);
+      }
+    } else if (payload.eventType == PostgresChangeEvent.delete) {
+      final deletedId = payload.oldRecord['id'] as String?;
+      if (deletedId != null) {
+        final currentList = state.value ?? [];
+        if (currentList.any((m) => m.id == deletedId)) {
+          state = AsyncData(currentList.where((m) => m.id != deletedId).toList());
+        }
+      }
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (!_hasMore) return;
+    final currentList = state.value ?? [];
+    if (currentList.isEmpty) return;
+
+    final oldestMsg = currentList.first;
+    final repository = ref.read(chatRepositoryProvider);
+    final myId = ref.read(authProvider)?.id;
+    
+    final olderMessages = await repository.getPaginatedMessages(
+      currentUserId: myId,
+      chatPartnerId: chatPartnerId,
+      before: oldestMsg.createdAt,
+      limit: 30,
+    );
+
+    if (olderMessages.length < 30) {
+      _hasMore = false;
+    }
+    
+    state = AsyncData([...olderMessages, ...currentList]);
   }
 
   void refresh() {

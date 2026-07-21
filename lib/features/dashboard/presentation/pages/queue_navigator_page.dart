@@ -17,7 +17,7 @@ class QueueNavigatorPage extends ConsumerWidget {
     return MainLayout(
       currentPath: '/queue-navigator',
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: Colors.transparent,
         body: ticketsAsync.when(
           data: (allTickets) {
             final myTickets = allTickets

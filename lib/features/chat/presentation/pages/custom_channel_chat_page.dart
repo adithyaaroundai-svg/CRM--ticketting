@@ -844,7 +844,7 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
     return MainLayout(
       currentPath: '/c/${widget.channelId}',
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: context.isDarkMode ? context.adaptiveBackground : const Color(0xFFF8FAFC),
         appBar: AppBar(
           title: InkWell(
             onTap: channel != null ? () => _showChannelDetailsDialog(channel!, messagesAsync.value) : null,
@@ -861,13 +861,13 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
                       Icon(
                         channel?.isPrivate == true ? LucideIcons.lock : LucideIcons.hash,
                         size: 18,
-                        color: AppColors.slate900,
+                        color: context.adaptiveSlate900,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         channel?.name ?? 'Loading...',
-                        style: const TextStyle(
-                          color: AppColors.slate900,
+                        style: TextStyle(
+                          color: context.adaptiveSlate900,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -877,8 +877,8 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
                   if (channel != null)
                     Text(
                       channel.isPrivate ? 'Private Channel' : 'Public Channel',
-                      style: const TextStyle(
-                        color: AppColors.slate500,
+                      style: TextStyle(
+                        color: context.adaptiveSlate500,
                         fontSize: 11,
                         fontWeight: FontWeight.normal,
                       ),
@@ -887,7 +887,7 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
               ),
             ),
           ),
-          backgroundColor: Colors.white,
+          backgroundColor: context.isDarkMode ? context.adaptiveCard : Colors.white,
           elevation: 0,
           actions: [
             if (channel != null) ...[
@@ -1087,7 +1087,7 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
             if (_showEmojiPicker)
               Container(
                 height: 220,
-                color: Colors.white,
+                color: context.isDarkMode ? context.adaptiveCard : Colors.white,
                 padding: const EdgeInsets.all(8),
                 child: GridView.count(
                   crossAxisCount: 10,
@@ -1112,7 +1112,7 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
             if (_showGifPicker)
               Container(
                 height: 260,
-                color: Colors.white,
+                color: context.isDarkMode ? context.adaptiveCard : Colors.white,
                 child: Column(
                   children: [
                     Padding(
@@ -1122,7 +1122,7 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
                         decoration: InputDecoration(
                           hintText: 'Search GIFs...',
                           filled: true,
-                          fillColor: Colors.grey.shade100,
+                          fillColor: context.isDarkMode ? context.adaptiveBackground : Colors.grey.shade100,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
                             borderSide: BorderSide.none,
@@ -1175,9 +1175,9 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.isDarkMode ? context.adaptiveCard : Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(color: context.isDarkMode ? context.adaptiveSlate800 : Colors.grey.shade300),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.05),
@@ -1203,13 +1203,13 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
                           if (_selectedFile!.size > 0)
                             Text(
                               '${(_selectedFile!.size / 1024).toStringAsFixed(1)} KB',
-                              style: const TextStyle(fontSize: 12, color: AppColors.slate500),
+                              style: TextStyle(fontSize: 12, color: context.adaptiveSlate500),
                             ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: AppColors.slate500),
+                      icon: Icon(Icons.close, color: context.adaptiveSlate500),
                       onPressed: () => setState(() => _selectedFile = null),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -1232,16 +1232,16 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
                   children: [
                     // Attach file button
                     IconButton(
-                      icon: const Icon(Icons.add, color: AppColors.slate500),
+                      icon: Icon(Icons.add, color: context.adaptiveSlate500),
                       onPressed: _pickFile,
                       padding: const EdgeInsets.all(12),
                     ),
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: context.isDarkMode ? context.adaptiveCard : Colors.white,
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: AppColors.slate200),
+                          border: Border.all(color: context.isDarkMode ? context.adaptiveSlate800 : AppColors.slate200),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.05),
@@ -1268,10 +1268,13 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
                                   maxLines: MediaQuery.sizeOf(context).width < 800 ? 1 : 5,
                                   minLines: 1,
                                   textInputAction: TextInputAction.newline,
-                                  style: const TextStyle(fontSize: 14),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: context.isDarkMode ? Colors.white : AppColors.slate900,
+                                  ),
                                   decoration: InputDecoration(
                                     hintText: 'Type a message...',
-                                    hintStyle: const TextStyle(color: AppColors.slate400, fontSize: 14),
+                                    hintStyle: TextStyle(color: context.adaptiveSlate400, fontSize: 14),
                                     border: InputBorder.none,
                                     contentPadding: EdgeInsets.symmetric(
                                       horizontal: 8,
@@ -1290,7 +1293,7 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
                                           padding: const EdgeInsets.all(4.0),
                                           child: Icon(
                                             Icons.emoji_emotions_outlined,
-                                            color: _showEmojiPicker ? AppColors.primary : AppColors.slate500,
+                                            color: _showEmojiPicker ? AppColors.primary : context.adaptiveSlate500,
                                             size: 20,
                                           ),
                                         ),
@@ -1305,9 +1308,9 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
                                           InkWell(
                                             onTap: _triggerMention,
                                             borderRadius: BorderRadius.circular(12),
-                                            child: const Padding(
-                                              padding: EdgeInsets.all(4.0),
-                                              child: Icon(Icons.alternate_email, color: AppColors.slate500, size: 20),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(4.0),
+                                              child: Icon(Icons.alternate_email, color: context.adaptiveSlate500, size: 20),
                                             ),
                                           ),
                                           const SizedBox(width: 4),
@@ -1324,7 +1327,7 @@ class _CustomChannelChatPageState extends ConsumerState<CustomChannelChatPage> {
                                               padding: const EdgeInsets.all(4.0),
                                               child: Icon(
                                                 Icons.movie_outlined,
-                                                color: _showGifPicker ? AppColors.primary : AppColors.slate500,
+                                                color: _showGifPicker ? AppColors.primary : context.adaptiveSlate500,
                                                 size: 20,
                                               ),
                                             ),
@@ -1576,9 +1579,7 @@ class _ChatBubbleState extends ConsumerState<_ChatBubble> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                         decoration: BoxDecoration(
-                          color: isMe
-                              ? AppColors.primary.withAlpha(26)
-                              : Colors.grey.shade100,
+                          color: Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Column(
@@ -1589,7 +1590,13 @@ class _ChatBubbleState extends ConsumerState<_ChatBubble> {
                                 margin: const EdgeInsets.only(bottom: 4),
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey.shade200,
+                                  color: isMe
+                                      ? (context.isDarkMode
+                                            ? Colors.white.withValues(alpha: 0.15)
+                                            : Colors.white)
+                                      : (context.isDarkMode
+                                            ? Colors.black.withValues(alpha: 0.2)
+                                            : Colors.black.withValues(alpha: 0.04)),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Column(
@@ -1600,7 +1607,9 @@ class _ChatBubbleState extends ConsumerState<_ChatBubble> {
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 11,
-                                        color: AppColors.slate600,
+                                        color: isMe
+                                            ? (context.isDarkMode ? Colors.white.withValues(alpha: 0.9) : AppColors.primary)
+                                            : AppColors.slate600,
                                       ),
                                     ),
                                     Text(
@@ -1609,7 +1618,9 @@ class _ChatBubbleState extends ConsumerState<_ChatBubble> {
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 11,
-                                        color: AppColors.slate500,
+                                        color: isMe
+                                            ? (context.isDarkMode ? Colors.white70 : AppColors.primary.withValues(alpha: 0.8))
+                                            : AppColors.slate500,
                                       ),
                                     ),
                                   ],
@@ -1631,8 +1642,10 @@ class _ChatBubbleState extends ConsumerState<_ChatBubble> {
                                         )
                                       : Text(
                                           message.content,
-                                          style: const TextStyle(
-                                            color: AppColors.slate800,
+                                          style: TextStyle(
+                                            color: isMe
+                                                ? (context.isDarkMode ? Colors.white : AppColors.primary)
+                                                : (context.isDarkMode ? Colors.white : AppColors.slate800),
                                             fontSize: 14,
                                           ),
                                         ),
@@ -1640,9 +1653,11 @@ class _ChatBubbleState extends ConsumerState<_ChatBubble> {
                                 const SizedBox(width: 8),
                                 Text(
                                   timeStr,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 10,
-                                    color: AppColors.slate400,
+                                    color: isMe
+                                        ? (context.isDarkMode ? Colors.white60 : AppColors.primary.withValues(alpha: 0.6))
+                                        : (context.isDarkMode ? Colors.white54 : AppColors.slate400),
                                   ),
                                 ),
                               ],

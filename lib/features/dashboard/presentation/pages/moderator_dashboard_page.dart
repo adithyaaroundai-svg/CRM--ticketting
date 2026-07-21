@@ -76,7 +76,7 @@ class _ModeratorDashboardPageState extends ConsumerState<ModeratorDashboardPage>
     return MainLayout(
       currentPath: '/moderator',
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: Colors.transparent,
         floatingActionButton: AnimatedCreateTicketFab(
           onPressed: _showCreateTicketDialog,
         ),

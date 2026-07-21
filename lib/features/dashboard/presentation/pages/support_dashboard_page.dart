@@ -156,7 +156,7 @@ class _SupportDashboardPageState extends ConsumerState<SupportDashboardPage> {
     return MainLayout(
       currentPath: '/support',
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: Colors.transparent,
         floatingActionButton: AnimatedCreateTicketFab(
           onPressed: _showCreateTicketDialog,
         ),
@@ -254,7 +254,7 @@ class _SupportDashboardPageState extends ConsumerState<SupportDashboardPage> {
                     final actions = _buildTopActions(context, ref);
 
                     return Container(
-                      color: Colors.white,
+                      color: context.adaptiveCard,
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                       child: isMobile
                           ? Column(
@@ -292,7 +292,7 @@ class _SupportDashboardPageState extends ConsumerState<SupportDashboardPage> {
                     );
                   },
                 ),
-                const Divider(height: 1, color: AppColors.slate200),
+                Divider(height: 1, color: Theme.of(context).dividerColor),
                 // Single Table View
                 Expanded(
                   child: FocusScope(
@@ -342,6 +342,9 @@ class _SupportDashboardPageState extends ConsumerState<SupportDashboardPage> {
                 style: const TextStyle(fontSize: 11),
               ),
               onPressed: _selectDateRange,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : null,
+              ),
             ),
             if (_startDate != null && _endDate != null)
               IconButton(
@@ -349,6 +352,7 @@ class _SupportDashboardPageState extends ConsumerState<SupportDashboardPage> {
                 onPressed: _clearDateFilter,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : null,
               ),
           ],
         ),
@@ -357,17 +361,24 @@ class _SupportDashboardPageState extends ConsumerState<SupportDashboardPage> {
             icon: const Icon(LucideIcons.hourglass, size: 14),
             label: const Text('Unclaimed > 1h', style: TextStyle(fontSize: 11)),
             onPressed: () => context.push('/tickets?view=stale_unclaimed'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : null,
+            ),
           ),
         if (!_isRestrictedAgent)
           OutlinedButton.icon(
             icon: const Icon(LucideIcons.alertTriangle, size: 14),
             label: const Text('Claimed > 12h', style: TextStyle(fontSize: 11)),
             onPressed: () => context.push('/tickets?view=claimed_overdue'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : null,
+            ),
           ),
         IconButton(
           icon: const Icon(Icons.refresh, size: 20),
           onPressed: () => ref.invalidate(rawTicketsStreamProvider),
           tooltip: 'Refresh',
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : null,
         ),
       ],
     );
@@ -426,12 +437,12 @@ class _QueueStatTile extends StatelessWidget {
       child: Container(
         constraints: const BoxConstraints(minHeight: 110),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.adaptiveCard,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: Theme.of(context).dividerColor),
           boxShadow: [
             BoxShadow(
-              color: AppColors.slate200.withValues(alpha: 0.4),
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.1),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -454,25 +465,25 @@ class _QueueStatTile extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   stat.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.slate900,
+                    color: Theme.of(context).textTheme.titleSmall?.color ?? Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   stat.subtitle,
-                  style: const TextStyle(fontSize: 11, color: AppColors.slate500),
+                  style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color ?? Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
             Text(
               '${stat.count}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: AppColors.slate900,
+                color: Theme.of(context).textTheme.titleLarge?.color ?? Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],

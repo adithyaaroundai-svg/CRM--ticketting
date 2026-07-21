@@ -49,7 +49,7 @@ class _RevenuePageState extends ConsumerState<RevenuePage> {
     return MainLayout(
       currentPath: '/revenue',
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: Colors.transparent,
         body: ticketsAsync.when(
           data: (tickets) => agentsAsync.when(
             data: (agentsRaw) => customersAsync.when(

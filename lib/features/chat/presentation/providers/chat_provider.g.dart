@@ -13,7 +13,7 @@ part of 'chat_provider.dart';
 const chatStreamProvider = ChatStreamFamily._();
 
 final class ChatStreamProvider
-    extends $StreamNotifierProvider<ChatStream, List<ChatMessage>> {
+    extends $AsyncNotifierProvider<ChatStream, List<ChatMessage>> {
   const ChatStreamProvider._({
     required ChatStreamFamily super.from,
     required String super.argument,
@@ -50,7 +50,7 @@ final class ChatStreamProvider
   }
 }
 
-String _$chatStreamHash() => r'2facb146a8de18a4ef74cd9ea8f624b432765641';
+String _$chatStreamHash() => r'bd6e2bea4370111bc82115ad27ae340c2e5e78c0';
 
 final class ChatStreamFamily extends $Family
     with
@@ -58,7 +58,7 @@ final class ChatStreamFamily extends $Family
           ChatStream,
           AsyncValue<List<ChatMessage>>,
           List<ChatMessage>,
-          Stream<List<ChatMessage>>,
+          FutureOr<List<ChatMessage>>,
           String
         > {
   const ChatStreamFamily._()
@@ -77,11 +77,11 @@ final class ChatStreamFamily extends $Family
   String toString() => r'chatStreamProvider';
 }
 
-abstract class _$ChatStream extends $StreamNotifier<List<ChatMessage>> {
+abstract class _$ChatStream extends $AsyncNotifier<List<ChatMessage>> {
   late final _$args = ref.$arg as String;
   String get channel => _$args;
 
-  Stream<List<ChatMessage>> build(String channel);
+  FutureOr<List<ChatMessage>> build(String channel);
   @$mustCallSuper
   @override
   void runBuild() {
@@ -104,7 +104,7 @@ abstract class _$ChatStream extends $StreamNotifier<List<ChatMessage>> {
 const dmStreamProvider = DmStreamFamily._();
 
 final class DmStreamProvider
-    extends $StreamNotifierProvider<DmStream, List<ChatMessage>> {
+    extends $AsyncNotifierProvider<DmStream, List<ChatMessage>> {
   const DmStreamProvider._({
     required DmStreamFamily super.from,
     required String super.argument,
@@ -141,7 +141,7 @@ final class DmStreamProvider
   }
 }
 
-String _$dmStreamHash() => r'b85c66b99adcf859748bab11c6dcec171c8059a7';
+String _$dmStreamHash() => r'fd9070652b8fd8bd006c55453e4500a6c06d1324';
 
 final class DmStreamFamily extends $Family
     with
@@ -149,7 +149,7 @@ final class DmStreamFamily extends $Family
           DmStream,
           AsyncValue<List<ChatMessage>>,
           List<ChatMessage>,
-          Stream<List<ChatMessage>>,
+          FutureOr<List<ChatMessage>>,
           String
         > {
   const DmStreamFamily._()
@@ -168,11 +168,11 @@ final class DmStreamFamily extends $Family
   String toString() => r'dmStreamProvider';
 }
 
-abstract class _$DmStream extends $StreamNotifier<List<ChatMessage>> {
+abstract class _$DmStream extends $AsyncNotifier<List<ChatMessage>> {
   late final _$args = ref.$arg as String;
   String get chatPartnerId => _$args;
 
-  Stream<List<ChatMessage>> build(String chatPartnerId);
+  FutureOr<List<ChatMessage>> build(String chatPartnerId);
   @$mustCallSuper
   @override
   void runBuild() {

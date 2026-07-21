@@ -23,7 +23,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 class CustomerDetailPage extends ConsumerWidget {
   final String customerId;
 
-  const CustomerDetailPage({super.key, required this.customerId});
+  CustomerDetailPage({super.key, required this.customerId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,9 +37,9 @@ class CustomerDetailPage extends ConsumerWidget {
     return MainLayout(
       currentPath: '/customer/$customerId',
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: context.adaptiveSlate50,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: context.adaptiveCard,
           elevation: 0,
           centerTitle: false,
           titleSpacing: 24,
@@ -52,14 +52,14 @@ class CustomerDetailPage extends ConsumerWidget {
                 context.go('/customers');
               }
             },
-            icon: const Icon(Icons.arrow_back),
+            icon: Icon(Icons.arrow_back),
             tooltip: 'Back',
             style: IconButton.styleFrom(
-              backgroundColor: AppColors.slate100,
-              foregroundColor: AppColors.slate700,
+              backgroundColor: context.adaptiveSlate100,
+              foregroundColor: context.adaptiveSlate700,
             ),
           ),
-          title: const Column(
+          title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -67,26 +67,26 @@ class CustomerDetailPage extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.slate900,
+                  color: context.adaptiveSlate900,
                 ),
               ),
               SizedBox(height: 2),
               Text(
                 'Account overview and service history',
-                style: TextStyle(fontSize: 12, color: AppColors.slate500),
+                style: TextStyle(fontSize: 12, color: context.adaptiveSlate500),
               ),
             ],
           ),
         ),
         body: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24),
           child: customerAsync.when(
             data: (customer) {
               if (customer == null) {
                 return Center(
                   child: Text(
                     'Customer not found',
-                    style: TextStyle(color: AppColors.slate500),
+                    style: TextStyle(color: context.adaptiveSlate500),
                   ),
                 );
               }
@@ -109,15 +109,15 @@ class CustomerDetailPage extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        const Spacer(),
+                        Spacer(),
                         TextButton.icon(
                           onPressed: () {
                             context.push('/customer/${customer.id}/history');
                           },
-                          icon: const Icon(LucideIcons.history),
-                          label: const Text('Detailed history'),
+                          icon: Icon(LucideIcons.history),
+                          label: Text('Detailed history'),
                           style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
+                            padding: EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 12,
                             ),
@@ -125,10 +125,10 @@ class CustomerDetailPage extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     // Customer Info Card
                     CustomerInfoCard(customer: customer),
-                    const SizedBox(height: 32),
+                    SizedBox(height: 32),
 
                     // Customer Health
                     Builder(
@@ -154,7 +154,7 @@ class CustomerDetailPage extends ConsumerWidget {
                         return Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(8),
+                              padding: EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: healthColor.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
@@ -165,32 +165,32 @@ class CustomerDetailPage extends ConsumerWidget {
                                 color: healthColor,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'Customer Health: $healthLabel',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.slate900,
+                                    color: context.adaptiveSlate900,
                                   ),
                                 ),
                                 if (amcActive)
                                   Text(
                                     'AMC expires in ${daysRemaining}d',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 12,
-                                      color: AppColors.slate600,
+                                      color: context.adaptiveSlate600,
                                     ),
                                   )
                                 else
-                                  const Text(
+                                  Text(
                                     'AMC has expired',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: AppColors.slate600,
+                                      color: context.adaptiveSlate600,
                                     ),
                                   ),
                               ],
@@ -199,23 +199,23 @@ class CustomerDetailPage extends ConsumerWidget {
                         );
                       },
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     if (customizationEntries.isNotEmpty) ...[
-                      _buildCustomizationSection(customizationEntries),
-                      const SizedBox(height: 24),
+                      _buildCustomizationSection(context, customizationEntries),
+                      SizedBox(height: 24),
                     ],
 
                     if (historyEntries.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      _buildHistorySection(historyEntries),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 16),
+                      _buildHistorySection(context, historyEntries),
+                      SizedBox(height: 24),
                     ],
 
                     // Customer Notes / Pinned Notes
                     notesAsync.when(
                       data: (notes) {
                         if (notes.isEmpty) {
-                          return const SizedBox.shrink();
+                          return SizedBox.shrink();
                         }
                         final pinnedCount = notes
                             .where((n) => (n['is_pinned'] as bool?) ?? false)
@@ -223,38 +223,38 @@ class CustomerDetailPage extends ConsumerWidget {
                         final total = notes.length;
 
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0),
+                          padding: EdgeInsets.only(bottom: 8.0),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 LucideIcons.stickyNote,
                                 size: 16,
-                                color: AppColors.slate500,
+                                color: context.adaptiveSlate500,
                               ),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               Text(
                                 pinnedCount > 0
                                     ? '$pinnedCount pinned · $total notes'
                                     : '$total notes',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
-                                  color: AppColors.slate600,
+                                  color: context.adaptiveSlate600,
                                 ),
                               ),
                             ],
                           ),
                         );
                       },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
+                      loading: () => SizedBox.shrink(),
+                      error: (_, __) => SizedBox.shrink(),
                     ),
                     CustomerNotesSection(customerId: customerId),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
 
                     contactsAsync.when(
                       data: (contacts) {
                         if (contacts.isEmpty) {
-                          return const SizedBox.shrink();
+                          return SizedBox.shrink();
                         }
 
                         return Column(
@@ -263,33 +263,33 @@ class CustomerDetailPage extends ConsumerWidget {
                             Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.all(8),
+                                  padding: EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: AppColors.slate100,
+                                    color: context.adaptiveSlate100,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     LucideIcons.users,
                                     size: 18,
-                                    color: AppColors.slate700,
+                                    color: context.adaptiveSlate700,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                const Text(
+                                SizedBox(width: 12),
+                                Text(
                                   'Contacts',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.slate900,
+                                    color: context.adaptiveSlate900,
                                   ),
                                 ),
-                                const Spacer(),
+                                Spacer(),
                                 if (currentUser != null &&
                                     (currentUser.isAdmin ||
                                         currentUser.isSupportHead ||
                                         currentUser.isAccountant))
                                   IconButton(
-                                    icon: const Icon(
+                                    icon: Icon(
                                       LucideIcons.plus,
                                       size: 18,
                                       color: AppColors.primary,
@@ -305,41 +305,41 @@ class CustomerDetailPage extends ConsumerWidget {
                                   ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             ListView.separated(
                               shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
+                              physics: NeverScrollableScrollPhysics(),
                               itemCount: contacts.length,
                               separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
                               itemBuilder: (context, index) {
                                 final contact = contacts[index];
                                 return Container(
-                                  padding: const EdgeInsets.all(12),
+                                  padding: EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: context.adaptiveCard,
                                     borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: AppColors.border),
+                                    border: Border.all(color: context.adaptiveBorder),
                                   ),
                                   child: Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.all(8),
+                                        padding: EdgeInsets.all(8),
                                         decoration: BoxDecoration(
                                           color: AppColors.primary.withValues(
                                             alpha: 0.1,
                                           ),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(
+                                        child: Icon(
                                           LucideIcons.user,
                                           size: 16,
                                           color: AppColors.primary,
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
+                                      SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment:
@@ -347,43 +347,43 @@ class CustomerDetailPage extends ConsumerWidget {
                                           children: [
                                             Text(
                                               contact.fullName,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w600,
-                                                color: AppColors.slate900,
+                                                color: context.adaptiveSlate900,
                                               ),
                                             ),
                                             if (contact.role != null &&
                                                 contact.role!.isNotEmpty)
                                               Text(
                                                 contact.role!,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 12,
-                                                  color: AppColors.slate600,
+                                                  color: context.adaptiveSlate600,
                                                 ),
                                               ),
                                             if (contact.email != null &&
                                                 contact.email!.isNotEmpty)
                                               Text(
                                                 contact.email!,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 12,
-                                                  color: AppColors.slate700,
+                                                  color: context.adaptiveSlate700,
                                                 ),
                                               ),
                                             if (contact.phone != null &&
                                                 contact.phone!.isNotEmpty)
                                               Text(
                                                 contact.phone!,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 12,
-                                                  color: AppColors.slate700,
+                                                  color: context.adaptiveSlate700,
                                                 ),
                                               ),
                                           ],
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                      SizedBox(width: 8),
                                       Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.end,
@@ -391,7 +391,7 @@ class CustomerDetailPage extends ConsumerWidget {
                                           if (contact.isPrimary)
                                             Container(
                                               padding:
-                                                  const EdgeInsets.symmetric(
+                                                  EdgeInsets.symmetric(
                                                     horizontal: 8,
                                                     vertical: 4,
                                                   ),
@@ -401,7 +401,7 @@ class CustomerDetailPage extends ConsumerWidget {
                                                 borderRadius:
                                                     BorderRadius.circular(999),
                                               ),
-                                              child: const Text(
+                                              child: Text(
                                                 'Primary',
                                                 style: TextStyle(
                                                   fontSize: 10,
@@ -412,27 +412,27 @@ class CustomerDetailPage extends ConsumerWidget {
                                             ),
                                           if (contact.isBillingContact)
                                             Padding(
-                                              padding: const EdgeInsets.only(
+                                              padding: EdgeInsets.only(
                                                 top: 4,
                                               ),
                                               child: Container(
                                                 padding:
-                                                    const EdgeInsets.symmetric(
+                                                    EdgeInsets.symmetric(
                                                       horizontal: 8,
                                                       vertical: 4,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color: AppColors.slate100,
+                                                  color: context.adaptiveSlate100,
                                                   borderRadius:
                                                       BorderRadius.circular(
                                                         999,
                                                       ),
                                                 ),
-                                                child: const Text(
+                                                child: Text(
                                                   'Billing',
                                                   style: TextStyle(
                                                     fontSize: 10,
-                                                    color: AppColors.slate700,
+                                                    color: context.adaptiveSlate700,
                                                     fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
@@ -445,22 +445,22 @@ class CustomerDetailPage extends ConsumerWidget {
                                 );
                               },
                             ),
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24),
                           ],
                         );
                       },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
+                      loading: () => SizedBox.shrink(),
+                      error: (_, __) => SizedBox.shrink(),
                     ),
 
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     CustomerActivityForm(customerId: customerId),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
 
                     activitiesAsync.when(
                       data: (activities) {
                         if (activities.isEmpty) {
-                          return const SizedBox.shrink();
+                          return SizedBox.shrink();
                         }
 
                         return Column(
@@ -469,63 +469,63 @@ class CustomerDetailPage extends ConsumerWidget {
                             Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.all(8),
+                                  padding: EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: AppColors.slate100,
+                                    color: context.adaptiveSlate100,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     LucideIcons.activity,
                                     size: 18,
-                                    color: AppColors.slate700,
+                                    color: context.adaptiveSlate700,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                const Text(
+                                SizedBox(width: 12),
+                                Text(
                                   'Recent Activities',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.slate900,
+                                    color: context.adaptiveSlate900,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             ListView.separated(
                               shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
+                              physics: NeverScrollableScrollPhysics(),
                               itemCount: activities.length,
                               separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
                               itemBuilder: (context, index) {
                                 final activity = activities[index];
                                 return Container(
-                                  padding: const EdgeInsets.all(12),
+                                  padding: EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: context.adaptiveCard,
                                     borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: AppColors.border),
+                                    border: Border.all(color: context.adaptiveBorder),
                                   ),
                                   child: Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.all(8),
+                                        padding: EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color: AppColors.slate50,
+                                          color: context.adaptiveSlate50,
                                           borderRadius: BorderRadius.circular(
                                             999,
                                           ),
                                         ),
-                                        child: const Icon(
+                                        child: Icon(
                                           LucideIcons.clock,
                                           size: 16,
-                                          color: AppColors.slate600,
+                                          color: context.adaptiveSlate600,
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
+                                      SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment:
@@ -533,40 +533,40 @@ class CustomerDetailPage extends ConsumerWidget {
                                           children: [
                                             Text(
                                               activity.subject,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w600,
-                                                color: AppColors.slate900,
+                                                color: context.adaptiveSlate900,
                                               ),
                                             ),
-                                            const SizedBox(height: 2),
+                                            SizedBox(height: 2),
                                             Text(
                                               activity.type,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 11,
-                                                color: AppColors.slate600,
+                                                color: context.adaptiveSlate600,
                                               ),
                                             ),
-                                            const SizedBox(height: 4),
+                                            SizedBox(height: 4),
                                             if (activity.description != null &&
                                                 activity
                                                     .description!
                                                     .isNotEmpty)
                                               Text(
                                                 activity.description!,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 12,
-                                                  color: AppColors.slate700,
+                                                  color: context.adaptiveSlate700,
                                                 ),
                                               ),
-                                            const SizedBox(height: 4),
+                                            SizedBox(height: 4),
                                             Text(
                                               activity.occurredAt
                                                   .toLocal()
                                                   .toString(),
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 11,
-                                                color: AppColors.slate500,
+                                                color: context.adaptiveSlate500,
                                               ),
                                             ),
                                           ],
@@ -577,31 +577,31 @@ class CustomerDetailPage extends ConsumerWidget {
                                 );
                               },
                             ),
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24),
                           ],
                         );
                       },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
+                      loading: () => SizedBox.shrink(),
+                      error: (_, __) => SizedBox.shrink(),
                     ),
 
                     // Service History Section
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             LucideIcons.history,
                             color: AppColors.primary,
                             size: 20,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        const Expanded(
+                        SizedBox(width: 12),
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -610,28 +610,28 @@ class CustomerDetailPage extends ConsumerWidget {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.slate900,
+                                  color: context.adaptiveSlate900,
                                 ),
                               ),
                               Text(
                                 'Previous tickets and support requests',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: AppColors.slate500,
+                                  color: context.adaptiveSlate500,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         TextButton.icon(
                           onPressed: () {
                             context.push('/customer/${customer.id}/history');
                           },
-                          icon: const Icon(LucideIcons.history),
-                          label: const Text('Detailed history'),
+                          icon: Icon(LucideIcons.history),
+                          label: Text('Detailed history'),
                           style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
+                            padding: EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 10,
                             ),
@@ -639,7 +639,7 @@ class CustomerDetailPage extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
 
                     // Tickets List & Analytics
                     ticketsAsync.when(
@@ -684,25 +684,25 @@ class CustomerDetailPage extends ConsumerWidget {
                             Row(
                               children: [
                                 Expanded(
-                                  child: _buildStatBox(
+                                  child: _buildStatBox(context,
                                     'Total Tickets',
                                     totalTickets.toString(),
                                     LucideIcons.ticket,
                                     AppColors.primary,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: 12),
                                 Expanded(
-                                  child: _buildStatBox(
+                                  child: _buildStatBox(context,
                                     'Resolved',
                                     resolvedTickets.toString(),
                                     LucideIcons.checkCircle,
                                     AppColors.success,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: 12),
                                 Expanded(
-                                  child: _buildStatBox(
+                                  child: _buildStatBox(context,
                                     'Pending',
                                     pendingTickets.toString(),
                                     LucideIcons.clock,
@@ -711,23 +711,23 @@ class CustomerDetailPage extends ConsumerWidget {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24),
 
                             if (pendingBills.isNotEmpty ||
                                 billedTickets.isNotEmpty) ...[
                               Row(
                                 children: [
                                   Expanded(
-                                    child: _buildStatBox(
+                                    child: _buildStatBox(context,
                                       'Pending bills',
                                       pendingBills.length.toString(),
                                       LucideIcons.receipt,
                                       AppColors.warning,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  SizedBox(width: 12),
                                   Expanded(
-                                    child: _buildStatBox(
+                                    child: _buildStatBox(context,
                                       'Billed tickets',
                                       billedTickets.length.toString(),
                                       LucideIcons.receipt,
@@ -736,28 +736,28 @@ class CustomerDetailPage extends ConsumerWidget {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 24),
+                              SizedBox(height: 24),
 
                               if (billedTickets.isNotEmpty) ...[
                                 Row(
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       LucideIcons.receipt,
                                       size: 18,
-                                      color: AppColors.slate600,
+                                      color: context.adaptiveSlate600,
                                     ),
-                                    const SizedBox(width: 8),
-                                    const Text(
+                                    SizedBox(width: 8),
+                                    Text(
                                       'Recent billed tickets',
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
-                                        color: AppColors.slate900,
+                                        color: context.adaptiveSlate900,
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
                                 Column(
                                   children: billedTickets
                                       .take(3)
@@ -765,7 +765,7 @@ class CustomerDetailPage extends ConsumerWidget {
                                         (t) => ListTile(
                                           dense: true,
                                           contentPadding: EdgeInsets.zero,
-                                          leading: const Icon(
+                                          leading: Icon(
                                             LucideIcons.ticket,
                                             size: 18,
                                             color: AppColors.primary,
@@ -777,27 +777,27 @@ class CustomerDetailPage extends ConsumerWidget {
                                           ),
                                           subtitle: Text(
                                             'ID: ${t.ticketId} · Status: ${t.status}',
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 11,
-                                              color: AppColors.slate600,
+                                              color: context.adaptiveSlate600,
                                             ),
                                           ),
                                         ),
                                       )
                                       .toList(),
                                 ),
-                                const SizedBox(height: 24),
+                                SizedBox(height: 24),
                               ],
                             ],
 
                             // Tickets List or Empty State
                             if (customerTickets.isEmpty)
                               Container(
-                                padding: const EdgeInsets.all(48),
+                                padding: EdgeInsets.all(48),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: context.adaptiveCard,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.border),
+                                  border: Border.all(color: context.adaptiveBorder),
                                 ),
                                 child: Center(
                                   child: Column(
@@ -805,22 +805,22 @@ class CustomerDetailPage extends ConsumerWidget {
                                       Icon(
                                         LucideIcons.inbox,
                                         size: 48,
-                                        color: AppColors.slate300,
+                                        color: context.adaptiveSlate300,
                                       ),
-                                      const SizedBox(height: 16),
+                                      SizedBox(height: 16),
                                       Text(
                                         'No service history',
                                         style: TextStyle(
                                           fontSize: 16,
-                                          color: AppColors.slate600,
+                                          color: context.adaptiveSlate600,
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
+                                      SizedBox(height: 4),
                                       Text(
                                         'This customer has no previous tickets',
                                         style: TextStyle(
                                           fontSize: 13,
-                                          color: AppColors.slate500,
+                                          color: context.adaptiveSlate500,
                                         ),
                                       ),
                                     ],
@@ -832,7 +832,7 @@ class CustomerDetailPage extends ConsumerWidget {
                                 children: customerTickets
                                     .map(
                                       (ticket) => Padding(
-                                        padding: const EdgeInsets.only(
+                                        padding: EdgeInsets.only(
                                           bottom: 12,
                                         ),
                                         child: TicketCardWithAmc(
@@ -845,7 +845,7 @@ class CustomerDetailPage extends ConsumerWidget {
                           ],
                         );
                       },
-                      loading: () => const Center(
+                      loading: () => Center(
                         child: Padding(
                           padding: EdgeInsets.all(48.0),
                           child: CircularProgressIndicator(),
@@ -854,7 +854,7 @@ class CustomerDetailPage extends ConsumerWidget {
                       error: (err, _) => Center(
                         child: Text(
                           'Error loading tickets: $err',
-                          style: const TextStyle(color: AppColors.error),
+                          style: TextStyle(color: AppColors.error),
                         ),
                       ),
                     ),
@@ -862,7 +862,7 @@ class CustomerDetailPage extends ConsumerWidget {
                 ),
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => Center(child: CircularProgressIndicator()),
             error: (err, _) => Center(
               child: Text(
                 'Error loading customer: $err',
@@ -875,25 +875,25 @@ class CustomerDetailPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatBox(String label, String value, IconData icon, Color color) {
+  Widget _buildStatBox(BuildContext context, String label, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.adaptiveCard,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.adaptiveBorder),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 16),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -908,9 +908,9 @@ class CustomerDetailPage extends ConsumerWidget {
                 ),
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: AppColors.slate600,
+                    color: context.adaptiveSlate600,
                   ),
                 ),
               ],
@@ -921,7 +921,7 @@ class CustomerDetailPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildCustomizationSection(List<TallyCustomizationEntry> entries) {
+  Widget _buildCustomizationSection(BuildContext context, List<TallyCustomizationEntry> entries) {
     final formatter = DateFormat('dd MMM yyyy');
 
     return Column(
@@ -930,36 +930,36 @@ class CustomerDetailPage extends ConsumerWidget {
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.amber.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
+              child: Icon(
                 LucideIcons.settings2,
                 size: 18,
                 color: Colors.amber,
               ),
             ),
-            const SizedBox(width: 12),
-            const Text(
+            SizedBox(width: 12),
+            Text(
               'Tally Customizations',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.slate900,
+                color: context.adaptiveSlate900,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.adaptiveCard,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.adaptiveBorder),
           ),
           child: Column(
             children: List.generate(entries.length, (index) {
@@ -976,44 +976,44 @@ class CustomerDetailPage extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.08),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         LucideIcons.puzzle,
                         size: 16,
                         color: AppColors.primary,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             entry.moduleName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.slate900,
+                              color: context.adaptiveSlate900,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Row(
                             children: [
                               Icon(
                                 LucideIcons.calendarClock,
                                 size: 14,
-                                color: AppColors.slate500,
+                                color: context.adaptiveSlate500,
                               ),
-                              const SizedBox(width: 6),
+                              SizedBox(width: 6),
                               Text(
                                 'Last updated: $lastUpdated',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: AppColors.slate600,
+                                  color: context.adaptiveSlate600,
                                 ),
                               ),
                             ],
@@ -1031,7 +1031,7 @@ class CustomerDetailPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildHistorySection(List<TallySoftwareEntry> entries) {
+  Widget _buildHistorySection(BuildContext context, List<TallySoftwareEntry> entries) {
     final formatter = DateFormat('dd MMM yyyy');
 
     String formatRange(TallySoftwareEntry entry) {
@@ -1048,26 +1048,26 @@ class CustomerDetailPage extends ConsumerWidget {
       children: [
         Row(
           children: [
-            const Icon(LucideIcons.box, size: 18, color: AppColors.primary),
-            const SizedBox(width: 12),
-            const Text(
+            Icon(LucideIcons.box, size: 18, color: AppColors.primary),
+            SizedBox(width: 12),
+            Text(
               'Tally Software History',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.slate900,
+                color: context.adaptiveSlate900,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.adaptiveCard,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.adaptiveBorder),
           ),
           child: Column(
             children: List.generate(entries.length, (index) {
@@ -1080,30 +1080,30 @@ class CustomerDetailPage extends ConsumerWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
+                    Icon(
                       LucideIcons.box,
                       size: 18,
                       color: AppColors.primary,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             entry.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.slate900,
+                              color: context.adaptiveSlate900,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             rangeText,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
-                              color: AppColors.slate600,
+                              color: context.adaptiveSlate600,
                             ),
                           ),
                         ],
@@ -1123,7 +1123,7 @@ class CustomerDetailPage extends ConsumerWidget {
 class CustomerActivityForm extends ConsumerStatefulWidget {
   final String customerId;
 
-  const CustomerActivityForm({super.key, required this.customerId});
+  CustomerActivityForm({super.key, required this.customerId});
 
   @override
   ConsumerState<CustomerActivityForm> createState() =>
@@ -1175,7 +1175,7 @@ class _CustomerActivityFormState extends ConsumerState<CustomerActivityForm> {
       _descriptionController.clear();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Activity logged'),
           backgroundColor: AppColors.success,
         ),
@@ -1207,43 +1207,43 @@ class _CustomerActivityFormState extends ConsumerState<CustomerActivityForm> {
             currentUser.isSupport);
 
     if (!canLogActivity) {
-      return const SizedBox.shrink();
+      return SizedBox.shrink();
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.slate50,
+        color: context.adaptiveSlate50,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.adaptiveBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 LucideIcons.activity,
                 size: 18,
-                color: AppColors.slate700,
+                color: context.adaptiveSlate700,
               ),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: 8),
+              Text(
                 'Log activity',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.slate900,
+                  color: context.adaptiveSlate900,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           DropdownButtonFormField<String>(
             initialValue: _type,
             decoration: InputDecoration(
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
+              contentPadding: EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 8,
               ),
@@ -1251,7 +1251,7 @@ class _CustomerActivityFormState extends ConsumerState<CustomerActivityForm> {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            items: const [
+            items: [
               DropdownMenuItem(value: 'call', child: Text('Call')),
               DropdownMenuItem(value: 'email', child: Text('Email')),
               DropdownMenuItem(value: 'meeting', child: Text('Meeting')),
@@ -1265,7 +1265,7 @@ class _CustomerActivityFormState extends ConsumerState<CustomerActivityForm> {
               });
             },
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _subjectController,
             decoration: InputDecoration(
@@ -1275,7 +1275,7 @@ class _CustomerActivityFormState extends ConsumerState<CustomerActivityForm> {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _descriptionController,
             maxLines: 3,
@@ -1286,12 +1286,12 @@ class _CustomerActivityFormState extends ConsumerState<CustomerActivityForm> {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
             child: ElevatedButton.icon(
               onPressed: _isSubmitting ? null : _submit,
-              icon: const Icon(LucideIcons.check, size: 16),
+              icon: Icon(LucideIcons.check, size: 16),
               label: Text(_isSubmitting ? 'Saving...' : 'Save activity'),
             ),
           ),
@@ -1320,28 +1320,28 @@ Future<void> _showAddContactDialog(
       return StatefulBuilder(
         builder: (context, setState) {
           return AlertDialog(
-            title: const Text('Add contact'),
+            title: Text('Add contact'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     controller: nameController,
-                    decoration: const InputDecoration(labelText: 'Full name'),
+                    decoration: InputDecoration(labelText: 'Full name'),
                   ),
                   TextField(
                     controller: roleController,
-                    decoration: const InputDecoration(labelText: 'Role'),
+                    decoration: InputDecoration(labelText: 'Role'),
                   ),
                   TextField(
                     controller: emailController,
-                    decoration: const InputDecoration(labelText: 'Email'),
+                    decoration: InputDecoration(labelText: 'Email'),
                   ),
                   TextField(
                     controller: phoneController,
-                    decoration: const InputDecoration(labelText: 'Phone'),
+                    decoration: InputDecoration(labelText: 'Phone'),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Row(
                     children: [
                       Checkbox(
@@ -1352,8 +1352,8 @@ Future<void> _showAddContactDialog(
                           });
                         },
                       ),
-                      const Text('Primary'),
-                      const SizedBox(width: 16),
+                      Text('Primary'),
+                      SizedBox(width: 16),
                       Checkbox(
                         value: isBilling,
                         onChanged: (value) {
@@ -1362,7 +1362,7 @@ Future<void> _showAddContactDialog(
                           });
                         },
                       ),
-                      const Text('Billing'),
+                      Text('Billing'),
                     ],
                   ),
                 ],
@@ -1373,7 +1373,7 @@ Future<void> _showAddContactDialog(
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
                 },
-                child: const Text('Cancel'),
+                child: Text('Cancel'),
               ),
               ElevatedButton(
                 onPressed: () async {
@@ -1403,7 +1403,7 @@ Future<void> _showAddContactDialog(
                     if (context.mounted) {
                       Navigator.of(dialogContext).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text('Contact added'),
                           backgroundColor: AppColors.success,
                         ),
@@ -1420,7 +1420,7 @@ Future<void> _showAddContactDialog(
                     }
                   }
                 },
-                child: const Text('Save'),
+                child: Text('Save'),
               ),
             ],
           );

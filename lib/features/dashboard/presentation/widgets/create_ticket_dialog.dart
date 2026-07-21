@@ -66,9 +66,9 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
       hintText: hint,
       prefixIcon: prefixIcon,
       suffixIcon: suffixIcon,
-      hintStyle: TextStyle(color: AppColors.slate400),
-      border: _outlineBorder(AppColors.slate300),
-      enabledBorder: _outlineBorder(AppColors.slate300),
+      hintStyle: TextStyle(color: context.adaptiveSlate400),
+      border: _outlineBorder(context.adaptiveBorder),
+      enabledBorder: _outlineBorder(context.adaptiveBorder),
       focusedBorder: _outlineBorder(AppColors.primary),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     );
@@ -260,7 +260,7 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
         padding: const EdgeInsets.fromLTRB(24, 48, 24, 16),
         child: Material(
           elevation: 12,
-          color: Colors.white,
+          color: context.isDarkMode ? AppColors.slate900 : Colors.white,
           borderRadius: BorderRadius.circular(16),
           clipBehavior: Clip.antiAlias,
           child: ConstrainedBox(
@@ -279,12 +279,12 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Create New Ticket',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.slate900,
+                              color: context.adaptiveSlate900,
                             ),
                           ),
                           IconButton(
@@ -300,12 +300,12 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
                       // Customer selector
                       Row(
                         children: [
-                          const Text(
+                          Text(
                             'Customer *',
                             style: TextStyle(
                               fontWeight: FontWeight.w500,
                               fontSize: 13,
-                              color: AppColors.slate900,
+                              color: context.adaptiveSlate900,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -408,6 +408,7 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
                                   alignment: Alignment.topLeft,
                                   child: Material(
                                     elevation: 4,
+                                    color: context.isDarkMode ? AppColors.slate800 : Colors.white,
                                     borderRadius: BorderRadius.circular(8),
                                     child: SizedBox(
                                       height: maxHeight,
@@ -446,12 +447,12 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
                                                 );
                                               },
                                             )
-                                          : const Center(
+                                          : Center(
                                               child: Padding(
                                                 padding: EdgeInsets.all(16),
                                                 child: Text(
                                                   'No customers match your search',
-                                                  style: TextStyle(color: AppColors.slate500),
+                                                  style: TextStyle(color: context.adaptiveSlate500),
                                                 ),
                                               ),
                                             ),
@@ -486,11 +487,11 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
                                 },
                               ),
                               const SizedBox(height: 10),
-                              const Text(
+                              Text(
                                 'Phone number will be collected using the field below.',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: AppColors.slate500,
+                                  color: context.adaptiveSlate500,
                                 ),
                               ),
                               const SizedBox(height: 16),
@@ -511,12 +512,12 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
                         ),
 
                       const SizedBox(height: 14),
-                      const Text(
+                      Text(
                         'Subject / Description *',
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
                           fontSize: 13,
-                          color: AppColors.slate900,
+                          color: context.adaptiveSlate900,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -536,12 +537,12 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
                       ),
 
                       const SizedBox(height: 14),
-                      const Text(
+                      Text(
                         'Phone Number',
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
                           fontSize: 13,
-                          color: AppColors.slate900,
+                          color: context.adaptiveSlate900,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -577,11 +578,11 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
                             },
                           ),
                           const SizedBox(width: 6),
-                          const Text(
+                          Text(
                             'Mark as urgent',
                             style: TextStyle(
                               fontWeight: FontWeight.w500,
-                              color: AppColors.slate900,
+                              color: context.adaptiveSlate900,
                             ),
                           ),
                         ],
@@ -599,10 +600,10 @@ class _CreateTicketDialogState extends ConsumerState<CreateTicketDialog> {
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Cancel',
                               style: TextStyle(
-                                color: AppColors.slate600,
+                                color: context.adaptiveSlate500,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),

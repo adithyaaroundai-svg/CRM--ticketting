@@ -56,8 +56,8 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = backgroundColor ?? _getBackgroundColor();
-    final borderSide = border ?? _getBorder();
+    final bgColor = backgroundColor ?? _getBackgroundColor(context);
+    final borderSide = border ?? _getBorder(context);
     final shadows = _getShadows();
 
     return Container(
@@ -75,9 +75,9 @@ class AppCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          hoverColor: isHoverable ? AppColors.surfaceHover : Colors.transparent,
-          splashColor: AppColors.slate200.withValues(alpha: 0.3),
-          highlightColor: AppColors.slate100.withValues(alpha: 0.5),
+          hoverColor: isHoverable ? (Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.05) : AppColors.surfaceHover) : Colors.transparent,
+          splashColor: (Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.slate200).withValues(alpha: 0.1),
+          highlightColor: (Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.slate100).withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: padding ?? const EdgeInsets.all(20),
@@ -88,25 +88,25 @@ class AppCard extends StatelessWidget {
     );
   }
 
-  Color _getBackgroundColor() {
+  Color _getBackgroundColor(BuildContext context) {
     switch (variant) {
       case AppCardVariant.elevated:
-        return AppColors.cardBackground;
+        return context.adaptiveCard;
       case AppCardVariant.outlined:
-        return Colors.white;
+        return context.adaptiveCard;
       case AppCardVariant.filled:
-        return AppColors.slate50;
+        return context.adaptiveSlate50;
       case AppCardVariant.subtle:
         return Colors.transparent;
     }
   }
 
-  BorderSide _getBorder() {
+  BorderSide _getBorder(BuildContext context) {
     switch (variant) {
       case AppCardVariant.elevated:
-        return const BorderSide(color: AppColors.border, width: 1);
+        return BorderSide(color: context.adaptiveSlate200, width: 1);
       case AppCardVariant.outlined:
-        return const BorderSide(color: AppColors.border, width: 1.5);
+        return BorderSide(color: context.adaptiveSlate200, width: 1.5);
       case AppCardVariant.filled:
         return BorderSide.none;
       case AppCardVariant.subtle:

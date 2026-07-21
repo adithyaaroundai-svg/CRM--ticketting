@@ -33,7 +33,7 @@ class CustomerListItem extends ConsumerWidget {
 
     if (!amcActive) {
       healthLabel = 'Critical';
-      healthColor = AppColors.error;
+      healthColor = context.adaptiveError;
     } else if (daysRemaining <= 30) {
       healthLabel = 'At Risk';
       healthColor = AppColors.warning;
@@ -70,7 +70,7 @@ class CustomerListItem extends ConsumerWidget {
     final amcDateLabel = customer.amcExpiryDate != null
         ? dateFormatter.format(customer.amcExpiryDate!)
         : 'Not set';
-    final phoneLabel = customer.primaryPhone ?? 'No phone on file';
+    final phoneLabel = customer.contactPhone ?? customer.primaryPhone ?? 'No phone on file';
 
     return AppCard(
       onTap: onTap,
@@ -98,8 +98,8 @@ class CustomerListItem extends ConsumerWidget {
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: customer.amcExpiryDate != null
-                                  ? AppColors.primary
-                                  : AppColors.slate900,
+                                  ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primary)
+                                  : context.adaptiveSlate900,
                             ),
                           ),
                           if (customer.amcExpiryDate != null)
@@ -115,7 +115,7 @@ class CustomerListItem extends ConsumerWidget {
                               customer.contactPerson!,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: AppColors.slate500,
+                                color: context.adaptiveSlate500,
                               ),
                             ),
                           ],
@@ -127,7 +127,7 @@ class CustomerListItem extends ConsumerWidget {
                       Flexible(
                         child: Align(
                           alignment: Alignment.centerRight,
-                          child: _buildCompactStatusRow(healthLabel, healthColor),
+                          child: _buildCompactStatusRow(context, healthLabel, healthColor),
                         ),
                       ),
                     ],
@@ -135,7 +135,7 @@ class CustomerListItem extends ConsumerWidget {
                     Icon(
                       LucideIcons.chevronRight,
                       size: 18,
-                      color: AppColors.slate400,
+                      color: context.adaptiveSlate400,
                     ),
                   ],
                 ),
@@ -150,7 +150,7 @@ class CustomerListItem extends ConsumerWidget {
                         label: customer.isAmcActive ? 'AMC Active' : 'AMC Expired',
                         color: customer.isAmcActive
                             ? AppColors.success
-                            : AppColors.error,
+                            : context.adaptiveError,
                       ),
                       _buildStatusPill(label: healthLabel, color: healthColor),
                       if (hasPinnedNotes)
@@ -172,34 +172,37 @@ class CustomerListItem extends ConsumerWidget {
                   ),
                   const SizedBox(height: 10),
                   _buildDetailRow(
+                    context,
                     icon: LucideIcons.calendarDays,
                     label: 'AMC expiry',
                     value: amcDateLabel,
                     valueColor:
-                        customer.isAmcActive ? AppColors.slate700 : AppColors.error,
+                        customer.isAmcActive ? context.adaptiveSlate700 : context.adaptiveError,
                   ),
                   const SizedBox(height: 8),
                   _buildDetailRow(
+                    context,
                     icon: LucideIcons.shieldCheck,
                     label: 'AMC status',
                     value: customer.isAmcActive ? 'Active' : 'Expired',
                     valueColor:
-                        customer.isAmcActive ? AppColors.success : AppColors.error,
+                        customer.isAmcActive ? AppColors.success : context.adaptiveError,
                   ),
                   const SizedBox(height: 8),
                   _buildDetailRow(
+                    context,
                     icon: LucideIcons.phone,
                     label: 'Phone',
                     value: phoneLabel,
-                    valueColor: AppColors.slate800,
+                    valueColor: context.adaptiveSlate800,
                   ),
                   if (customer.phoneNumbers.length > 1) ...[
                     const SizedBox(height: 4),
                     Text(
                       'Other numbers: ${customer.phoneNumbers.skip(1).take(2).join(', ')}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.slate500,
+                        color: context.adaptiveSlate500,
                       ),
                     ),
                   ],
@@ -241,11 +244,11 @@ class CustomerListItem extends ConsumerWidget {
     );
   }
 
-  Widget _buildCompactStatusRow(String healthLabel, Color healthColor) {
+  Widget _buildCompactStatusRow(BuildContext context, String healthLabel, Color healthColor) {
     final widgets = <Widget>[
       _buildStatusPill(
         label: customer.isAmcActive ? 'AMC Active' : 'AMC Expired',
-        color: customer.isAmcActive ? AppColors.success : AppColors.error,
+        color: customer.isAmcActive ? AppColors.success : context.adaptiveError,
       ),
       const SizedBox(width: 6),
       _buildStatusPill(label: healthLabel, color: healthColor),
@@ -259,21 +262,23 @@ class CustomerListItem extends ConsumerWidget {
     );
   }
 
-  Widget _buildDetailRow({
+  Widget _buildDetailRow(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
-    Color valueColor = AppColors.slate700,
+    Color? valueColor,
   }) {
+    final effectiveColor = valueColor ?? context.adaptiveSlate700;
     return Row(
       children: [
-        Icon(icon, size: 15, color: AppColors.slate400),
+        Icon(icon, size: 15, color: context.adaptiveSlate500),
         const SizedBox(width: 8),
         Text(
           '$label: ',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
-            color: AppColors.slate500,
+            color: context.adaptiveSlate500,
           ),
         ),
         Expanded(
@@ -281,7 +286,7 @@ class CustomerListItem extends ConsumerWidget {
             value,
             style: TextStyle(
               fontSize: 13,
-              color: valueColor,
+              color: effectiveColor,
               fontWeight: FontWeight.w500,
             ),
           ),

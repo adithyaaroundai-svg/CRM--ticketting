@@ -36,7 +36,7 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
     return MainLayout(
       currentPath: '/customers',
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: context.adaptiveSlate50,
         body: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(

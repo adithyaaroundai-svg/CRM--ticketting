@@ -90,7 +90,7 @@ class _AgentDashboardPageState extends ConsumerState<AgentDashboardPage> {
     return MainLayout(
       currentPath: widget.currentPath,
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: Colors.transparent,
         floatingActionButton: AnimatedCreateTicketFab(
           onPressed: _showCreateTicketDialog,
         ),
@@ -117,11 +117,17 @@ class _AgentDashboardPageState extends ConsumerState<AgentDashboardPage> {
                             icon: const Icon(LucideIcons.hourglass, size: 16),
                             label: const Text('Unclaimed > 1h'),
                             onPressed: () => context.push('/tickets?view=stale_unclaimed'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : null,
+                            ),
                           ),
                           OutlinedButton.icon(
                             icon: const Icon(LucideIcons.alertTriangle, size: 16),
                             label: const Text('Claimed > 12h'),
                             onPressed: () => context.push('/tickets?view=claimed_overdue'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : null,
+                            ),
                           ),
                         ],
                         TextButton.icon(
@@ -136,6 +142,7 @@ class _AgentDashboardPageState extends ConsumerState<AgentDashboardPage> {
                           ),
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
+                            foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : null,
                           ),
                         ),
                         TextButton.icon(
@@ -147,6 +154,7 @@ class _AgentDashboardPageState extends ConsumerState<AgentDashboardPage> {
                           ),
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
+                            foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : null,
                           ),
                         ),
                       ],
@@ -287,14 +295,14 @@ class _UnclaimedTicketsListView extends ConsumerWidget {
             Icon(
               LucideIcons.checkCircle,
               size: 48,
-              color: AppColors.slate300,
+              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
               'No unclaimed tickets',
               style: TextStyle(
                 fontSize: 16,
-                color: AppColors.slate500,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -315,10 +323,10 @@ class _UnclaimedTicketsListView extends ConsumerWidget {
 
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.adaptiveCard,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
-            boxShadow: [
+            border: Border.all(color: context.adaptiveBorder),
+            boxShadow: Theme.of(context).brightness == Brightness.dark ? [] : [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 4,
@@ -348,10 +356,10 @@ class _UnclaimedTicketsListView extends ConsumerWidget {
                                 Expanded(
                                   child: Text(
                                     customer?.companyName ?? 'Unknown Customer',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.primary,
+                                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Theme.of(context).colorScheme.primary,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -388,10 +396,10 @@ class _UnclaimedTicketsListView extends ConsumerWidget {
                             const SizedBox(height: 6),
                             Text(
                               ticket.title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.slate900,
+                                color: Theme.of(context).textTheme.titleSmall?.color ?? Theme.of(context).colorScheme.onSurface,
                               ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -407,18 +415,18 @@ class _UnclaimedTicketsListView extends ConsumerWidget {
                     children: [
                       Text(
                         isAmc ? 'AMC Priority' : 'Standard Ticket',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.slate600,
+                          color: Theme.of(context).textTheme.bodySmall?.color ?? Theme.of(context).colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const Spacer(),
                       Text(
                         _formatDate(ticket.createdAt),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.slate500,
+                          color: Theme.of(context).textTheme.bodySmall?.color ?? Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],

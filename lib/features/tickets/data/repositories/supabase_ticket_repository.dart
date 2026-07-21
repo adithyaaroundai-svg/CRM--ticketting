@@ -57,6 +57,84 @@ class SupabaseTicketRepository implements TicketRepository {
   SupabaseTicketRepository(this._supabase);
 
   @override
+  Stream<Map<String, dynamic>> get ticketEvents {
+    final controller = StreamController<Map<String, dynamic>>.broadcast();
+    late RealtimeChannel channel;
+    
+    controller.onListen = () {
+      channel = _supabase.channel('tickets_global_events').onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'tickets',
+        callback: (payload) {
+          controller.add({
+            'eventType': payload.eventType.name,
+            'newRecord': payload.newRecord,
+            'oldRecord': payload.oldRecord,
+          });
+        }
+      ).subscribe();
+    };
+
+    controller.onCancel = () {
+      _supabase.removeChannel(channel);
+    };
+
+    return controller.stream;
+  }
+
+  @override
+  Future<List<Ticket>> getPaginatedTickets({
+    String? statusFilter,
+    String? priorityFilter,
+    String? assigneeFilter,
+    String? searchQuery,
+    String? currentUserId,
+    DateTime? before,
+    int limit = 50,
+  }) async {
+    var query = _supabase.from('tickets').select();
+
+    // 1. Status Filter
+    if (statusFilter == 'Open') {
+      query = query.inFilter('status', ['New', 'Open', 'In Progress', 'Waiting for Customer', 'BillRaised']);
+    } else if (statusFilter == 'Closed') {
+      query = query.inFilter('status', ['Resolved', 'Closed', 'BillProcessed']);
+    }
+
+    // 2. Priority Filter
+    if (priorityFilter != null && priorityFilter != 'All') {
+      query = query.eq('priority', priorityFilter);
+    }
+
+    // 3. Assignee Filter
+    if (assigneeFilter != null && assigneeFilter != 'all') {
+      if (assigneeFilter == 'unassigned') {
+        query = query.isFilter('assigned_to', null);
+      } else if (assigneeFilter == 'me' && currentUserId != null) {
+        query = query.eq('assigned_to', currentUserId);
+      } else if (assigneeFilter.startsWith('agent:')) {
+        final agentId = assigneeFilter.split(':')[1];
+        query = query.eq('assigned_to', agentId);
+      }
+    }
+
+    // 4. Search Query (using ilike for partial matching)
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      // Assuming 'title' or 'ticket_id' contains the search string
+      query = query.or('title.ilike.%${searchQuery}%,ticket_id.ilike.%${searchQuery}%');
+    }
+
+    // 5. Pagination
+    if (before != null) {
+      query = query.lt('created_at', before.toIso8601String());
+    }
+
+    final data = await query.order('created_at', ascending: false).limit(limit);
+    return data.map((json) => Ticket.fromJson(json)).toList();
+  }
+
+  @override
   Stream<List<Ticket>> getTickets({String? statusFilter}) {
     return _realtimeStream(
       supabase: _supabase,

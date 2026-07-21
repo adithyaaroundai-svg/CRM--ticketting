@@ -173,7 +173,7 @@ class _TallyCustomizationsFormState extends State<TallyCustomizationsForm> {
               'Tally Customizations',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: context.adaptiveSlate900,
               ),
             ),
             const Spacer(),
@@ -192,7 +192,7 @@ class _TallyCustomizationsFormState extends State<TallyCustomizationsForm> {
           const SizedBox(height: 4),
           Text(
             widget.helperText!,
-            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 12, color: context.adaptiveSlate500),
           ),
         ],
         const SizedBox(height: 16),
@@ -209,8 +209,8 @@ class _TallyCustomizationsFormState extends State<TallyCustomizationsForm> {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-          color: Colors.white,
+          border: Border.all(color: context.adaptiveBorder),
+          color: context.adaptiveCard,
         ),
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -243,7 +243,7 @@ class _TallyCustomizationsFormState extends State<TallyCustomizationsForm> {
                       onPressed: index == 0 ? null : () => _removeEntry(index),
                       tooltip: index == 0 ? null : 'Remove module',
                       icon: const Icon(LucideIcons.trash2),
-                      color: AppColors.error,
+                      color: context.adaptiveError,
                     ),
                   ),
                 ),
@@ -259,7 +259,7 @@ class _TallyCustomizationsFormState extends State<TallyCustomizationsForm> {
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
-                  side: const BorderSide(color: AppColors.border),
+                  side: BorderSide(color: context.adaptiveBorder),
                 ),
                 backgroundColor: AppColors.primary.withValues(alpha: 0.04),
                 foregroundColor: AppColors.primary,
@@ -268,9 +268,9 @@ class _TallyCustomizationsFormState extends State<TallyCustomizationsForm> {
               label: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Last Updated On',
-                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    style: TextStyle(fontSize: 11, color: context.adaptiveSlate500),
                   ),
                   Text(
                     entry.lastUpdated != null

@@ -329,6 +329,12 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
     final canManageAssignment = isAdmin ||
         currentUser?.isSupportHead == true ||
         currentUser?.isAgent == true;
+    final roleLower = currentUser?.role.trim().toLowerCase() ?? '';
+    final canClaimTicket = isAdmin ||
+        currentUser?.isSupport == true ||
+        currentUser?.isSupportHead == true ||
+        currentUser?.isAgent == true ||
+        roleLower.contains('support');
     final ticketsAsync = ref.watch(
       singleTicketStreamProvider(widget.ticketId),
     );
@@ -659,6 +665,50 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w500,
                                               ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      if (assigneeName == 'Unassigned') ...[
+                                        const SizedBox(width: 12),
+                                        ElevatedButton.icon(
+                                          onPressed: () async {
+                                            if (currentUser?.id == null) return;
+                                            final success = await ref
+                                                .read(ticketAssignerProvider.notifier)
+                                                .assignTicket(widget.ticketId, currentUser!.id);
+
+                                            if (!mounted) return;
+
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  success
+                                                      ? 'Ticket claimed successfully'
+                                                      : 'Failed to claim ticket',
+                                                ),
+                                                backgroundColor: success
+                                                    ? AppColors.success
+                                                    : AppColors.error,
+                                              ),
+                                            );
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.primary,
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                                            minimumSize: const Size(0, 36),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                          icon: const Icon(LucideIcons.hand, size: 16),
+                                          label: const Text(
+                                            'Claim Ticket',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
                                             ),
                                           ),
                                         ),

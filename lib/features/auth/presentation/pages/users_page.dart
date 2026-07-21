@@ -252,10 +252,19 @@ class _UsersPageState extends ConsumerState<UsersPage> {
   Widget build(BuildContext context) {
     return MainLayout(
       currentPath: '/users',
-      child: Scaffold(
-        backgroundColor: AppColors.slate50,
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+      child: Theme(
+        data: ThemeData.dark(),
+        child: Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -298,11 +307,14 @@ class _UsersPageState extends ConsumerState<UsersPage> {
               if (_canManageUsers) const SizedBox(height: 24),
 
               // Filter Section
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: AppColors.border),
+                  border: Border.all(color: Colors.white12),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+                  ],
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -326,7 +338,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                                     ? 'All Users'
                                     : _getRoleDisplayName(role),
                                 style: TextStyle(
-                                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                  color: isSelected ? AppColors.primary : Colors.white70,
                                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                                 ),
                               ),
@@ -336,10 +348,8 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                                   setState(() => _selectedRole = role);
                                 }
                               },
-                              backgroundColor: Colors.white,
-                              selectedColor: AppColors.primary.withValues(
-                                alpha: 0.1,
-                              ),
+                              backgroundColor: Colors.white12,
+                              selectedColor: AppColors.primary.withOpacity(0.2),
                               checkmarkColor: AppColors.primary,
                             );
                           }).toList(),
@@ -392,11 +402,14 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                     );
                   }
 
-                  return Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(12),
-                      side: const BorderSide(color: AppColors.border),
+                      border: Border.all(color: Colors.white12),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+                      ],
                     ),
                     child: Column(
                       children: filteredUsers.asMap().entries.map((entry) {
@@ -417,6 +430,8 @@ class _UsersPageState extends ConsumerState<UsersPage> {
             ],
           ),
         ),
+      ),
+      ),
       ),
     );
   }
@@ -543,7 +558,7 @@ class _UserTile extends StatelessWidget {
                 )
               : null,
         ),
-        if (!isLast) const Divider(height: 1),
+        if (!isLast) const Divider(height: 1, color: Colors.white12),
       ],
     );
   }

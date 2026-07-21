@@ -83,29 +83,27 @@ class TicketCardWithAmc extends ConsumerWidget {
     if (customerAsync.hasValue && customerAsync.value != null) {
       final customer = Customer.fromJson(customerAsync.value!);
       if (customer.isAmcActive) {
-        cardBackgroundColor = const Color(0xFFDBEAFE); // calm blue background
-        borderColor = const Color(0xFF60A5FA); // blue-400 border
+        cardBackgroundColor = context.isDarkMode ? Colors.blue.withValues(alpha: 0.1) : const Color(0xFFDBEAFE);
+        borderColor = context.isDarkMode ? Colors.blue.withValues(alpha: 0.3) : const Color(0xFF60A5FA);
         ribbonColor = const Color(0xFF1D4ED8); // solid blue ribbon
         ribbonTextColor = Colors.white;
         ribbonLabel = 'AMC Priority';
         ribbonIcon = LucideIcons.sparkles;
       } else {
-        cardBackgroundColor = Colors.white;
-        borderColor = AppColors.border;
+        cardBackgroundColor = context.adaptiveCard;
+        borderColor = context.adaptiveBorder;
       }
     } else if (isPriorityCustomer) {
-      cardBackgroundColor ??= Colors.white;
-      borderColor ??= AppColors.border;
+      cardBackgroundColor ??= context.adaptiveCard;
+      borderColor ??= context.adaptiveBorder;
       ribbonColor ??= const Color(0xFFF1F5F9);
       ribbonTextColor ??= AppColors.slate700;
       ribbonLabel ??= 'Priority';
       ribbonIcon ??= LucideIcons.star;
     }
 
-    final backgroundColor = cardBackgroundColor ?? Colors.white;
-    final bool isDarkSurface =
-        ThemeData.estimateBrightnessForColor(backgroundColor) ==
-        Brightness.dark;
+    final backgroundColor = cardBackgroundColor ?? context.adaptiveCard;
+    final bool isDarkSurface = context.isDarkMode;
     final Color headingColor = isDarkSurface
         ? Colors.white
         : AppColors.slate900;
@@ -165,20 +163,17 @@ class TicketCardWithAmc extends ConsumerWidget {
           color: borderColor ?? AppColors.border,
           width: borderColor != null ? 1.5 : 1,
         ),
-        boxShadow: [
+        boxShadow: isDarkSurface ? [] : [
           BoxShadow(
-            color: isDarkSurface
-                ? Colors.black.withValues(alpha: 0.25)
-                : AppColors.shadowLight,
+            color: AppColors.shadowLight,
             blurRadius: 3,
             offset: const Offset(0, 1),
           ),
-          if (!isDarkSurface)
-            BoxShadow(
-              color: AppColors.shadowLight,
-              blurRadius: 2,
-              offset: const Offset(0, 1),
-            ),
+          BoxShadow(
+            color: AppColors.shadowLight,
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
         ],
       ),
       child: Column(
@@ -434,6 +429,7 @@ class TicketCardWithAmc extends ConsumerWidget {
         ticket.assignedTo == null || ticket.assignedTo!.isEmpty;
 
     final statusPill = _buildMinimalStatusPill(
+      context: context,
       status: ticket.status,
       isUnassigned: isUnassigned,
       isMyTicket: isMyTicket,
@@ -455,7 +451,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                           Icon(
                             LucideIcons.building2,
                             size: 18,
-                            color: AppColors.slate500,
+                            color: context.adaptiveSlate500,
                           ),
                           const SizedBox(width: 6),
                           Expanded(
@@ -478,7 +474,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.slate500,
+                          color: context.adaptiveSlate500,
                         ),
                       ),
               ),
@@ -492,7 +488,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 10.125,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.slate900,
+                        color: context.adaptiveSlate900,
                       ),
                       textAlign: TextAlign.right,
                     ),
@@ -501,7 +497,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                         createdRelative,
                         style: TextStyle(
                           fontSize: 8.625,
-                          color: AppColors.slate600,
+                          color: context.adaptiveSlate600,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -546,7 +542,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.slate600,
+                  color: context.adaptiveSlate600,
                 ),
               ),
             ],
@@ -602,6 +598,7 @@ class TicketCardWithAmc extends ConsumerWidget {
     final isUnassigned =
         ticket.assignedTo == null || ticket.assignedTo!.isEmpty;
     final statusPill = _buildMinimalStatusPill(
+      context: context,
       status: ticket.status,
       isUnassigned: isUnassigned,
       isMyTicket: isMyTicket,
@@ -635,7 +632,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 9.75,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.slate500,
+                            color: context.adaptiveSlate500,
                           ),
                         ),
                 ),
@@ -649,7 +646,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 9.375,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.slate900,
+                          color: context.adaptiveSlate900,
                         ),
                         textAlign: TextAlign.right,
                       ),
@@ -658,7 +655,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                           createdRelative,
                           style: TextStyle(
                             fontSize: 8.25,
-                            color: AppColors.slate600,
+                            color: context.adaptiveSlate600,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -704,7 +701,7 @@ class TicketCardWithAmc extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 9.75,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.slate600,
+                  color: context.adaptiveSlate600,
                 ),
               ),
             ],
@@ -755,6 +752,7 @@ class TicketCardWithAmc extends ConsumerWidget {
   }
 
   Widget? _buildMinimalStatusPill({
+    required BuildContext context,
     required String status,
     required bool isUnassigned,
     required bool isMyTicket,
@@ -766,9 +764,9 @@ class TicketCardWithAmc extends ConsumerWidget {
       return _buildInfoPill(
         icon: LucideIcons.receipt,
         label: 'Billed',
-        iconColor: AppColors.success,
-        textColor: AppColors.success,
-        backgroundColor: AppColors.success.withValues(alpha: 0.12),
+        iconColor: context.isDarkMode ? Colors.green.shade400 : AppColors.success,
+        textColor: context.isDarkMode ? Colors.green.shade400 : AppColors.success,
+        backgroundColor: context.isDarkMode ? Colors.green.shade400.withValues(alpha: 0.12) : AppColors.success.withValues(alpha: 0.12),
       );
     }
 
@@ -776,9 +774,9 @@ class TicketCardWithAmc extends ConsumerWidget {
       return _buildInfoPill(
         icon: LucideIcons.fileText,
         label: 'Bill Raised',
-        iconColor: AppColors.warning,
-        textColor: AppColors.warning,
-        backgroundColor: AppColors.warning.withValues(alpha: 0.12),
+        iconColor: context.isDarkMode ? Colors.red.shade200 : AppColors.warning,
+        textColor: context.isDarkMode ? Colors.red.shade200 : AppColors.warning,
+        backgroundColor: context.isDarkMode ? Colors.red.shade200.withValues(alpha: 0.12) : AppColors.warning.withValues(alpha: 0.12),
       );
     }
 
@@ -786,9 +784,9 @@ class TicketCardWithAmc extends ConsumerWidget {
       return _buildInfoPill(
         icon: LucideIcons.checkCircle,
         label: 'Resolved',
-        iconColor: AppColors.success,
-        textColor: AppColors.success,
-        backgroundColor: AppColors.success.withValues(alpha: 0.12),
+        iconColor: context.isDarkMode ? Colors.green.shade300 : AppColors.success,
+        textColor: context.isDarkMode ? Colors.green.shade300 : AppColors.success,
+        backgroundColor: context.isDarkMode ? Colors.green.shade300.withValues(alpha: 0.12) : AppColors.success.withValues(alpha: 0.12),
       );
     }
 
@@ -808,9 +806,9 @@ class TicketCardWithAmc extends ConsumerWidget {
       return _buildInfoPill(
         icon: LucideIcons.userCheck,
         label: label,
-        iconColor: AppColors.info,
-        textColor: AppColors.info,
-        backgroundColor: AppColors.info.withValues(alpha: 0.12),
+        iconColor: context.isDarkMode ? Colors.blue.shade300 : AppColors.info,
+        textColor: context.isDarkMode ? Colors.blue.shade300 : AppColors.info,
+        backgroundColor: context.isDarkMode ? Colors.blue.shade300.withValues(alpha: 0.12) : AppColors.info.withValues(alpha: 0.12),
       );
     }
 

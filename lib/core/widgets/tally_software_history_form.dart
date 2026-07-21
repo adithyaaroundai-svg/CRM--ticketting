@@ -173,7 +173,7 @@ class _TallySoftwareHistoryFormState extends State<TallySoftwareHistoryForm> {
               'Tally Software History',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: context.adaptiveSlate900,
               ),
             ),
             const Spacer(),
@@ -192,7 +192,7 @@ class _TallySoftwareHistoryFormState extends State<TallySoftwareHistoryForm> {
           const SizedBox(height: 4),
           Text(
             widget.helperText!,
-            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 12, color: context.adaptiveSlate500),
           ),
         ],
         const SizedBox(height: 16),
@@ -210,8 +210,8 @@ class _TallySoftwareHistoryFormState extends State<TallySoftwareHistoryForm> {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-          color: Colors.white,
+          border: Border.all(color: context.adaptiveBorder),
+          color: context.adaptiveCard,
         ),
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -243,7 +243,7 @@ class _TallySoftwareHistoryFormState extends State<TallySoftwareHistoryForm> {
                       onPressed: index == 0 ? null : () => _removeEntry(index),
                       tooltip: index == 0 ? null : 'Remove entry',
                       icon: const Icon(LucideIcons.trash2),
-                      color: AppColors.error,
+                      color: context.adaptiveError,
                     ),
                   ),
                 ),
@@ -256,7 +256,7 @@ class _TallySoftwareHistoryFormState extends State<TallySoftwareHistoryForm> {
                 child: Text(
                   'Valid for',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.adaptiveSlate500,
                   ),
                 ),
               ),
@@ -315,7 +315,7 @@ class _DateButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
-          side: const BorderSide(color: AppColors.border),
+          side: BorderSide(color: context.adaptiveBorder),
         ),
         backgroundColor: AppColors.primary.withValues(alpha: 0.04),
         foregroundColor: AppColors.primary,
@@ -327,7 +327,7 @@ class _DateButton extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 11, color: context.adaptiveSlate500),
           ),
           Text(
             value,

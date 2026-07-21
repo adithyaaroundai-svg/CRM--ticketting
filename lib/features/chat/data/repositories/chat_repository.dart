@@ -8,70 +8,64 @@ class ChatRepository {
 
   ChatRepository(this._client);
 
-  // ── Real-time stream for chat messages — fires on INSERT, UPDATE, DELETE ─────
-  Stream<List<ChatMessage>> getMessages({String? currentUserId, String? chatPartnerId, String channelName = 'support-chat'}) {
-    final controller = StreamController<List<ChatMessage>>.broadcast();
-
-    Future<void> fetch() async {
-      try {
-        final data = await _client
-            .from('chat_messages')
-            .select()
-            .eq('channel', channelName)
-            .order('created_at', ascending: true);
-
-        final messages = data
-            .map((json) => ChatMessage.fromJson(json))
-            .where((msg) {
-              if (chatPartnerId == null) {
-                return msg.receiverId == null;
-              } else {
-                return (msg.senderId == currentUserId && msg.receiverId == chatPartnerId) ||
-                       (msg.senderId == chatPartnerId && msg.receiverId == currentUserId);
-              }
-            })
-            .toList();
-
-        messages.sort((a, b) {
-          final t = a.createdAt.toUtc().compareTo(b.createdAt.toUtc());
-          return t != 0 ? t : a.id.compareTo(b.id);
-        });
-
-        if (!controller.isClosed) controller.add(messages);
-      } catch (e) {
-        if (!controller.isClosed) controller.addError(e);
-      }
+  // ── Paginated fetch for chat messages ────────────────────────────────────────
+  Future<List<ChatMessage>> getPaginatedMessages({
+    String? currentUserId,
+    String? chatPartnerId,
+    String channelName = 'support-chat',
+    DateTime? before,
+    int limit = 30,
+  }) async {
+    var query = _client.from('chat_messages').select();
+    
+    if (chatPartnerId == null) {
+      // Global/Custom channel
+      query = query.eq('channel', channelName).isFilter('receiver_id', null);
+    } else {
+      // DM
+      query = query.or('and(sender_id.eq.$currentUserId,receiver_id.eq.$chatPartnerId),and(sender_id.eq.$chatPartnerId,receiver_id.eq.$currentUserId)');
     }
 
-    // Initial load
-    fetch();
+    if (before != null) {
+      query = query.lt('created_at', before.toIso8601String());
+    }
 
-    // Polling fallback to ensure messages update even if Realtime is disabled
-    Timer? fallbackTimer;
-    fallbackTimer = Timer.periodic(const Duration(seconds: 3), (_) => fetch());
+    // Fetch newest first
+    final data = await query.order('created_at', ascending: false).limit(limit);
 
-    // Subscribe to all changes — INSERT (new message), UPDATE (reaction, delete),
-    // DELETE — fires instantly, no polling delay
+    final messages = data.map((json) => ChatMessage.fromJson(json)).toList();
+    
+    // Sort ascending for UI (oldest to newest)
+    messages.sort((a, b) {
+      final t = a.createdAt.toUtc().compareTo(b.createdAt.toUtc());
+      return t != 0 ? t : a.id.compareTo(b.id);
+    });
+
+    return messages;
+  }
+
+  // ── Realtime subscription for chat messages ──────────────────────────────────
+  RealtimeChannel subscribeToMessages({
+    required String channelName,
+    String? currentUserId,
+    String? chatPartnerId,
+    required void Function(PostgresChangePayload payload) onEvent,
+  }) {
     final realtimeChannelName = chatPartnerId != null
         ? 'chat_dm_${currentUserId}_$chatPartnerId'
         : 'chat_${channelName}';
 
-    final realtimeChannel = _client
+    return _client
         .channel(realtimeChannelName)
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'chat_messages',
-          callback: (_) => fetch(),
+          callback: onEvent,
         )
         .subscribe();
-
-    controller.onCancel = () {
-      fallbackTimer?.cancel();
-      _client.removeChannel(realtimeChannel);
-    };
-    return controller.stream;
   }
+
 
   // Send a message
   Future<String> sendMessage({

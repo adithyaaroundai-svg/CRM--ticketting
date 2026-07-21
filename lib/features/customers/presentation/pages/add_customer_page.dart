@@ -183,7 +183,7 @@ class _AddCustomerPageState extends ConsumerState<AddCustomerPage> {
     return MainLayout(
       currentPath: '/customers/add',
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: context.adaptiveBackground,
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -199,7 +199,7 @@ class _AddCustomerPageState extends ConsumerState<AddCustomerPage> {
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: AppColors.border),
+                  side: BorderSide(color: context.adaptiveBorder),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -295,7 +295,7 @@ class _AddCustomerPageState extends ConsumerState<AddCustomerPage> {
                                           .textTheme
                                           .labelLarge
                                           ?.copyWith(
-                                            color: AppColors.textPrimary,
+                                            color: context.adaptiveSlate900,
                                           ),
                                     ),
                                     IconButton(
@@ -388,8 +388,8 @@ class _AddCustomerPageState extends ConsumerState<AddCustomerPage> {
                                       : 'Select date',
                                   style: TextStyle(
                                     color: _amcExpiryDate != null
-                                        ? AppColors.textPrimary
-                                        : AppColors.textMuted,
+                                        ? context.adaptiveSlate900
+                                        : context.adaptiveSlate500,
                                   ),
                                 ),
                               ),
@@ -408,8 +408,8 @@ class _AddCustomerPageState extends ConsumerState<AddCustomerPage> {
                                       : 'Select date',
                                   style: TextStyle(
                                     color: _tssExpiryDate != null
-                                        ? AppColors.textPrimary
-                                        : AppColors.textMuted,
+                                        ? context.adaptiveSlate900
+                                        : context.adaptiveSlate500,
                                   ),
                                 ),
                               ),

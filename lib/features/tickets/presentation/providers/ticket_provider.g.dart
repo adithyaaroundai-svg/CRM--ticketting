@@ -161,6 +161,86 @@ abstract class _$TicketSearchQuery extends $Notifier<String> {
   }
 }
 
+@ProviderFor(debouncedTicketSearchQuery)
+const debouncedTicketSearchQueryProvider =
+    DebouncedTicketSearchQueryProvider._();
+
+final class DebouncedTicketSearchQueryProvider
+    extends $FunctionalProvider<fr.AsyncValue<String>, String, FutureOr<String>>
+    with $FutureModifier<String>, $FutureProvider<String> {
+  const DebouncedTicketSearchQueryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'debouncedTicketSearchQueryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$debouncedTicketSearchQueryHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<String> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<String> create(Ref ref) {
+    return debouncedTicketSearchQuery(ref);
+  }
+}
+
+String _$debouncedTicketSearchQueryHash() =>
+    r'b302112ebf834ff7c70c3c168ef765ef14e3dd87';
+
+@ProviderFor(PaginatedTickets)
+const paginatedTicketsProvider = PaginatedTicketsProvider._();
+
+final class PaginatedTicketsProvider
+    extends $AsyncNotifierProvider<PaginatedTickets, List<Ticket>> {
+  const PaginatedTicketsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'paginatedTicketsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$paginatedTicketsHash();
+
+  @$internal
+  @override
+  PaginatedTickets create() => PaginatedTickets();
+}
+
+String _$paginatedTicketsHash() => r'f38a5f4785a9916064fa914558d706035b1bdf67';
+
+abstract class _$PaginatedTickets extends $AsyncNotifier<List<Ticket>> {
+  FutureOr<List<Ticket>> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref = this.ref as $Ref<fr.AsyncValue<List<Ticket>>, List<Ticket>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<fr.AsyncValue<List<Ticket>>, List<Ticket>>,
+              fr.AsyncValue<List<Ticket>>,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
 @ProviderFor(TicketPriorityFilter)
 const ticketPriorityFilterProvider = TicketPriorityFilterProvider._();
 

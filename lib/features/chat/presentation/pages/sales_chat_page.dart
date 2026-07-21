@@ -20,7 +20,11 @@ class _SalesChatPageState extends ConsumerState<SalesChatPage> {
   @override
   Widget build(BuildContext context) {
     final currentPath = GoRouterState.of(context).uri.toString();
-    final tab = int.tryParse(GoRouterState.of(context).uri.queryParameters['tab'] ?? '0') ?? 0;
+    final tab =
+        int.tryParse(
+          GoRouterState.of(context).uri.queryParameters['tab'] ?? '0',
+        ) ??
+        0;
 
     Widget content;
     switch (tab) {
@@ -61,50 +65,57 @@ class _SalesChatPageState extends ConsumerState<SalesChatPage> {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: AppColors.slate200),
                         ),
-                        child: const Icon(LucideIcons.refreshCw, size: 16, color: AppColors.slate500),
+                        child: const Icon(
+                          LucideIcons.refreshCw,
+                          size: 16,
+                          color: AppColors.slate500,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (_) => const CreateLeadDialog(),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => const CreateLeadDialog(),
+                        );
+                      },
                       borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          LucideIcons.plus,
-                          size: 16,
-                          color: Colors.white,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
                         ),
-                        SizedBox(width: 6),
-                        Text(
-                          'Create a Lead',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                            fontSize: 13,
-                          ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ],
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              LucideIcons.plus,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'Create a Lead',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              ], // close Row children
+                ], // close Row children
               ), // close Row
             ), // close Positioned
           ],
@@ -150,4 +161,3 @@ class _PipelineTab extends ConsumerWidget {
     return const LeadsPage(isEmbedded: true);
   }
 }
-

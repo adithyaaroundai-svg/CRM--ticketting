@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../features/auth/presentation/providers/auth_provider.dart';
 import '../theme/app_colors.dart';
+import '../theme/theme_provider.dart';
 
 import '../../../features/tickets/presentation/providers/ticket_provider.dart';
 import '../../../features/customers/presentation/providers/customer_provider.dart';
@@ -491,6 +492,9 @@ class _TopNav extends ConsumerWidget {
             currentUser?.isSupportHead == true);
 
     final unreadCount = ref.watch(chatUnreadCountProvider);
+    final overdueCount = ref.watch(overdueClaimedTicketsProvider).asData?.value.length ?? 0;
+    final staleCount = ref.watch(staleUnclaimedTicketsProvider).asData?.value.length ?? 0;
+    final alertCount = overdueCount + staleCount;
 
     // Main navigation items (left side)
     final isSalesChannel = currentPath.startsWith('/sales-channel');
@@ -597,7 +601,14 @@ class _TopNav extends ConsumerWidget {
 
     final rightNavItems = <Widget>[
       if (enableNotifications)
-        _TopNavButton(label: 'Alerts', icon: LucideIcons.bell, onTap: () {}),
+        _TopNavButton(
+          label: 'Alerts',
+          icon: LucideIcons.bell,
+          badgeCount: alertCount,
+          onTap: () {
+            context.go('/alerts');
+          }
+        ),
       if (enableGlobalSearch)
         _TopNavButton(
           label: 'Search',
@@ -838,10 +849,14 @@ class _TopNav extends ConsumerWidget {
       ],
     ];
 
+    final themeType = ref.watch(themeProvider);
+    final isPinkTheme = themeType == AppThemeType.pink;
+
     return Container(
       height: 64,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        color: isPinkTheme ? AppColors.pinkThemeNav : null,
+        gradient: isPinkTheme ? null : const LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
           colors: [AppColors.primaryDark, AppColors.slate900],
@@ -1273,11 +1288,13 @@ class _TopNavButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
+  final int badgeCount;
 
   const _TopNavButton({
     required this.label,
     required this.icon,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   @override
@@ -1314,6 +1331,12 @@ class _TopNavButton extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (badgeCount > 0) ...[
+                  const SizedBox(width: 6),
+                  Badge(
+                    label: Text(badgeCount.toString()),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1661,8 +1684,16 @@ class _BottomNav extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(authProvider);
+    final overdueCount = ref.watch(overdueClaimedTicketsProvider).asData?.value.length ?? 0;
+    final staleCount = ref.watch(staleUnclaimedTicketsProvider).asData?.value.length ?? 0;
+    final alertCount = overdueCount + staleCount;
 
-    final appSettings = ref
+        final themeMode = ref.watch(themeProvider);
+    final isDark = themeMode == ThemeMode.dark ||
+        (themeMode == ThemeMode.system &&
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+
+final appSettings = ref
         .watch(appSettingsProvider)
         .maybeWhen(data: (value) => value, orElse: () => null);
 
@@ -1903,16 +1934,24 @@ class _BottomNav extends ConsumerWidget {
     // Always add Alerts to More menu
     if (!isAccountant && !isRestrictedAgent) {
       moreDestinations.add(
-        const NavigationDestination(
-          icon: Icon(LucideIcons.alertTriangle),
-          selectedIcon: Icon(
-            LucideIcons.alertTriangle,
-            color: AppColors.primary,
+        NavigationDestination(
+          icon: Badge(
+            isLabelVisible: alertCount > 0,
+            label: Text(alertCount.toString()),
+            child: const Icon(LucideIcons.alertTriangle),
+          ),
+          selectedIcon: Badge(
+            isLabelVisible: alertCount > 0,
+            label: Text(alertCount.toString()),
+            child: const Icon(
+              LucideIcons.alertTriangle,
+              color: AppColors.primary,
+            ),
           ),
           label: 'Alerts',
         ),
       );
-      moreRoutes.add('/alerts/unclaimed');
+      moreRoutes.add('/alerts');
     }
 
     // Always add Reminder to More menu
@@ -1936,14 +1975,32 @@ class _BottomNav extends ConsumerWidget {
       );
       moreRoutes.add('/users');
     }
+    // Add Theme Toggle to More menu
+    moreDestinations.add(
+      NavigationDestination(
+        icon: Icon(isDark ? LucideIcons.sun : LucideIcons.moon),
+        selectedIcon: Icon(isDark ? LucideIcons.sun : LucideIcons.moon, color: AppColors.primary),
+        label: isDark ? 'Light Mode' : 'Dark Mode',
+      ),
+    );
+    moreRoutes.add('__theme__');
+
 
     // Add 'More' button to visible items
     visibleDestinations.add(
-      const NavigationDestination(
-        icon: Icon(LucideIcons.moreHorizontal),
-        selectedIcon: Icon(
-          LucideIcons.moreHorizontal,
-          color: AppColors.primary,
+      NavigationDestination(
+        icon: Badge(
+          isLabelVisible: alertCount > 0,
+          label: Text(alertCount.toString()),
+          child: const Icon(LucideIcons.moreHorizontal),
+        ),
+        selectedIcon: Badge(
+          isLabelVisible: alertCount > 0,
+          label: Text(alertCount.toString()),
+          child: const Icon(
+            LucideIcons.moreHorizontal,
+            color: AppColors.primary,
+          ),
         ),
         label: 'More',
       ),
@@ -1982,7 +2039,7 @@ class _BottomNav extends ConsumerWidget {
         onDestinationSelected: (index) {
           if (index == visibleDestinations.length - 1 &&
               moreDestinations.isNotEmpty) {
-            _showMoreMenu(context, moreDestinations, moreRoutes, currentPath);
+            _showMoreMenu(context, ref, moreDestinations, moreRoutes, currentPath);
           } else if (visibleRoutes[index] == '__search__') {
             showDialog(
               context: context,
@@ -1999,6 +2056,7 @@ class _BottomNav extends ConsumerWidget {
 
   void _showMoreMenu(
     BuildContext context,
+    WidgetRef ref,
     List<NavigationDestination> destinations,
     List<String> routes,
     String currentPath,
@@ -2054,6 +2112,12 @@ class _BottomNav extends ConsumerWidget {
                         context: context,
                         builder: (_) => const _GlobalSearchDialog(),
                       );
+                    } else if (route == '__theme__') {
+                      final currentTheme = ref.read(themeProvider);
+                      final nextTheme = currentTheme == AppThemeType.white
+                          ? AppThemeType.blueGradient
+                          : AppThemeType.white;
+                      ref.read(themeProvider.notifier).setTheme(nextTheme);
                     } else if (route == '__reminder__') {
                       showDialog(
                         context: context,
@@ -2093,7 +2157,7 @@ class _BottomNav extends ConsumerWidget {
     }
     // Handle alerts routes
     if (current.startsWith('/alerts/')) {
-      final alertsIndex = routes.indexOf('/alerts/unclaimed');
+      final alertsIndex = routes.indexOf('/alerts');
       if (alertsIndex != -1) return alertsIndex;
     }
     // Admin, Accountant, Support dashboards map to '/'
@@ -2167,33 +2231,69 @@ class _UserProfile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(authProvider);
+    final themeMode = ref.watch(themeProvider);
+    final isDark = themeMode == ThemeMode.dark;
 
-    return Tooltip(
-      message:
-          '${currentUser?.fullName ?? 'User'} (${currentUser?.role ?? 'Role'})',
-      child: IconButton(
-        icon: CircleAvatar(
-          radius: 16,
-          backgroundColor: AppColors.primary,
-          backgroundImage: currentUser?.avatarUrl != null
-              ? NetworkImage(currentUser!.avatarUrl!)
-              : null,
-          child: currentUser?.avatarUrl == null
-              ? Text(
-                  currentUser?.fullName.substring(0, 1).toUpperCase() ?? 'U',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                )
-              : null,
-        ),
-        onPressed: () => context.go('/profile'),
-        tooltip:
-            '${currentUser?.fullName ?? 'User'} (${currentUser?.role ?? 'Role'})',
-        padding: const EdgeInsets.all(8),
+    return PopupMenuButton<int>(
+      tooltip: '${currentUser?.fullName ?? 'User'} (${currentUser?.role ?? 'Role'})',
+      offset: const Offset(0, 48),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      icon: CircleAvatar(
+        radius: 16,
+        backgroundColor: AppColors.primary,
+        backgroundImage: currentUser?.avatarUrl != null
+            ? NetworkImage(currentUser!.avatarUrl!)
+            : null,
+        child: currentUser?.avatarUrl == null
+            ? Text(
+                currentUser?.fullName.substring(0, 1).toUpperCase() ?? 'U',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              )
+            : null,
       ),
+      onSelected: (value) {
+        if (value == 0) {
+          context.go('/profile');
+        } else if (value == 1) {
+          final currentTheme = ref.read(themeProvider);
+          final nextTheme = currentTheme == AppThemeType.white
+              ? AppThemeType.blueGradient
+              : AppThemeType.white;
+          ref.read(themeProvider.notifier).setTheme(nextTheme);
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 0,
+          child: Row(
+            children: [
+              Icon(LucideIcons.user, size: 18, color: AppColors.slate700),
+              SizedBox(width: 12),
+              Text('My Profile'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 1,
+          child: Row(
+            children: [
+              Icon(isDark ? LucideIcons.moon : LucideIcons.sun, size: 18, color: AppColors.slate700),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Dark Mode')),
+              IgnorePointer(
+                child: Switch(
+                  value: isDark,
+                  onChanged: (_) {},
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -2207,9 +2307,13 @@ class _LeftNav extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final themeType = ref.watch(themeProvider);
+    final isPinkTheme = themeType == AppThemeType.pink;
+
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        color: isPinkTheme ? AppColors.pinkThemeSidebar : null,
+        gradient: isPinkTheme ? null : const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [AppColors.primaryDark, AppColors.slate900],
@@ -2350,14 +2454,18 @@ class _CollapsibleTicketPane extends ConsumerWidget {
       children: [
         // Collapsed arrow strip — only visible when pane is closed
         if (!isOpen)
-          Container(
-            width: 24,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [AppColors.primaryDark, AppColors.slate900],
-              ),
+          Consumer(
+            builder: (context, ref, _) {
+              final isPinkTheme = ref.watch(themeProvider) == AppThemeType.pink;
+              return Container(
+                width: 24,
+                decoration: BoxDecoration(
+                  color: isPinkTheme ? AppColors.pinkThemeSidebar : null,
+                  gradient: isPinkTheme ? null : const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [AppColors.primaryDark, AppColors.slate900],
+                  ),
               border: Border(
                 right: BorderSide(color: Color(0x1AFFFFFF), width: 1),
               ),
@@ -2375,8 +2483,10 @@ class _CollapsibleTicketPane extends ConsumerWidget {
                   ),
                 ),
               ),
-            ),
-          ),
+              ),
+            );
+          },
+        ),
         // Expanded pane — animated
         AnimatedContainer(
           duration: const Duration(milliseconds: 220),
@@ -2405,10 +2515,14 @@ class _SecondLeftNav extends ConsumerWidget {
     final isSalesChannel = currentPath.startsWith('/sales-channel');
     final sectionTitle = isSalesChannel ? 'Recent Sales' : 'Recent Tickets';
 
+    final themeType = ref.watch(themeProvider);
+    final isPinkTheme = themeType == AppThemeType.pink;
+
     return Container(
       width: 240,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        color: isPinkTheme ? AppColors.pinkThemeSidebar : null,
+        gradient: isPinkTheme ? null : const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [AppColors.primaryDark, AppColors.slate900],
@@ -3083,28 +3197,71 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
                               ),
                               child: Row(
                                 children: [
-                                  Stack(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 12,
-                                        backgroundColor: avatarColor,
-                                        backgroundImage:
-                                            agent['avatar_url'] != null
-                                            ? NetworkImage(agent['avatar_url'])
-                                            : null,
-                                        child: agent['avatar_url'] == null
-                                            ? Text(
-                                                name.isNotEmpty
-                                                    ? name[0].toUpperCase()
-                                                    : '?',
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              )
-                                            : null,
-                                      ),
+                                  // Avatar — tap to show profile menu
+                                  GestureDetector(
+                                    onTapUp: (details) {
+                                      final avatarUrl = agent['avatar_url'] as String?;
+                                      showMenu(
+                                        context: context,
+                                        position: RelativeRect.fromLTRB(
+                                          details.globalPosition.dx,
+                                          details.globalPosition.dy,
+                                          details.globalPosition.dx + 1,
+                                          details.globalPosition.dy + 1,
+                                        ),
+                                        color: const Color(0xFF1E293B),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                          side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+                                        ),
+                                        items: [
+                                          PopupMenuItem(
+                                            enabled: avatarUrl != null,
+                                            onTap: avatarUrl != null
+                                                ? () => _showProfilePicture(context, name, avatarUrl, avatarColor)
+                                                : null,
+                                            child: Row(
+                                              children: [
+                                                Icon(LucideIcons.userCircle2, size: 16,
+                                                    color: avatarUrl != null ? Colors.white : Colors.white38),
+                                                const SizedBox(width: 10),
+                                                Text('View Profile Picture',
+                                                    style: TextStyle(
+                                                        color: avatarUrl != null ? Colors.white : Colors.white38,
+                                                        fontSize: 13)),
+                                              ],
+                                            ),
+                                          ),
+                                          PopupMenuItem(
+                                            onTap: () => context.push('/chat/dm/${agent['id']}'),
+                                            child: const Row(
+                                              children: [
+                                                Icon(LucideIcons.messageSquare, size: 16, color: Colors.white),
+                                                SizedBox(width: 10),
+                                                Text('Send Message',
+                                                    style: TextStyle(color: Colors.white, fontSize: 13)),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                    child: Stack(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 12,
+                                          backgroundColor: avatarColor,
+                                          backgroundImage: agent['avatar_url'] != null
+                                              ? NetworkImage(agent['avatar_url'])
+                                              : null,
+                                          child: agent['avatar_url'] == null
+                                              ? Text(
+                                                  name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                                  style: const TextStyle(
+                                                      fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+                                                )
+                                              : null,
+                                        ),
                                       Positioned(
                                         right: 0,
                                         bottom: 0,
@@ -3125,8 +3282,9 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
                                           ),
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ],  // Stack children
+                                  ),  // Stack
+                                  ),  // GestureDetector
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
@@ -3146,7 +3304,7 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary,
+                                        color: AppColors.error,
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(
@@ -3160,11 +3318,11 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
                                         ),
                                       ),
                                     ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
+                                ],  // Row children
+                              ),  // Row
+                            ),  // Container
+                          ),  // InkWell
+                        );  // Material
                       },
                     );
                   },
@@ -3232,6 +3390,62 @@ class _RecentSalesPlaceholder extends StatelessWidget {
       ),
     );
   }
+}
+
+// -- Profile Picture Viewer -----------------------------------------------
+
+void _showProfilePicture(
+  BuildContext context,
+  String name,
+  String avatarUrl,
+  Color fallbackColor,
+) {
+  showDialog(
+    context: context,
+    barrierColor: Colors.black87,
+    builder: (ctx) => Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Name label
+          Text(
+            name,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Avatar - large circle
+          CircleAvatar(
+            radius: 120,
+            backgroundColor: fallbackColor,
+            backgroundImage: NetworkImage(avatarUrl),
+          ),
+          const SizedBox(height: 24),
+          // Close button
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+              ),
+              child: const Text(
+                'Close',
+                style: TextStyle(color: Colors.white, fontSize: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // -- Recent Tickets List Widget -------------------------------------------

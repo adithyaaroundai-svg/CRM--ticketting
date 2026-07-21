@@ -154,12 +154,12 @@ class AppTheme {
     return FlexThemeData.dark(
       colors: const FlexSchemeColor(
         primary: AppColors.primaryLight,
-        primaryContainer: AppColors.slate800,
+        primaryContainer: AppColors.slate700,
         secondary: AppColors.slate400,
-        secondaryContainer: AppColors.slate700,
+        secondaryContainer: AppColors.slate600,
         tertiary: AppColors.accentLight,
-        tertiaryContainer: AppColors.slate800,
-        appBarColor: AppColors.slate900,
+        tertiaryContainer: AppColors.slate700,
+        appBarColor: Colors.transparent,
         error: AppColors.error,
       ),
       surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
@@ -190,13 +190,13 @@ class AppTheme {
       swapLegacyOnMaterial3: true,
       fontFamily: GoogleFonts.inter().fontFamily,
     ).copyWith(
-      scaffoldBackgroundColor: AppColors.slate950,
+      scaffoldBackgroundColor: Colors.transparent,
       cardTheme: CardThemeData(
-        color: AppColors.slate900,
+        color: Colors.white.withValues(alpha: 0.05),
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: AppColors.slate700, width: 1),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1),
         ),
       ),
       dialogTheme: DialogThemeData(

@@ -107,12 +107,12 @@ class _CustomerNotesSectionState extends ConsumerState<CustomerNotesSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Pinned Notes',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppColors.slate900,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 16),
@@ -121,9 +121,9 @@ class _CustomerNotesSectionState extends ConsumerState<CustomerNotesSection> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.slate50,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,18 +135,18 @@ class _CustomerNotesSectionState extends ConsumerState<CustomerNotesSection> {
                   hintText: 'Add an internal note about this customer...',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.border),
+                    borderSide: BorderSide(color: Theme.of(context).dividerColor),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.border),
+                    borderSide: BorderSide(color: Theme.of(context).dividerColor),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.primary),
+                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
                   ),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: context.adaptiveCard,
                 ),
               ),
               const SizedBox(height: 12),
@@ -160,9 +160,9 @@ class _CustomerNotesSectionState extends ConsumerState<CustomerNotesSection> {
                       });
                     },
                   ),
-                  const Text(
+                  Text(
                     'Pin this note',
-                    style: TextStyle(fontSize: 12, color: AppColors.slate700),
+                    style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                   const Spacer(),
                   AppButton(
@@ -190,12 +190,12 @@ class _CustomerNotesSectionState extends ConsumerState<CustomerNotesSection> {
                     Icon(
                       LucideIcons.stickyNote,
                       size: 48,
-                      color: AppColors.slate300,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       'No notes yet',
-                      style: TextStyle(color: AppColors.slate500, fontSize: 14),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14),
                     ),
                   ],
                 ),
@@ -220,9 +220,9 @@ class _CustomerNotesSectionState extends ConsumerState<CustomerNotesSection> {
                 return Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border),
+                    color: context.adaptiveCard,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Theme.of(context).dividerColor),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,13 +232,13 @@ class _CustomerNotesSectionState extends ConsumerState<CustomerNotesSection> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
+                            child: Icon(
                               LucideIcons.user,
                               size: 16,
-                              color: AppColors.primary,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -249,9 +249,9 @@ class _CustomerNotesSectionState extends ConsumerState<CustomerNotesSection> {
                                 agentAsync.when(
                                   data: (agentData) => Text(
                                     agentData?['username'] ?? 'Unknown User',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.slate900,
+                                      color: Theme.of(context).colorScheme.onSurface,
                                     ),
                                   ),
                                   loading: () => const Text('Loading...'),
@@ -259,9 +259,9 @@ class _CustomerNotesSectionState extends ConsumerState<CustomerNotesSection> {
                                 ),
                                 Text(
                                   createdAt.toLocal().toString(),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.slate500,
+                                    color: context.adaptiveSlate500,
                                   ),
                                 ),
                               ],
@@ -273,7 +273,7 @@ class _CustomerNotesSectionState extends ConsumerState<CustomerNotesSection> {
                               size: 16,
                               color: isPinned
                                   ? AppColors.warning
-                                  : AppColors.slate400,
+                                  : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                             ),
                             tooltip: isPinned ? 'Unpin' : 'Pin',
                             onPressed: () =>
@@ -284,9 +284,9 @@ class _CustomerNotesSectionState extends ConsumerState<CustomerNotesSection> {
                       const SizedBox(height: 12),
                       Text(
                         note['note'] as String,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
-                          color: AppColors.slate700,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           height: 1.5,
                         ),
                       ),

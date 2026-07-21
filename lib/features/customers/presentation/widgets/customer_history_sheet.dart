@@ -1,4 +1,3 @@
-import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,20 +25,20 @@ class CustomerHistoryPage extends ConsumerWidget {
     return MainLayout(
       currentPath: '/customer/$customerId/history',
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: context.adaptiveSlate50,
         appBar: AppBar(
           titleSpacing: 24,
-          backgroundColor: Colors.white,
+          backgroundColor: context.adaptiveCard,
           elevation: 0,
           leading: IconButton(
             onPressed: () => context.push('/customer/$customerId'),
-            icon: const Icon(Icons.arrow_back),
+            icon: Icon(Icons.arrow_back),
             style: IconButton.styleFrom(
-              backgroundColor: AppColors.slate100,
-              foregroundColor: AppColors.slate700,
+              backgroundColor: context.adaptiveSlate100,
+              foregroundColor: context.adaptiveSlate700,
             ),
           ),
-          title: const Column(
+          title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -47,23 +46,23 @@ class CustomerHistoryPage extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.slate900,
+                  color: context.adaptiveSlate900,
                 ),
               ),
               SizedBox(height: 2),
               Text(
                 'Billing status, tickets, support context',
-                style: TextStyle(fontSize: 12, color: AppColors.slate500),
+                style: TextStyle(fontSize: 12, color: context.adaptiveSlate500),
               ),
             ],
           ),
         ),
         body: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           child: customerAsync.when(
             data: (customer) {
               if (customer == null) {
-                return const _ErrorNotice('Customer not found');
+                return _ErrorNotice('Customer not found');
               }
 
               return ticketsAsync.when(
@@ -89,22 +88,22 @@ class CustomerHistoryPage extends ConsumerWidget {
                     );
 
                   if (customerTickets.isEmpty) {
-                    return const _EmptyHistory();
+                    return _EmptyHistory();
                   }
 
                   return ListView(
                     children: [
                       _HeaderSummary(customer: customer),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       _SummaryRow(tickets: customerTickets),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       _BillingStatusCard(tickets: customerTickets),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       _RecentAgentsSection(
                         tickets: customerTickets,
                         agentNames: agentNames,
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       _RecentTicketsSection(
                         tickets: customerTickets,
                         agentNames: agentNames,
@@ -112,11 +111,11 @@ class CustomerHistoryPage extends ConsumerWidget {
                     ],
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => Center(child: CircularProgressIndicator()),
                 error: (err, _) => _ErrorNotice('Failed to load history: $err'),
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => Center(child: CircularProgressIndicator()),
             error: (err, _) => _ErrorNotice('Error: $err'),
           ),
         ),
@@ -135,7 +134,7 @@ class _ErrorNotice extends StatelessWidget {
     return Center(
       child: Text(
         message,
-        style: const TextStyle(color: AppColors.error),
+        style: TextStyle(color: AppColors.error),
         textAlign: TextAlign.center,
       ),
     );
@@ -149,22 +148,22 @@ class _EmptyHistory extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: const [
-        Icon(LucideIcons.history, size: 48, color: AppColors.slate300),
+      children: [
+        Icon(LucideIcons.history, size: 48, color: context.adaptiveSlate300),
         SizedBox(height: 12),
         Text(
           'No ticket history yet',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: AppColors.slate700,
+            color: context.adaptiveSlate700,
           ),
         ),
         SizedBox(height: 4),
         Text(
           'We will show ticket and billing details as soon as support work starts for this customer.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.slate500),
+          style: TextStyle(color: context.adaptiveSlate500),
         ),
       ],
     );
@@ -179,11 +178,11 @@ class _HeaderSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.adaptiveCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate200),
+        border: Border.all(color: context.adaptiveSlate200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,18 +195,18 @@ class _HeaderSummary extends StatelessWidget {
                   children: [
                     Text(
                       customer.companyName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.slate900,
+                        color: context.adaptiveSlate900,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       customer.contactPerson ?? 'No contact person',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.slate600,
+                        color: context.adaptiveSlate600,
                       ),
                     ),
                   ],
@@ -222,18 +221,18 @@ class _HeaderSummary extends StatelessWidget {
                         ? AppColors.success
                         : AppColors.error,
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   _StatusChip(
                     label: customer.isTssActive ? 'TSS active' : 'TSS expired',
                     color: customer.isTssActive
                         ? AppColors.primary
-                        : AppColors.slate400,
+                        : context.adaptiveSlate400,
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Wrap(
             spacing: 10,
             runSpacing: 8,
@@ -271,21 +270,21 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.slate100,
+        color: context.adaptiveSlate100,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.slate500),
-          const SizedBox(width: 6),
+          Icon(icon, size: 14, color: context.adaptiveSlate500),
+          SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: AppColors.slate700,
+              color: context.adaptiveSlate700,
             ),
           ),
         ],
@@ -326,7 +325,7 @@ class _SummaryRow extends StatelessWidget {
             iconColor: AppColors.primary,
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Expanded(
           child: _StatCard(
             label: 'Open / Pending',
@@ -335,7 +334,7 @@ class _SummaryRow extends StatelessWidget {
             iconColor: AppColors.warning,
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Expanded(
           child: _StatCard(
             label: 'Bills pending',
@@ -369,48 +368,48 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.slate100),
-        color: Colors.white,
+        border: Border.all(color: context.adaptiveSlate100),
+        color: context.adaptiveCard,
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: iconColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 16, color: iconColor),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.slate900,
+                    color: context.adaptiveSlate900,
                   ),
                 ),
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.slate500,
+                    color: context.adaptiveSlate500,
                   ),
                 ),
                 if (subtitle != null)
                   Text(
                     subtitle!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.slate600,
+                      color: context.adaptiveSlate600,
                     ),
                   ),
               ],
@@ -456,7 +455,7 @@ class _BillingStatusCard extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         color: bgColor,
@@ -464,27 +463,27 @@ class _BillingStatusCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            padding: EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: context.adaptiveCard,
               shape: BoxShape.circle,
             ),
             child: Icon(LucideIcons.wallet, color: color, size: 18),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Billing status',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.slate600,
+                    color: context.adaptiveSlate600,
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   statusText,
                   style: TextStyle(
@@ -521,7 +520,7 @@ class _RecentAgentsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final handlers = LinkedHashSet<String>();
+    final handlers = <String>{};
     for (final ticket in tickets) {
       final assignedId = ticket.assignedTo;
       if (assignedId == null || assignedId.isEmpty) continue;
@@ -531,27 +530,27 @@ class _RecentAgentsSection extends StatelessWidget {
     }
 
     if (handlers.isEmpty) {
-      return const SizedBox.shrink();
+      return SizedBox.shrink();
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          children: const [
-            Icon(LucideIcons.users, size: 16, color: AppColors.slate500),
+          children: [
+            Icon(LucideIcons.users, size: 16, color: context.adaptiveSlate500),
             SizedBox(width: 8),
             Text(
               'Support agents involved',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.slate800,
+                color: context.adaptiveSlate800,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -559,17 +558,17 @@ class _RecentAgentsSection extends StatelessWidget {
               .map(
                 (name) => Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(999),
-                    color: AppColors.slate100,
+                    color: context.adaptiveSlate100,
                   ),
                   child: Text(
                     name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate700,
+                      color: context.adaptiveSlate700,
                     ),
                   ),
                 ),
@@ -598,20 +597,20 @@ class _RecentTicketsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          children: const [
-            Icon(LucideIcons.listChecks, size: 16, color: AppColors.slate500),
+          children: [
+            Icon(LucideIcons.listChecks, size: 16, color: context.adaptiveSlate500),
             SizedBox(width: 8),
             Text(
               'Recent tickets',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.slate800,
+                color: context.adaptiveSlate800,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         ...recent.map((ticket) => _TicketCard(
               ticket: ticket,
               agentName: _resolveAgentName(ticket, agentNames),
@@ -640,15 +639,15 @@ class _TicketCard extends StatelessWidget {
         ? dateFormatter.format(ticket.createdAt!.toLocal())
         : 'Unknown date';
     final billingLabel = _billingLabel(ticket);
-    final billingColor = _billingColor(ticket);
+    final billingColor = _billingColor(context, ticket);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.slate100),
-        color: Colors.white,
+        border: Border.all(color: context.adaptiveSlate100),
+        color: context.adaptiveCard,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -659,58 +658,58 @@ class _TicketCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   ticket.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.slate900,
+                    color: context.adaptiveSlate900,
                   ),
                 ),
               ),
               _StatusChip(
                 label: _formatStatus(ticket.status),
-                color: _statusColor(ticket.status),
+                color: _statusColor(context, ticket.status),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Row(
             children: [
-              Icon(LucideIcons.hash, size: 13, color: AppColors.slate400),
-              const SizedBox(width: 6),
+              Icon(LucideIcons.hash, size: 13, color: context.adaptiveSlate400),
+              SizedBox(width: 6),
               Text(
                 ticket.ticketId,
-                style: const TextStyle(fontSize: 11, color: AppColors.slate600),
+                style: TextStyle(fontSize: 11, color: context.adaptiveSlate600),
               ),
-              const Spacer(),
-              Icon(LucideIcons.calendar, size: 13, color: AppColors.slate400),
-              const SizedBox(width: 6),
+              Spacer(),
+              Icon(LucideIcons.calendar, size: 13, color: context.adaptiveSlate400),
+              SizedBox(width: 6),
               Text(
                 createdLabel,
-                style: const TextStyle(fontSize: 11, color: AppColors.slate600),
+                style: TextStyle(fontSize: 11, color: context.adaptiveSlate600),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Row(
             children: [
-              Icon(LucideIcons.userCheck, size: 13, color: AppColors.slate400),
-              const SizedBox(width: 6),
+              Icon(LucideIcons.userCheck, size: 13, color: context.adaptiveSlate400),
+              SizedBox(width: 6),
               Expanded(
                 child: Text(
                   'Handled by $agentName',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: AppColors.slate700,
+                    color: context.adaptiveSlate700,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Row(
             children: [
               Icon(LucideIcons.wallet, size: 13, color: billingColor),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Text(
                 billingLabel,
                 style: TextStyle(
@@ -720,7 +719,7 @@ class _TicketCard extends StatelessWidget {
                 ),
               ),
               if (ticket.billAmount != null) ...[
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Text(
                   '₹${ticket.billAmount!.toStringAsFixed(2)}',
                   style: TextStyle(fontSize: 11, color: billingColor),
@@ -740,7 +739,7 @@ class _TicketCard extends StatelessWidget {
     );
   }
 
-  static Color _statusColor(String status) {
+  static Color _statusColor(BuildContext context, String status) {
     switch (status) {
       case 'Closed':
       case 'Resolved':
@@ -756,7 +755,7 @@ class _TicketCard extends StatelessWidget {
       case 'BillRaised':
         return AppColors.warning;
       default:
-        return AppColors.slate500;
+        return context.adaptiveSlate500;
     }
   }
 
@@ -772,7 +771,7 @@ class _TicketCard extends StatelessWidget {
     }
   }
 
-  static Color _billingColor(Ticket ticket) {
+  static Color _billingColor(BuildContext context, Ticket ticket) {
     switch (ticket.status) {
       case 'BillRaised':
         return AppColors.warning;
@@ -780,7 +779,7 @@ class _TicketCard extends StatelessWidget {
       case 'Closed':
         return AppColors.success;
       default:
-        return AppColors.slate500;
+        return context.adaptiveSlate500;
     }
   }
 }
@@ -794,7 +793,7 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),

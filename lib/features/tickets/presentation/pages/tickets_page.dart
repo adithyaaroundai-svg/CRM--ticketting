@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../../../core/design_system/theme/app_colors.dart';
 
 import 'package:flutter/material.dart';
 
@@ -138,7 +139,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
       currentPath: currentPath,
 
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: Colors.transparent,
 
         body: _buildBody(
           isSupport: isSupport,
@@ -156,32 +157,32 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
       children: [
         // Header Area with Segmented Control
         Container(
-          color: Colors.white,
+          color: context.adaptiveCard,
 
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: LayoutBuilder(
                 builder: (context, constraints) {
               final isMobile = constraints.maxWidth < 700;
               final heading = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Tickets',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate800,
+                      color: context.adaptiveSlate800,
                       letterSpacing: -0.3,
                     ),
                   ),
-                  const Text(
+                  Text(
                     'Manage your queues',
                     style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.slate500,
+                      color: context.adaptiveSlate500,
                     ),
                   ),
                 ],
@@ -189,73 +190,73 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
 
               final buttons = [
                 OutlinedButton.icon(
-                  icon: const Icon(LucideIcons.hourglass, size: 16),
-                  label: const Text('Unclaimed > 1h'),
+                  icon: Icon(LucideIcons.hourglass, size: 16),
+                  label: Text('Unclaimed > 1h'),
                   onPressed: () =>
                       context.push('/tickets?view=stale_unclaimed'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.slate700,
-                    side: const BorderSide(color: AppColors.slate300),
-                    padding: const EdgeInsets.symmetric(
+                    foregroundColor: context.adaptiveSlate700,
+                    side: BorderSide(color: context.adaptiveSlate300),
+                    padding: EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 8,
                     ),
-                    textStyle: const TextStyle(
+                    textStyle: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
                 OutlinedButton.icon(
-                  icon: const Icon(LucideIcons.alertTriangle, size: 16),
-                  label: const Text('Claimed > 12h'),
+                  icon: Icon(LucideIcons.alertTriangle, size: 16),
+                  label: Text('Claimed > 12h'),
                   onPressed: () =>
                       context.push('/tickets?view=claimed_overdue'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.slate700,
-                    side: const BorderSide(color: AppColors.slate300),
-                    padding: const EdgeInsets.symmetric(
+                    foregroundColor: context.adaptiveSlate700,
+                    side: BorderSide(color: context.adaptiveSlate300),
+                    padding: EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 8,
                     ),
-                    textStyle: const TextStyle(
+                    textStyle: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
                 OutlinedButton.icon(
-                  icon: const Icon(LucideIcons.users, size: 16),
-                  label: const Text('Active Claimed'),
+                  icon: Icon(LucideIcons.users, size: 16),
+                  label: Text('Active Claimed'),
                   onPressed: () => context.push('/active-claimed'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.slate700,
-                    side: const BorderSide(color: AppColors.slate300),
-                    padding: const EdgeInsets.symmetric(
+                    foregroundColor: context.adaptiveSlate700,
+                    side: BorderSide(color: context.adaptiveSlate300),
+                    padding: EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 8,
                     ),
-                    textStyle: const TextStyle(
+                    textStyle: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
                 OutlinedButton.icon(
-                  icon: const Icon(
+                  icon: Icon(
                     LucideIcons.layoutDashboard,
                     size: 16,
                   ),
-                  label: const Text('Support Dashboard'),
+                  label: Text('Support Dashboard'),
                   onPressed: () => context.go('/support'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.slate700,
-                    side: const BorderSide(color: AppColors.slate300),
-                    padding: const EdgeInsets.symmetric(
+                    foregroundColor: context.adaptiveSlate700,
+                    side: BorderSide(color: context.adaptiveSlate300),
+                    padding: EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 8,
                     ),
-                    textStyle: const TextStyle(
+                    textStyle: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -266,37 +267,39 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      height: 32,
-                      padding: const EdgeInsets.all(3),
+                      height: 28,
+                      padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
-                        color: AppColors.slate100,
+                        color: context.adaptiveSlate100,
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppColors.slate200),
+                        border: Border.all(color: context.adaptiveBorder),
                       ),
                       child: TabBar(
                         controller: _customerCategoryTabController,
                         isScrollable: true,
-                        labelColor: AppColors.slate900,
-                        unselectedLabelColor: AppColors.slate500,
+                        labelColor: context.adaptiveSlate900,
+                        unselectedLabelColor: context.adaptiveSlate500,
                         labelStyle: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
                         ),
                         indicator: BoxDecoration(
-                          color: Colors.white,
+                          color: context.adaptiveCard,
                           borderRadius: BorderRadius.circular(4),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 2,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
+                          boxShadow: context.isDarkMode
+                              ? []
+                              : [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.04),
+                                    blurRadius: 2,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
                         ),
                         dividerColor: Colors.transparent,
                         indicatorSize: TabBarIndicatorSize.tab,
                         labelPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
+                          horizontal: 10,
                         ),
                         tabs: const [
                           Tab(text: 'Normal'),
@@ -313,19 +316,19 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     heading,
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: buttons
                             .map((b) => Padding(
-                                  padding: const EdgeInsets.only(right: 12),
+                                  padding: EdgeInsets.only(right: 12),
                                   child: b,
                                 ))
                             .toList(),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                   ],
                 );
               } else {
@@ -347,7 +350,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                   ],
                 );
               }
@@ -362,34 +365,32 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
         Expanded(
           child: Consumer(
             builder: (context, ref, child) {
-              final ticketsAsync = ref.watch(ticketsStreamProvider);
+              final ticketsAsync = ref.watch(paginatedTicketsProvider);
 
               return ticketsAsync.when(
                 data: (tickets) {
                   return Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(20),
 
                     child: TicketsTableView(
                       tickets: tickets,
-
                       showAllTickets: true,
-
                       showOnlyMine: false,
-
                       showOnlyUnclaimed: false,
-
                       groupResolved: true,
+                      hasMore: ref.read(paginatedTicketsProvider.notifier).hasMore,
+                      onLoadMore: () => ref.read(paginatedTicketsProvider.notifier).loadMore(),
                     ),
                   );
                 },
 
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => Center(child: CircularProgressIndicator()),
 
                 error: (error, stack) => Center(
                   child: Text(
                     'Error loading tickets: $error',
 
-                    style: const TextStyle(color: AppColors.error),
+                    style: TextStyle(color: AppColors.error),
                   ),
                 ),
               );
@@ -455,9 +456,9 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                 return Column(
                   children: [
                     Container(
-                      color: Colors.white,
+                      color: context.adaptiveCard,
 
-                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                      padding: EdgeInsets.fromLTRB(24, 24, 24, 0),
 
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -467,7 +468,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                             crossAxisAlignment: CrossAxisAlignment.start,
 
                             children: [
-                              const Text(
+                              Text(
                                 'Claimed > 12h',
 
                                 style: TextStyle(
@@ -475,18 +476,18 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
 
                                   fontWeight: FontWeight.w600,
 
-                                  color: AppColors.slate900,
+                                  color: context.adaptiveSlate900,
                                 ),
                               ),
 
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
 
                               Text(
                                 'Claimed tickets not resolved/billed for more than 12 hours',
 
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: AppColors.slate500,
+                                  color: context.adaptiveSlate500,
                                 ),
                               ),
                             ],
@@ -497,14 +498,14 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
 
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.all(24),
+                        padding: EdgeInsets.all(24),
 
                         child: tickets.isEmpty
                             ? Container(
-                                padding: const EdgeInsets.all(32),
+                                padding: EdgeInsets.all(32),
 
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: context.adaptiveCard,
 
                                   borderRadius: BorderRadius.circular(12),
 
@@ -514,11 +515,11 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
 
-                                  children: const [
+                                  children: [
                                     Icon(
                                       LucideIcons.sparkles,
                                       size: 48,
-                                      color: AppColors.slate300,
+                                      color: context.adaptiveSlate300,
                                     ),
 
                                     SizedBox(height: 16),
@@ -527,7 +528,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                                       'No claimed tickets overdue by 12h',
 
                                       style: TextStyle(
-                                        color: Color(0xFF64748B),
+                                        color: context.adaptiveSlate600,
                                         fontSize: 16,
                                       ),
                                     ),
@@ -535,7 +536,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                                 ),
                               )
                             : ListView(
-                                padding: const EdgeInsets.symmetric(
+                                padding: EdgeInsets.symmetric(
                                   vertical: 12,
                                 ),
 
@@ -545,7 +546,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                                         'Overdue Claimed Tickets (${tickets.length})',
                                   ),
 
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
 
                                   for (final t in tickets)
                                     _TicketListEntry(
@@ -567,13 +568,13 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                 );
               },
 
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => Center(child: CircularProgressIndicator()),
 
               error: (error, _) => Center(
                 child: Text(
                   'Error: $error',
 
-                  style: const TextStyle(color: AppColors.error),
+                  style: TextStyle(color: AppColors.error),
                 ),
               ),
             );
@@ -619,9 +620,9 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
     return Column(
       children: [
         Container(
-          color: Colors.white,
+          color: context.adaptiveCard,
 
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+          padding: EdgeInsets.fromLTRB(24, 24, 24, 0),
 
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -631,7 +632,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
 
                 children: [
-                  const Text(
+                  Text(
                     'My Tickets',
 
                     style: TextStyle(
@@ -639,38 +640,38 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
 
                       fontWeight: FontWeight.w600,
 
-                      color: AppColors.slate900,
+                      color: context.adaptiveSlate900,
                     ),
                   ),
 
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
 
                   Text(
                     'Manage your ticket queue',
 
-                    style: TextStyle(fontSize: 12, color: AppColors.slate500),
+                    style: TextStyle(fontSize: 12, color: context.adaptiveSlate500),
                   ),
                 ],
               ),
 
               OutlinedButton.icon(
-                icon: const Icon(LucideIcons.users, size: 16),
+                icon: Icon(LucideIcons.users, size: 16),
 
-                label: const Text('Active Claimed'),
+                label: Text('Active Claimed'),
 
                 onPressed: () => context.push('/active-claimed'),
 
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.slate700,
+                  foregroundColor: context.adaptiveSlate700,
 
-                  side: const BorderSide(color: AppColors.slate300),
+                  side: BorderSide(color: context.adaptiveSlate300),
 
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 8,
                   ),
 
-                  textStyle: const TextStyle(
+                  textStyle: TextStyle(
                     fontSize: 12,
 
                     fontWeight: FontWeight.w600,
@@ -686,7 +687,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
             builder: (context, constraints) {
               if (constraints.maxWidth > 800) {
                 return Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: EdgeInsets.all(24),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -699,7 +700,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                               title: 'Normal Customers',
                               subtitle: 'Regular tickets',
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             Expanded(
                               child: const TicketsView(
                                 showAllTickets: false,
@@ -715,7 +716,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                           ],
                         ),
                       ),
-                      const SizedBox(width: 24),
+                      SizedBox(width: 24),
                       // Right: AMC Customers Tickets
                       Expanded(
                         child: Column(
@@ -725,7 +726,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                               title: 'AMC Customers',
                               subtitle: 'Priority tickets',
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             Expanded(
                               child: const TicketsView(
                                 showAllTickets: false,
@@ -798,7 +799,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
   Widget _buildInProgressParallelView() {
     return Consumer(
       builder: (context, ref, child) {
-        final ticketsAsync = ref.watch(ticketsStreamProvider);
+        final ticketsAsync = ref.watch(paginatedTicketsProvider);
 
         final currentUser = ref.watch(authProvider);
 
@@ -858,9 +859,9 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
             return Column(
               children: [
                 Container(
-                  color: Colors.white,
+                  color: context.adaptiveCard,
 
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                  padding: EdgeInsets.fromLTRB(24, 24, 24, 0),
 
                   child: Row(
                     children: [
@@ -869,7 +870,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                           crossAxisAlignment: CrossAxisAlignment.start,
 
                           children: [
-                            const Text(
+                            Text(
                               'In Progress Tickets',
 
                               style: TextStyle(
@@ -877,11 +878,11 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
 
                                 fontWeight: FontWeight.w600,
 
-                                color: AppColors.slate900,
+                                color: context.adaptiveSlate900,
                               ),
                             ),
 
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
 
                             Text(
                               'Tickets currently being worked on',
@@ -889,7 +890,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                               style: TextStyle(
                                 fontSize: 12,
 
-                                color: AppColors.slate500,
+                                color: context.adaptiveSlate500,
                               ),
                             ),
                           ],
@@ -913,14 +914,14 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                           }
                         },
 
-                        icon: const Icon(Icons.arrow_back),
+                        icon: Icon(Icons.arrow_back),
 
                         tooltip: 'Back to Dashboard',
 
                         style: IconButton.styleFrom(
-                          backgroundColor: AppColors.slate100,
+                          backgroundColor: context.adaptiveSlate100,
 
-                          foregroundColor: AppColors.slate700,
+                          foregroundColor: context.adaptiveSlate700,
                         ),
                       ),
                     ],
@@ -929,7 +930,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
 
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(24),
 
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -947,7 +948,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                                 subtitle: 'Regular customer tickets',
                               ),
 
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
 
                               Expanded(
                                 child: _buildTicketList(
@@ -964,7 +965,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                           ),
                         ),
 
-                        const SizedBox(width: 24),
+                        SizedBox(width: 24),
 
                         // Middle: Priority Customer Tickets
                         Expanded(
@@ -978,7 +979,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                                 subtitle: 'AMC customer tickets',
                               ),
 
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
 
                               Expanded(
                                 child: _buildTicketList(
@@ -996,7 +997,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                         ),
 
                         if (showAssignmentDesk) ...[
-                          const SizedBox(width: 24),
+                          SizedBox(width: 24),
 
                           // Right: Agent assignment sidebar
                           SizedBox(
@@ -1019,7 +1020,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
             );
           },
 
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => Center(child: CircularProgressIndicator()),
 
           error: (error, stack) => Center(child: Text('Error: $error')),
         );
@@ -1113,9 +1114,9 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
             return Column(
               children: [
                 Container(
-                  color: Colors.white,
+                  color: context.adaptiveCard,
 
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                  padding: EdgeInsets.fromLTRB(24, 24, 24, 0),
 
                   child: Row(
                     children: [
@@ -1124,7 +1125,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                           crossAxisAlignment: CrossAxisAlignment.start,
 
                           children: [
-                            const Text(
+                            Text(
                               'My Tickets',
 
                               style: TextStyle(
@@ -1132,11 +1133,11 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
 
                                 fontWeight: FontWeight.w600,
 
-                                color: AppColors.slate900,
+                                color: context.adaptiveSlate900,
                               ),
                             ),
 
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
 
                             Text(
                               'Tickets assigned to you',
@@ -1144,12 +1145,12 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                               style: TextStyle(
                                 fontSize: 12,
 
-                                color: AppColors.slate500,
+                                color: context.adaptiveSlate500,
                               ),
                             ),
 
                             if (assignedCount > 0) ...[
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
 
                               Wrap(
                                 spacing: 8,
@@ -1212,14 +1213,14 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                           }
                         },
 
-                        icon: const Icon(Icons.arrow_back),
+                        icon: Icon(Icons.arrow_back),
 
                         tooltip: 'Back to Dashboard',
 
                         style: IconButton.styleFrom(
-                          backgroundColor: AppColors.slate100,
+                          backgroundColor: context.adaptiveSlate100,
 
-                          foregroundColor: AppColors.slate700,
+                          foregroundColor: context.adaptiveSlate700,
                         ),
                       ),
                     ],
@@ -1228,7 +1229,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
 
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(24),
 
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1246,7 +1247,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                                 subtitle: 'Regular customer tickets',
                               ),
 
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
 
                               Expanded(
                                 child: _buildTicketList(
@@ -1263,7 +1264,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                           ),
                         ),
 
-                        const SizedBox(width: 24),
+                        SizedBox(width: 24),
 
                         // Middle: Priority Customer Tickets
                         Expanded(
@@ -1277,7 +1278,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                                 subtitle: 'AMC customer tickets',
                               ),
 
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
 
                               Expanded(
                                 child: _buildTicketList(
@@ -1295,7 +1296,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                         ),
 
                         if (showAssignmentDesk) ...[
-                          const SizedBox(width: 24),
+                          SizedBox(width: 24),
 
                           SizedBox(
                             width: 320,
@@ -1317,7 +1318,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
             );
           },
 
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => Center(child: CircularProgressIndicator()),
 
           error: (error, stack) => Center(child: Text('Error: $error')),
         );
@@ -1328,7 +1329,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
   Widget _buildUnclaimedParallelView() {
     return Consumer(
       builder: (context, ref, child) {
-        final ticketsAsync = ref.watch(ticketsStreamProvider);
+        final ticketsAsync = ref.watch(paginatedTicketsProvider);
 
         return ticketsAsync.when(
           data: (allTickets) {
@@ -1363,9 +1364,9 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
             return Column(
               children: [
                 Container(
-                  color: Colors.white,
+                  color: context.adaptiveCard,
 
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                  padding: EdgeInsets.fromLTRB(24, 24, 24, 0),
 
                   child: Row(
                     children: [
@@ -1374,7 +1375,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                           crossAxisAlignment: CrossAxisAlignment.start,
 
                           children: [
-                            const Text(
+                            Text(
                               'Unclaimed Tickets',
 
                               style: TextStyle(
@@ -1382,11 +1383,11 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
 
                                 fontWeight: FontWeight.w600,
 
-                                color: AppColors.slate900,
+                                color: context.adaptiveSlate900,
                               ),
                             ),
 
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
 
                             Text(
                               'Available tickets for assignment',
@@ -1394,7 +1395,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                               style: TextStyle(
                                 fontSize: 12,
 
-                                color: AppColors.slate500,
+                                color: context.adaptiveSlate500,
                               ),
                             ),
                           ],
@@ -1418,14 +1419,14 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                           }
                         },
 
-                        icon: const Icon(Icons.arrow_back),
+                        icon: Icon(Icons.arrow_back),
 
                         tooltip: 'Back to Dashboard',
 
                         style: IconButton.styleFrom(
-                          backgroundColor: AppColors.slate100,
+                          backgroundColor: context.adaptiveSlate100,
 
-                          foregroundColor: AppColors.slate700,
+                          foregroundColor: context.adaptiveSlate700,
                         ),
                       ),
                     ],
@@ -1434,7 +1435,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
 
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(24),
 
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1452,7 +1453,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                                 subtitle: 'Regular tickets',
                               ),
 
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
 
                               Expanded(
                                 child: _buildTicketList(
@@ -1465,7 +1466,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                           ),
                         ),
 
-                        const SizedBox(width: 24),
+                        SizedBox(width: 24),
 
                         // Right: Priority Tickets
                         Expanded(
@@ -1479,7 +1480,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                                 subtitle: 'AMC customers',
                               ),
 
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
 
                               Expanded(
                                 child: _buildTicketList(
@@ -1499,13 +1500,13 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
             );
           },
 
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => Center(child: CircularProgressIndicator()),
 
           error: (err, _) => Center(
             child: Text(
               'Error loading tickets: $err',
 
-              style: const TextStyle(color: AppColors.error),
+              style: TextStyle(color: AppColors.error),
             ),
           ),
         );
@@ -1554,10 +1555,10 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
 
         if (filteredTickets.isEmpty) {
           return Container(
-            padding: const EdgeInsets.all(32),
+            padding: EdgeInsets.all(32),
 
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.adaptiveCard,
 
               borderRadius: BorderRadius.circular(12),
 
@@ -1574,13 +1575,13 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
                   color: Colors.grey[300],
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
 
                 Text(
                   'No ${isPriority ? 'priority' : 'normal'} tickets',
 
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
+                  style: TextStyle(
+                    color: context.adaptiveSlate600,
 
                     fontSize: 16,
                   ),
@@ -1596,6 +1597,8 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
           showOnlyMine: false,
           groupResolved: false,
           isUnclaimedTab: false,
+          hasMore: ref.read(paginatedTicketsProvider.notifier).hasMore,
+          onLoadMore: () => ref.read(paginatedTicketsProvider.notifier).loadMore(),
         );
       },
     );
@@ -1621,7 +1624,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
 
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
@@ -1641,7 +1644,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
 
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
 
           Text(
             value.toString(),
@@ -1649,7 +1652,7 @@ class _TicketsPageState extends ConsumerState<TicketsPage>
             style: TextStyle(color: color, fontWeight: FontWeight.w700),
           ),
 
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
 
           Text(
             label,
@@ -1727,10 +1730,10 @@ class _AgentAssignmentSidebarState
         .length;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(18),
 
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.adaptiveCard,
 
         borderRadius: BorderRadius.circular(16),
 
@@ -1753,7 +1756,7 @@ class _AgentAssignmentSidebarState
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Assignment Desk',
 
@@ -1762,19 +1765,19 @@ class _AgentAssignmentSidebarState
 
                     fontWeight: FontWeight.w700,
 
-                    color: AppColors.slate900,
+                    color: context.adaptiveSlate900,
                   ),
                 ),
               ),
 
               Container(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 4,
                 ),
 
                 decoration: BoxDecoration(
-                  color: AppColors.slate100,
+                  color: context.adaptiveSlate100,
 
                   borderRadius: BorderRadius.circular(999),
                 ),
@@ -1782,12 +1785,12 @@ class _AgentAssignmentSidebarState
                 child: Text(
                   '${widget.claimedTickets.length} active',
 
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
 
                     fontWeight: FontWeight.w600,
 
-                    color: AppColors.slate600,
+                    color: context.adaptiveSlate600,
                   ),
                 ),
               ),
@@ -1801,7 +1804,7 @@ class _AgentAssignmentSidebarState
 
                     size: 18,
 
-                    color: AppColors.slate600,
+                    color: context.adaptiveSlate600,
                   ),
 
                   onPressed: () {
@@ -1812,14 +1815,14 @@ class _AgentAssignmentSidebarState
 
                   tooltip: _isExpanded ? 'Collapse' : 'Expand',
 
-                  padding: const EdgeInsets.all(4),
+                  padding: EdgeInsets.all(4),
 
                   constraints: const BoxConstraints(),
                 ),
             ],
           ),
 
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
 
           Wrap(
             spacing: 8,
@@ -1845,7 +1848,7 @@ class _AgentAssignmentSidebarState
             ],
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           Expanded(
             child: agentsAsync.when(
@@ -1861,7 +1864,7 @@ class _AgentAssignmentSidebarState
                 return ListView.separated(
                   itemCount: visibleTickets.length,
 
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  separatorBuilder: (_, __) => SizedBox(height: 12),
 
                   itemBuilder: (context, index) {
                     final ticket = visibleTickets[index];
@@ -1880,14 +1883,14 @@ class _AgentAssignmentSidebarState
                         : 'Unknown';
 
                     return Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: EdgeInsets.all(12),
 
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
 
                         border: Border.all(color: AppColors.slate200),
 
-                        color: AppColors.slate50,
+                        color: context.adaptiveSlate50,
                       ),
 
                       child: Column(
@@ -1901,16 +1904,16 @@ class _AgentAssignmentSidebarState
 
                             overflow: TextOverflow.ellipsis,
 
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
 
                               fontWeight: FontWeight.w600,
 
-                              color: AppColors.slate900,
+                              color: context.adaptiveSlate900,
                             ),
                           ),
 
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
 
                           Row(
                             children: [
@@ -1919,26 +1922,26 @@ class _AgentAssignmentSidebarState
 
                                 size: 14,
 
-                                color: AppColors.slate500,
+                                color: context.adaptiveSlate500,
                               ),
 
-                              const SizedBox(width: 6),
+                              SizedBox(width: 6),
 
                               Expanded(
                                 child: Text(
                                   'Assigned to $agentName',
 
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
 
-                                    color: AppColors.slate600,
+                                    color: context.adaptiveSlate600,
                                   ),
                                 ),
                               ),
                             ],
                           ),
 
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6),
 
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1950,26 +1953,26 @@ class _AgentAssignmentSidebarState
                                 children: [
                                   _buildStatusPill(status),
 
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
 
                                   Icon(
                                     LucideIcons.clock3,
 
                                     size: 12,
 
-                                    color: AppColors.slate400,
+                                    color: context.adaptiveSlate400,
                                   ),
 
-                                  const SizedBox(width: 4),
+                                  SizedBox(width: 4),
 
                                   Flexible(
                                     child: Text(
                                       createdLabel,
 
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 11,
 
-                                        color: AppColors.slate500,
+                                        color: context.adaptiveSlate500,
                                       ),
 
                                       overflow: TextOverflow.ellipsis,
@@ -1979,7 +1982,7 @@ class _AgentAssignmentSidebarState
                               ),
 
                               if (_canReassign) ...[
-                                const SizedBox(height: 6),
+                                SizedBox(height: 6),
 
                                 Align(
                                   alignment: Alignment.centerRight,
@@ -1991,16 +1994,16 @@ class _AgentAssignmentSidebarState
                                       size: 14,
                                     ),
 
-                                    label: const Text('Reassign'),
+                                    label: Text('Reassign'),
 
                                     style: TextButton.styleFrom(
                                       foregroundColor: AppColors.primary,
 
-                                      padding: const EdgeInsets.symmetric(
+                                      padding: EdgeInsets.symmetric(
                                         horizontal: 6,
                                       ),
 
-                                      textStyle: const TextStyle(fontSize: 12),
+                                      textStyle: TextStyle(fontSize: 12),
                                     ),
 
                                     onPressed: () => _showReassignSheet(
@@ -2024,7 +2027,7 @@ class _AgentAssignmentSidebarState
                 );
               },
 
-              loading: () => const Center(
+              loading: () => Center(
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
 
@@ -2032,7 +2035,7 @@ class _AgentAssignmentSidebarState
                 child: Text(
                   'Failed to load agents\n$err',
 
-                  style: const TextStyle(color: AppColors.error),
+                  style: TextStyle(color: AppColors.error),
 
                   textAlign: TextAlign.center,
                 ),
@@ -2052,7 +2055,7 @@ class _AgentAssignmentSidebarState
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
 
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
@@ -2072,7 +2075,7 @@ class _AgentAssignmentSidebarState
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
 
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
 
           Text(
             value,
@@ -2080,7 +2083,7 @@ class _AgentAssignmentSidebarState
             style: TextStyle(color: color, fontWeight: FontWeight.w700),
           ),
 
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
 
           Text(
             label,
@@ -2120,7 +2123,7 @@ class _AgentAssignmentSidebarState
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
 
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
@@ -2147,28 +2150,28 @@ class _AgentAssignmentSidebarState
       mainAxisAlignment: MainAxisAlignment.center,
 
       children: [
-        Icon(LucideIcons.layoutGrid, color: AppColors.slate300, size: 32),
+        Icon(LucideIcons.layoutGrid, color: context.adaptiveSlate300, size: 32),
 
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
 
-        const Text(
+        Text(
           'No assigned tickets',
 
           style: TextStyle(
             fontWeight: FontWeight.w600,
 
-            color: AppColors.slate600,
+            color: context.adaptiveSlate600,
           ),
         ),
 
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
 
-        const Text(
+        Text(
           'Claim or assign tickets to see them here.',
 
           textAlign: TextAlign.center,
 
-          style: TextStyle(color: AppColors.slate500, fontSize: 12),
+          style: TextStyle(color: context.adaptiveSlate500, fontSize: 12),
         ),
       ],
     );
@@ -2205,7 +2208,7 @@ class _AgentAssignmentSidebarState
       builder: (ctx) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
 
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2216,14 +2219,14 @@ class _AgentAssignmentSidebarState
                 Text(
                   'Reassign "${ticket.title}"',
 
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
 
                     fontWeight: FontWeight.w700,
                   ),
                 ),
 
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
 
                 ...visibleAgents.map(
                   (agent) => ListTile(
@@ -2235,7 +2238,7 @@ class _AgentAssignmentSidebarState
                       (agent['role'] as String?)?.toUpperCase() ?? '',
                     ),
 
-                    trailing: const Icon(LucideIcons.arrowRight),
+                    trailing: Icon(LucideIcons.arrowRight),
 
                     onTap: () async {
                       Navigator.of(ctx).pop();
@@ -2347,12 +2350,12 @@ class _TicketSearchFieldState extends ConsumerState<TicketSearchField> {
       decoration: InputDecoration(
         hintText: 'Search tickets…',
 
-        prefixIcon: const Icon(Icons.search, size: 18),
+        prefixIcon: Icon(Icons.search, size: 18),
 
         suffixIcon: _controller.text.isEmpty
             ? null
             : IconButton(
-                icon: const Icon(Icons.clear, size: 18),
+                icon: Icon(Icons.clear, size: 18),
 
                 onPressed: _clear,
               ),
@@ -2361,9 +2364,9 @@ class _TicketSearchFieldState extends ConsumerState<TicketSearchField> {
 
         filled: true,
 
-        fillColor: Colors.white,
+        fillColor: context.adaptiveCard,
 
-        contentPadding: const EdgeInsets.symmetric(
+        contentPadding: EdgeInsets.symmetric(
           horizontal: 12,
 
           vertical: 10,
@@ -2570,7 +2573,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.adaptiveCard,
 
         borderRadius: BorderRadius.circular(12),
 
@@ -2607,17 +2610,17 @@ class _TicketsViewState extends ConsumerState<TicketsView>
             ),
           ),
 
-          indicatorPadding: const EdgeInsets.symmetric(
+          indicatorPadding: EdgeInsets.symmetric(
             horizontal: 4,
 
             vertical: 4,
           ),
 
-          labelColor: Colors.white,
+          labelColor: context.adaptiveCard,
 
           unselectedLabelColor: AppColors.slate500,
 
-          labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+          labelStyle: TextStyle(fontWeight: FontWeight.w600),
 
           tabs: const [
             Tab(
@@ -2649,7 +2652,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
   Widget build(BuildContext context) {
     super.build(context);
 
-    final ticketsAsync = ref.watch(ticketsStreamProvider);
+    final ticketsAsync = ref.watch(paginatedTicketsProvider);
 
     final currentUser = ref.watch(authProvider);
 
@@ -2701,7 +2704,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
     return Padding(
       padding: widget.forcedCustomerCategory != null
           ? EdgeInsets.zero
-          : const EdgeInsets.all(16),
+          : EdgeInsets.all(16),
 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2716,7 +2719,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                   crossAxisAlignment: CrossAxisAlignment.start,
 
                   children: [
-                    const Text(
+                    Text(
                       'All Tickets',
 
                       style: TextStyle(
@@ -2724,18 +2727,18 @@ class _TicketsViewState extends ConsumerState<TicketsView>
 
                         fontWeight: FontWeight.w600,
 
-                        color: AppColors.slate800,
+                        color: context.adaptiveSlate800,
 
                         letterSpacing: -0.3,
                       ),
                     ),
 
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
 
                     Text(
                       'Support queue overview',
 
-                      style: TextStyle(fontSize: 12, color: AppColors.slate500),
+                      style: TextStyle(fontSize: 12, color: context.adaptiveSlate500),
                     ),
                   ],
                 ),
@@ -2746,17 +2749,17 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                   icon: Icon(
                     LucideIcons.x,
                     size: 14,
-                    color: AppColors.slate500,
+                    color: context.adaptiveSlate500,
                   ),
 
                   label: Text(
                     'Clear all filters',
 
-                    style: TextStyle(fontSize: 12, color: AppColors.slate500),
+                    style: TextStyle(fontSize: 12, color: context.adaptiveSlate500),
                   ),
 
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
+                    padding: EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: 4,
                     ),
@@ -2769,7 +2772,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
               ],
             ),
 
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
           ],
 
           if (shouldShowCustomerTabs) ...[
@@ -2819,7 +2822,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                   ),
 
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
+                    padding: EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 8,
                     ),
@@ -2841,7 +2844,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                     children: [
                       searchField,
 
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
 
                       filterButton,
                     ],
@@ -2852,7 +2855,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                   children: [
                     searchField,
 
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
 
                     filterButton,
                   ],
@@ -2860,7 +2863,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
               },
             ),
 
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             AnimatedSize(
               duration: const Duration(milliseconds: 200),
@@ -2870,7 +2873,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                       crossAxisAlignment: CrossAxisAlignment.start,
 
                       children: [
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
 
                         LayoutBuilder(
                           builder: (context, constraints) {
@@ -2883,7 +2886,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                                 children: [
                                   _buildPriorityDropdown(ref, priorityFilter),
 
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
 
                                   if (widget.showAssigneesFilter) ...[
                                     _buildAssigneeDropdown(
@@ -2896,7 +2899,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                                       assigneeFilter,
                                     ),
 
-                                    const SizedBox(height: 8),
+                                    SizedBox(height: 8),
                                   ],
 
                                   _buildSortDropdown(ref, sortOption),
@@ -2945,12 +2948,12 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                           },
                         ),
 
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         Row(
                           children: [
                             ChoiceChip(
-                              label: const Text('All'),
+                              label: Text('All'),
 
                               selected: statusFilter == null,
 
@@ -2961,10 +2964,10 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                               },
                             ),
 
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
 
                             ChoiceChip(
-                              label: const Text('Open'),
+                              label: Text('Open'),
 
                               selected: statusFilter == 'Open',
 
@@ -2975,10 +2978,10 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                               },
                             ),
 
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
 
                             ChoiceChip(
-                              label: const Text('Closed'),
+                              label: Text('Closed'),
 
                               selected: statusFilter == 'Closed',
 
@@ -2991,12 +2994,12 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                           ],
                         ),
 
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
 
                         Row(
                           children: [
                             ChoiceChip(
-                              label: const Text('All response times'),
+                              label: Text('All response times'),
 
                               selected: responseTimeFilter == 'all',
 
@@ -3007,10 +3010,10 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                               },
                             ),
 
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
 
                             ChoiceChip(
-                              label: const Text('At risk soon'),
+                              label: Text('At risk soon'),
 
                               selected: responseTimeFilter == 'at_risk',
 
@@ -3021,10 +3024,10 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                               },
                             ),
 
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
 
                             ChoiceChip(
-                              label: const Text('Overdue'),
+                              label: Text('Overdue'),
 
                               selected: responseTimeFilter == 'overdue',
 
@@ -3037,10 +3040,10 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                           ],
                         ),
 
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                       ],
                     )
-                  : const SizedBox.shrink(),
+                  : SizedBox.shrink(),
             ),
           ],
 
@@ -3433,7 +3436,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
 
                   for (var i = 0; i < source.length; i++) {
                     if (i > 0) {
-                      children.add(const SizedBox(height: 12));
+                      children.add(SizedBox(height: 12));
                     }
 
                     children.add(buildTicketCard(source[i]));
@@ -3449,10 +3452,12 @@ class _TicketsViewState extends ConsumerState<TicketsView>
                   showOnlyUnclaimed: widget.showOnlyUnclaimed,
                   groupResolved: widget.groupResolved,
                   isUnclaimedTab: widget.quickView == TicketQuickView.unclaimed,
+                  hasMore: ref.read(paginatedTicketsProvider.notifier).hasMore,
+                  onLoadMore: () => ref.read(paginatedTicketsProvider.notifier).loadMore(),
                 );
               },
 
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => Center(child: CircularProgressIndicator()),
 
               error: (err, _) =>
                   Center(child: Text('Error loading tickets: $err')),
@@ -3472,7 +3477,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
       decoration: InputDecoration(
         isDense: true,
 
-        contentPadding: const EdgeInsets.symmetric(
+        contentPadding: EdgeInsets.symmetric(
           horizontal: 12,
 
           vertical: 10,
@@ -3556,7 +3561,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
           decoration: InputDecoration(
             isDense: true,
 
-            contentPadding: const EdgeInsets.symmetric(
+            contentPadding: EdgeInsets.symmetric(
               horizontal: 12,
 
               vertical: 10,
@@ -3585,13 +3590,13 @@ class _TicketsViewState extends ConsumerState<TicketsView>
         );
       },
 
-      loading: () => const SizedBox(
+      loading: () => SizedBox(
         height: 40,
 
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       ),
 
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, __) => SizedBox.shrink(),
     );
   }
 
@@ -3604,7 +3609,7 @@ class _TicketsViewState extends ConsumerState<TicketsView>
       decoration: InputDecoration(
         isDense: true,
 
-        contentPadding: const EdgeInsets.symmetric(
+        contentPadding: EdgeInsets.symmetric(
           horizontal: 12,
 
           vertical: 10,
@@ -3662,7 +3667,7 @@ class _TicketListSectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 8, top: 4),
+      padding: EdgeInsets.only(left: 8, bottom: 8, top: 4),
 
       child: Text(
         label,
@@ -3672,7 +3677,7 @@ class _TicketListSectionLabel extends StatelessWidget {
 
           fontWeight: FontWeight.w600,
 
-          color: AppColors.slate600,
+          color: context.adaptiveSlate600,
 
           letterSpacing: 0.5,
         ),
@@ -3712,7 +3717,7 @@ class _TicketListEntry extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 220),
 
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 20),
+        padding: EdgeInsets.only(bottom: 20),
 
         child: Stack(
           clipBehavior: Clip.none,
@@ -3734,7 +3739,7 @@ class _TicketListEntry extends StatelessWidget {
 
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: context.adaptiveCard.withValues(alpha: 0.8),
 
                     borderRadius: BorderRadius.circular(10),
 
@@ -3744,16 +3749,16 @@ class _TicketListEntry extends StatelessWidget {
                   child: IconButton(
                     visualDensity: VisualDensity.compact,
 
-                    padding: const EdgeInsets.all(6),
+                    padding: EdgeInsets.all(6),
 
                     iconSize: 18,
 
                     tooltip: 'Remove from My Tickets',
 
-                    icon: const Icon(
+                    icon: Icon(
                       LucideIcons.trash,
 
-                      color: AppColors.slate600,
+                      color: context.adaptiveSlate600,
                     ),
 
                     onPressed: () {

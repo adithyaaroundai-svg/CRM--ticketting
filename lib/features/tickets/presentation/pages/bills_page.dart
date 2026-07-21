@@ -98,19 +98,19 @@ class _BillsPageState extends ConsumerState<BillsPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Delete tickets?'),
+          title: Text('Delete tickets?'),
           content: Text(
             'Delete ${toDelete.length} selected ticket(s)? This cannot be undone.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text('Cancel'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-              child: const Text('Delete'),
+              child: Text('Delete'),
             ),
           ],
         );
@@ -142,17 +142,17 @@ class _BillsPageState extends ConsumerState<BillsPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Delete ticket?'),
-          content: const Text('This cannot be undone.'),
+          title: Text('Delete ticket?'),
+          content: Text('This cannot be undone.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text('Cancel'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-              child: const Text('Delete'),
+              child: Text('Delete'),
             ),
           ],
         );
@@ -202,7 +202,7 @@ class _BillsPageState extends ConsumerState<BillsPage> {
     return MainLayout(
       currentPath: currentPath,
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: context.adaptiveSlate50,
         floatingActionButton: isAccountant
             ? AnimatedCreateTicketFab(
                 onPressed: () {
@@ -333,7 +333,7 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                               padding: const EdgeInsets.all(14),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
+                                children: [
                                   Icon(
                                     LucideIcons.info,
                                     size: 16,
@@ -345,14 +345,14 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                                       'Read-only access: only accountants can mark tickets as billed.',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: AppColors.slate700,
+                                        color: context.adaptiveSlate700,
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                           ],
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -372,8 +372,8 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                                       builder: (context) => const CreateTicketDialog(),
                                     );
                                   },
-                                  icon: const Icon(LucideIcons.plus, size: 16),
-                                  label: const Text('Create Ticket'),
+                                  icon: Icon(LucideIcons.plus, size: 16),
+                                  label: Text('Create Ticket'),
                                   style: FilledButton.styleFrom(
                                     backgroundColor: AppColors.primary,
                                     padding: const EdgeInsets.symmetric(
@@ -384,7 +384,7 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                                 ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: Row(
@@ -392,15 +392,15 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                                 if (isAccountant)
                                   TextButton.icon(
                                     onPressed: () => context.go('/active-claimed'),
-                                    icon: const Icon(LucideIcons.activity, size: 16),
-                                    label: const Text('Active tickets'),
+                                    icon: Icon(LucideIcons.activity, size: 16),
+                                    label: Text('Active tickets'),
                                     style: TextButton.styleFrom(
                                       foregroundColor: AppColors.error,
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 12,
                                         vertical: 8,
                                       ),
-                                      textStyle: const TextStyle(
+                                      textStyle: TextStyle(
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -414,32 +414,32 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                                     ),
                                     label: Text(_selectionMode ? 'Cancel Select' : 'Select'),
                                     style: TextButton.styleFrom(
-                                      foregroundColor: AppColors.slate500,
+                                      foregroundColor: context.adaptiveSlate500,
                                     ),
                                   ),
                                 TextButton.icon(
                                   onPressed: _clearFilters,
-                                  icon: const Icon(LucideIcons.rotateCcw, size: 16),
-                                  label: const Text('Reset Filters'),
+                                  icon: Icon(LucideIcons.rotateCcw, size: 16),
+                                  label: Text('Reset Filters'),
                                   style: TextButton.styleFrom(
-                                    foregroundColor: AppColors.slate500,
+                                    foregroundColor: context.adaptiveSlate500,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
 
                           // Analytics Section with Hide/Show toggle
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
+                              Text(
                                 'Analytics',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.slate900,
+                                  color: context.adaptiveSlate900,
                                 ),
                               ),
                               TextButton.icon(
@@ -450,13 +450,13 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                                 ),
                                 label: Text(_showAnalytics ? 'Hide' : 'Show'),
                                 style: TextButton.styleFrom(
-                                  foregroundColor: AppColors.slate500,
+                                  foregroundColor: context.adaptiveSlate500,
                                 ),
                               ),
                             ],
                           ),
                           if (_showAnalytics) ...[
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
                             _buildTotalsCard(
                               billedTotal: billedTotal,
                               unbilledTotal: unbilledTotal,
@@ -464,12 +464,12 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                               pendingCompletionTotal: pendingCompletionTotal,
                             ),
                           ],
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           
                           // Filter Bar
                           _buildFilterBar(),
                           
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
 
                           if (isAccountant && _selectionMode)
                             Padding(
@@ -479,10 +479,10 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                                 children: [
                                   Text(
                                     '${_selectedTicketIds.length} selected',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.slate700,
+                                      color: context.adaptiveSlate700,
                                     ),
                                   ),
                                   Row(
@@ -491,24 +491,24 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                                         onPressed: filteredTickets.isEmpty
                                             ? null
                                             : () => _selectAllVisible(filteredTickets),
-                                        icon: const Icon(LucideIcons.listChecks, size: 16),
-                                        label: const Text('Select All'),
+                                        icon: Icon(LucideIcons.listChecks, size: 16),
+                                        label: Text('Select All'),
                                       ),
-                                      const SizedBox(width: 8),
+                                      SizedBox(width: 8),
                                       TextButton.icon(
                                         onPressed: _selectedTicketIds.isEmpty
                                             ? null
                                             : _clearSelection,
-                                        icon: const Icon(LucideIcons.xCircle, size: 16),
-                                        label: const Text('Clear'),
+                                        icon: Icon(LucideIcons.xCircle, size: 16),
+                                        label: Text('Clear'),
                                       ),
-                                      const SizedBox(width: 8),
+                                      SizedBox(width: 8),
                                       FilledButton.icon(
                                         onPressed: _selectedTicketIds.isEmpty
                                             ? null
                                             : () => _deleteSelectedTickets(filteredTickets),
-                                        icon: const Icon(LucideIcons.trash2, size: 16),
-                                        label: const Text('Delete'),
+                                        icon: Icon(LucideIcons.trash2, size: 16),
+                                        label: Text('Delete'),
                                         style: FilledButton.styleFrom(
                                           backgroundColor: AppColors.error,
                                         ),
@@ -565,15 +565,15 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                     ),
                   );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () => Center(child: CircularProgressIndicator()),
                   error: (err, _) => Center(child: Text('Error: $err')),
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => Center(child: CircularProgressIndicator()),
               error: (err, _) => Center(child: Text('Error: $err')),
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => Center(child: CircularProgressIndicator()),
           error: (err, stack) => Center(child: Text('Error loading bills: $err')),
         ),
       ),
@@ -604,14 +604,14 @@ class _BillsPageState extends ConsumerState<BillsPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.slate200),
+                  border: Border.all(color: context.adaptiveSlate200),
                   borderRadius: BorderRadius.circular(6),
                   color: Colors.white,
                 ),
                 child: Row(
                   children: [
-                    const Icon(LucideIcons.calendar, size: 14, color: AppColors.slate500),
-                    const SizedBox(width: 6),
+                    Icon(LucideIcons.calendar, size: 14, color: context.adaptiveSlate500),
+                    SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         _selectedDate == null
@@ -620,16 +620,16 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                         style: TextStyle(
                           fontSize: 12,
                           color: _selectedDate == null
-                              ? AppColors.slate400
-                              : AppColors.slate900,
+                              ? context.adaptiveSlate400
+                              : context.adaptiveSlate900,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (_selectedDate != null) ...[
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       IconButton(
-                        icon: const Icon(LucideIcons.x, size: 12),
+                        icon: Icon(LucideIcons.x, size: 12),
                         onPressed: () => setState(() => _selectedDate = null),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
@@ -640,7 +640,7 @@ class _BillsPageState extends ConsumerState<BillsPage> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Search Filter (Customer or Issue)
           Expanded(
             flex: 3,
@@ -655,7 +655,7 @@ class _BillsPageState extends ConsumerState<BillsPage> {
               },
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Amount Filter
           Expanded(
             flex: 2,
@@ -688,22 +688,22 @@ class _BillsPageState extends ConsumerState<BillsPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.slate200),
+        border: Border.all(color: context.adaptiveSlate200),
       ),
       child: TextField(
         controller: controller,
         onChanged: onChanged,
         keyboardType: keyboardType,
-        style: const TextStyle(fontSize: 12),
+        style: TextStyle(fontSize: 12),
         decoration: InputDecoration(
           isDense: true,
           hintText: hint,
-          hintStyle: const TextStyle(color: AppColors.slate400, fontSize: 12),
-          prefixIcon: Icon(icon, size: 14, color: AppColors.slate500),
+          hintStyle: TextStyle(color: context.adaptiveSlate400, fontSize: 12),
+          prefixIcon: Icon(icon, size: 14, color: context.adaptiveSlate500),
           prefixIconConstraints: const BoxConstraints(minWidth: 30, minHeight: 30),
           suffixIcon: controller.text.isNotEmpty
               ? IconButton(
-                  icon: const Icon(LucideIcons.x, size: 12),
+                  icon: Icon(LucideIcons.x, size: 12),
                   onPressed: onClear,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
@@ -736,38 +736,38 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   LucideIcons.indianRupee,
-                  color: AppColors.primary,
+                  color: context.isDarkMode ? Colors.white : AppColors.primary,
                   size: 20,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Total Bill Amount',
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.slate500,
+                      color: context.adaptiveSlate500,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  SizedBox(height: 3),
                   Text(
                     '₹${grandTotal.toStringAsFixed(2)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.slate900,
+                      color: context.adaptiveSlate900,
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Row(
             children: [
               _AmountSummaryTile(
@@ -775,7 +775,7 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                 amount: billedTotal,
                 color: AppColors.success,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               _AmountSummaryTile(
                 label: 'Unbilled Total',
                 amount: unbilledTotal,
@@ -783,7 +783,7 @@ class _BillsPageState extends ConsumerState<BillsPage> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Row(
             children: [
               _AmountSummaryTile(
@@ -791,7 +791,7 @@ class _BillsPageState extends ConsumerState<BillsPage> {
                 amount: awaitingBillingTotal,
                 color: AppColors.info,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               _AmountSummaryTile(
                 label: 'Pending Completion (Bill Raised)',
                 amount: pendingCompletionTotal,
@@ -844,7 +844,7 @@ class _BillListItem extends StatelessWidget {
                 onSelectedChanged?.call(value);
               },
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
           ],
           // Left Section: Issue & Company
           Expanded(
@@ -853,25 +853,25 @@ class _BillListItem extends StatelessWidget {
               children: [
                 Text(
                   ticket.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.slate900,
+                    color: context.adaptiveSlate900,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 3),
+                SizedBox(height: 3),
                 Row(
                   children: [
-                    const Icon(LucideIcons.building, size: 13, color: AppColors.slate400),
-                    const SizedBox(width: 5),
+                    Icon(LucideIcons.building, size: 13, color: context.adaptiveSlate400),
+                    SizedBox(width: 5),
                     Expanded(
                       child: Text(
                         customerName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.slate600,
+                          color: context.adaptiveSlate600,
                           fontWeight: FontWeight.w500,
                         ),
                         maxLines: 1,
@@ -883,31 +883,31 @@ class _BillListItem extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           // Right Section: Amount & Status & Info
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               if (onDelete != null) ...[
                 IconButton(
-                  icon: const Icon(LucideIcons.trash2, size: 16),
+                  icon: Icon(LucideIcons.trash2, size: 16),
                   onPressed: onDelete,
-                  color: AppColors.slate500,
+                  color: context.adaptiveSlate500,
                   tooltip: 'Delete',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
-                const SizedBox(height: 3),
+                SizedBox(height: 3),
               ],
               Text(
                 '₹${ticket.billAmount?.toStringAsFixed(2) ?? '0.00'}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+                  color: context.isDarkMode ? Colors.white : AppColors.primary,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -915,38 +915,38 @@ class _BillListItem extends StatelessWidget {
                     label: _statusLabel(ticket.status),
                     variant: _statusVariant(ticket.status),
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   Text(
                     ticket.updatedAt != null ? timeago.format(ticket.updatedAt!.toLocal()) : '',
-                    style: const TextStyle(fontSize: 10, color: AppColors.slate400),
+                    style: TextStyle(fontSize: 10, color: context.adaptiveSlate400),
                   ),
                 ],
               ),
-              const SizedBox(height: 3),
+              SizedBox(height: 3),
               Text(
                 'Raised by: $agentName',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.slate500,
+                  color: context.adaptiveSlate500,
                 ),
               ),
               if (onMarkAsBilled != null && canMarkAsBilled) ...[
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 SizedBox(
                   height: 32,
                   child: ElevatedButton.icon(
                     onPressed: isProcessing ? null : onMarkAsBilled,
                     icon: isProcessing
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 12,
                             height: 12,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(LucideIcons.checkCircle, size: 14),
+                        : Icon(LucideIcons.checkCircle, size: 14),
                     label: Text(
                       isProcessing ? 'Marking...' : 'Mark as Billed',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.success,
@@ -1004,14 +1004,14 @@ class _AmountSummaryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = _darkenColor(color);
+    final textColor = context.isDarkMode ? _lightenColor(color, 0.3) : _darkenColor(color);
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: color.withValues(alpha: 0.08),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+          color: context.adaptiveCard,
+          border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1024,7 +1024,7 @@ class _AmountSummaryTile extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 3),
+            SizedBox(height: 3),
             Text(
               '₹${amount.toStringAsFixed(2)}',
               style: TextStyle(
@@ -1046,4 +1046,12 @@ Color _darkenColor(Color color, [double amount = 0.2]) {
     (hsl.lightness - amount).clamp(0.0, 1.0),
   );
   return darkened.toColor();
+}
+
+Color _lightenColor(Color color, [double amount = 0.2]) {
+  final hsl = HSLColor.fromColor(color);
+  final lightened = hsl.withLightness(
+    (hsl.lightness + amount).clamp(0.0, 1.0),
+  );
+  return lightened.toColor();
 }
