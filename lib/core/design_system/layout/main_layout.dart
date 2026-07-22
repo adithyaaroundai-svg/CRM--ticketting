@@ -2034,13 +2034,13 @@ final appSettings = ref
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+        color: context.isDarkMode ? Colors.transparent : Colors.white,
+        border: Border(top: BorderSide(color: context.isDarkMode ? Colors.white.withValues(alpha: 0.1) : AppColors.border, width: 1)),
       ),
       child: NavigationBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        indicatorColor: AppColors.primary.withValues(alpha: 0.1),
+        indicatorColor: AppColors.primary.withValues(alpha: context.isDarkMode ? 0.2 : 0.1),
         selectedIndex: selectedIndex,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         height: 52,
@@ -2107,7 +2107,9 @@ final appSettings = ref
                   title: Text(
                     dest.label,
                     style: TextStyle(
-                      color: isActive ? AppColors.primary : AppColors.slate900,
+                      color: isActive 
+                          ? AppColors.primary 
+                          : (Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.slate900),
                       fontWeight: isActive
                           ? FontWeight.w600
                           : FontWeight.normal,

@@ -16,11 +16,15 @@ Stream<List<Map<String, dynamic>>> _realtimeStream({
   required Future<List<Map<String, dynamic>>> Function() fetcher,
 }) {
   final controller = StreamController<List<Map<String, dynamic>>>.broadcast();
+  List<Map<String, dynamic>> currentData = [];
+  bool hasFetched = false;
 
   Future<void> fetch() async {
     try {
       final data = await fetcher();
-      if (!controller.isClosed) controller.add(data);
+      currentData = List<Map<String, dynamic>>.from(data);
+      hasFetched = true;
+      if (!controller.isClosed) controller.add(currentData);
     } catch (e) {
       if (!controller.isClosed) controller.addError(e);
     }
@@ -29,9 +33,6 @@ Stream<List<Map<String, dynamic>>> _realtimeStream({
   // Initial load
   fetch();
 
-  // Fallback polling every 10 seconds in case realtime events are missed
-  final fallbackTimer = Timer.periodic(const Duration(seconds: 10), (_) => fetch());
-
   // Subscribe to all changes
   final channel = supabase
       .channel('realtime_${table}_$channelSuffix')
@@ -39,12 +40,34 @@ Stream<List<Map<String, dynamic>>> _realtimeStream({
         event: PostgresChangeEvent.all,
         schema: 'public',
         table: table,
-        callback: (_) => fetch(),
+        callback: (payload) {
+          if (!hasFetched) return;
+          
+          final eventType = payload.eventType;
+          final newRecord = payload.newRecord;
+          final oldRecord = payload.oldRecord;
+          
+          if (eventType == PostgresChangeEvent.insert) {
+            currentData.insert(0, newRecord);
+          } else if (eventType == PostgresChangeEvent.update) {
+            final index = currentData.indexWhere((item) => item['id'] == newRecord['id']);
+            if (index != -1) {
+              currentData[index] = newRecord;
+            } else {
+              // If it's updated but not in our list (e.g., due to limits or filters),
+              // we can fetch again or just ignore. Ignoring is safer for egress.
+              // We could insert it, but it might mess up ordering. 
+            }
+          } else if (eventType == PostgresChangeEvent.delete) {
+            currentData.removeWhere((item) => item['id'] == oldRecord['id']);
+          }
+          
+          if (!controller.isClosed) controller.add(List.from(currentData));
+        },
       )
       .subscribe();
 
   controller.onCancel = () {
-    fallbackTimer.cancel();
     supabase.removeChannel(channel);
   };
 
@@ -143,7 +166,8 @@ class SupabaseTicketRepository implements TicketRepository {
       fetcher: () => _supabase
           .from('tickets')
           .select()
-          .order('created_at', ascending: false),
+          .order('created_at', ascending: false)
+          .limit(500),
     ).map((list) {
       var tickets = list.map((map) => Ticket.fromJson(map)).toList();
       if (statusFilter == 'Open') {
@@ -203,7 +227,8 @@ class SupabaseTicketRepository implements TicketRepository {
           .from('tickets')
           .select()
           .inFilter('status', statuses)
-          .order('created_at', ascending: false),
+          .order('created_at', ascending: false)
+          .limit(500),
     ).map((list) => list.map(Ticket.fromJson).toList());
   }
 
@@ -220,10 +245,16 @@ class SupabaseTicketRepository implements TicketRepository {
       data.remove('bill_amount');
       data.remove('billing_procedure');
       data.remove('payment_collected');
+      data.remove('has_amc');
 
       // Let the database assign the exact server timestamps for consistency
       data.remove('created_at');
       data.remove('updated_at');
+      data.remove('completed_at');
+      
+      // Remove all null values to avoid inserting null into NOT NULL columns
+      // or trying to insert into missing columns when null.
+      data.removeWhere((key, value) => value == null);
 
       print('=== Supabase Insert Ticket Payload ===');
       print(data);
