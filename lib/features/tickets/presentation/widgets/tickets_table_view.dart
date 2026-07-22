@@ -178,9 +178,16 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
         'created_by': currentUser?.id,
       };
 
+      // Remove null values so DB defaults (like created_at -> now()) trigger correctly
+      newTicketData.removeWhere((key, value) => value == null);
+
       await Supabase.instance.client.from('tickets').insert(newTicketData);
 
       if (mounted) {
+        ref.invalidate(rawTicketsStreamProvider);
+        ref.invalidate(rawAllTicketsStreamProvider);
+        ref.invalidate(paginatedTicketsProvider);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Ticket created successfully'), backgroundColor: Colors.green),
         );
