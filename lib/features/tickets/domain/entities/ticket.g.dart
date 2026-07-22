@@ -29,6 +29,7 @@ _Ticket _$TicketFromJson(Map<String, dynamic> json) => _Ticket(
   billAmount: (json['bill_amount'] as num?)?.toDouble(),
   billingProcedure: json['billing_procedure'] as String?,
   paymentCollected: json['payment_collected'] as bool?,
+  hasAmc: json['has_amc'] as bool?,
   completedDate: const UtcDateTimeConverter().fromJson(
     json['completed_at'] as String?,
   ),
@@ -53,5 +54,6 @@ Map<String, dynamic> _$TicketToJson(_Ticket instance) => <String, dynamic>{
   'bill_amount': instance.billAmount,
   'billing_procedure': instance.billingProcedure,
   'payment_collected': instance.paymentCollected,
+  'has_amc': instance.hasAmc,
   'completed_at': const UtcDateTimeConverter().toJson(instance.completedDate),
 };

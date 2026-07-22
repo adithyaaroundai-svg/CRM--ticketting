@@ -353,12 +353,22 @@ class SupabaseTicketRepository implements TicketRepository {
       final data = {
         'title': ticket.title,
         'description': ticket.description,
+        'status': ticket.status,
         'category': ticket.category,
         'priority': ticket.priority,
         'contact_phone': ticket.contactPhone,
         'payment_collected': ticket.paymentCollected,
+        'bill_amount': ticket.billAmount,
+        'has_amc': ticket.hasAmc,
         'updated_at': DateTime.now().toIso8601String(),
       };
+      
+      if (ticket.completedDate != null) {
+        data['completed_at'] = ticket.completedDate!.toIso8601String();
+      }
+      if (ticket.createdAt != null) {
+        data['created_at'] = ticket.createdAt!.toIso8601String();
+      }
 
       await _supabase.from('tickets').update(data).eq('id', ticket.ticketId);
 

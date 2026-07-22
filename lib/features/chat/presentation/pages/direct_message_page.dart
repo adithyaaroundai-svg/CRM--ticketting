@@ -914,6 +914,11 @@ class _DirectMessagePageState extends ConsumerState<DirectMessagePage> {
       data: (messages) {
         if (messages.isEmpty) return;
 
+        if (!_capturedEntryUnread) {
+          _capturedEntryUnread = true;
+          _entryFirstUnreadMessageId = _findFirstUnreadMessageId(messages, currentUser.id);
+        }
+
         final newestMessageAt = messages.last.createdAt.toUtc();
 
         // Update the global chat last seen

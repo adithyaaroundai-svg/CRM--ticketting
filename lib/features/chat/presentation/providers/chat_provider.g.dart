@@ -50,7 +50,7 @@ final class ChatStreamProvider
   }
 }
 
-String _$chatStreamHash() => r'bd6e2bea4370111bc82115ad27ae340c2e5e78c0';
+String _$chatStreamHash() => r'f9b685af4096477cc30a14a8d7bff15d84c66a18';
 
 final class ChatStreamFamily extends $Family
     with
@@ -141,7 +141,7 @@ final class DmStreamProvider
   }
 }
 
-String _$dmStreamHash() => r'fd9070652b8fd8bd006c55453e4500a6c06d1324';
+String _$dmStreamHash() => r'780705b008a2ddc3e96e37aaa1df63c7ab4a452a';
 
 final class DmStreamFamily extends $Family
     with

@@ -46,6 +46,7 @@ abstract class Ticket with _$Ticket {
     @JsonKey(name: 'bill_amount') double? billAmount,
     @JsonKey(name: 'billing_procedure') String? billingProcedure,
     @JsonKey(name: 'payment_collected') bool? paymentCollected,
+    @JsonKey(name: 'has_amc') bool? hasAmc,
     @JsonKey(name: 'completed_at') @UtcDateTimeConverter() DateTime? completedDate,
   }) = _Ticket;
 

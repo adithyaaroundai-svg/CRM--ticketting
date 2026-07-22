@@ -11,6 +11,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../customers/presentation/providers/customer_provider.dart';
 import '../../../customers/domain/entities/customer.dart';
 import '../../../../core/design_system/theme/app_colors.dart';
+import '../../../../core/design_system/theme/app_theme_style.dart';
 
 class TicketsTableView extends ConsumerStatefulWidget {
   final List<Ticket> tickets;
@@ -334,7 +335,19 @@ class _TicketsTableViewState extends ConsumerState<TicketsTableView> {
                 Expanded(
                   flex: 1,
                   child: Text(
-                    'Payment Collected',
+                    'Payment\nCollected',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: context.adaptiveSlate600,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 32),
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    'AMC',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -1341,6 +1354,8 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
   bool _savingContact = false;
   bool _editingBill = false;
   bool _savingBill = false;
+  bool _savingCompletedDate = false;
+  bool _savingReportedDate = false;
   bool _isDeleting = false;
   bool _suppressNextTap = false;
 
@@ -1461,6 +1476,42 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
     }
   }
 
+  Future<void> _saveCompletedDate(DateTime? newDate) async {
+    setState(() => _savingCompletedDate = true);
+    final notifier = ref.read(ticketUpdaterProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final updated = widget.ticket.copyWith(completedDate: newDate);
+      await notifier.updateTicket(updated);
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Failed to update completed date: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingCompletedDate = false);
+    }
+  }
+
+  Future<void> _saveReportedDate(DateTime? newDate) async {
+    setState(() => _savingReportedDate = true);
+    final notifier = ref.read(ticketUpdaterProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final updated = widget.ticket.copyWith(createdAt: newDate);
+      await notifier.updateTicket(updated);
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Failed to update reported date: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingReportedDate = false);
+    }
+  }
+
   Future<void> _deleteTicket() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -1545,24 +1596,26 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
             // Status
             Expanded(
               flex: 2,
-              child: isClaimedByMe
-                  ? DropdownButton<String>(
-                      value: const [
-                        'New', 'Open', 'InProgress', 'OnHold', 'WaitingForCustomer',
-                        'Resolved', 'Closed', 'Reopened', 'BillRaised', 'BillProcessed'
-                      ].contains(ticket.status) ? ticket.status : 'New',
-                      items: const [
-                        DropdownMenuItem(value: 'New', child: Text('New')),
-                        DropdownMenuItem(value: 'Open', child: Text('Open')),
-                        DropdownMenuItem(value: 'InProgress', child: Text('In Progress')),
-                        DropdownMenuItem(value: 'OnHold', child: Text('On Hold')),
-                        DropdownMenuItem(value: 'WaitingForCustomer', child: Text('Waiting')),
-                        DropdownMenuItem(value: 'Resolved', child: Text('Resolved')),
-                        DropdownMenuItem(value: 'Closed', child: Text('Closed')),
-                        DropdownMenuItem(value: 'Reopened', child: Text('Reopened')),
-                        DropdownMenuItem(value: 'BillRaised', child: Text('Bill Raised')),
-                        DropdownMenuItem(value: 'BillProcessed', child: Text('Billed')),
-                      ],
+              child: (isClaimedByMe || (currentUser?.role?.toString().toLowerCase() == 'accountant'))
+                  ? (() {
+                      final isAccountant = currentUser?.role?.toString().toLowerCase() == 'accountant';
+                      final allowedStatuses = isAccountant 
+                          ? ['BillProcessed', 'Closed'] 
+                          : ['New', 'Resolved', 'Closed', 'BillRaised', 'BillProcessed'];
+                          
+                      final currentStatus = allowedStatuses.contains(ticket.status) ? ticket.status : ticket.status;
+                      
+                      return DropdownButton<String>(
+                        value: currentStatus,
+                        items: [
+                          if (!isAccountant) DropdownMenuItem(value: 'New', child: Text('New')),
+                          if (!isAccountant) DropdownMenuItem(value: 'Resolved', child: Text('Resolved')),
+                          if (!isAccountant) DropdownMenuItem(value: 'BillRaised', child: Text('Bill Raised')),
+                          DropdownMenuItem(value: 'BillProcessed', child: Text('Billed')),
+                          DropdownMenuItem(value: 'Closed', child: Text('Closed')),
+                          if (!allowedStatuses.contains(ticket.status))
+                            DropdownMenuItem(value: ticket.status, child: Text(ticket.status)),
+                        ],
                       onChanged: (val) {
                         if (val != null && val != ticket.status) {
                           _saveStatus(val);
@@ -1572,7 +1625,8 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                       underline: SizedBox(),
                       iconSize: 16,
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: context.adaptiveSlate800),
-                    )
+                    );
+                  })()
                   : _buildStatusChip(context, ticket.status, isUnclaimedTab, ticket.assignedTo != null),
             ),
             SizedBox(width: 32),
@@ -1622,7 +1676,11 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                 message: customerName,
                                 child: Text(
                                   customerName,
-                                  style: TextStyle(fontSize: 13, color: context.adaptiveSlate800, fontWeight: FontWeight.w500),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: context.isDarkMode ? Colors.white : context.adaptiveSlate800,
+                                    fontWeight: context.isDarkMode ? FontWeight.bold : FontWeight.w500,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -1644,7 +1702,11 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                       message: customerName,
                       child: Text(
                         customerName,
-                        style: TextStyle(fontSize: 13, color: context.adaptiveSlate800, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: context.isDarkMode ? Colors.white : context.adaptiveSlate800,
+                          fontWeight: context.isDarkMode ? FontWeight.bold : FontWeight.w500,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1696,7 +1758,11 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                 message: ticket.contactPhone ?? 'N/A',
                                 child: Text(
                                   ticket.contactPhone ?? 'N/A',
-                                  style: TextStyle(fontSize: 13, color: context.adaptiveSlate600),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: context.isDarkMode ? Colors.white : context.adaptiveSlate600,
+                                    fontWeight: context.isDarkMode ? FontWeight.bold : FontWeight.normal,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -1718,7 +1784,11 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                       message: ticket.contactPhone ?? 'N/A',
                       child: Text(
                         ticket.contactPhone ?? 'N/A',
-                        style: TextStyle(fontSize: 13, color: context.adaptiveSlate600),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: context.isDarkMode ? Colors.white : context.adaptiveSlate600,
+                          fontWeight: context.isDarkMode ? FontWeight.bold : FontWeight.normal,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1733,8 +1803,10 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                   assignedAgentName,
                   style: TextStyle(
                     fontSize: 13,
-                    color: context.adaptiveSlate600,
-                    fontWeight: ticket.assignedTo != null ? FontWeight.w500 : null,
+                    color: context.isDarkMode ? Colors.white : context.adaptiveSlate600,
+                    fontWeight: context.isDarkMode
+                        ? FontWeight.bold
+                        : (ticket.assignedTo != null ? FontWeight.w500 : FontWeight.normal),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1789,7 +1861,11 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                   message: ticket.title,
                                   child: Text(
                                     ticket.title,
-                                    style: TextStyle(fontSize: 13, color: context.adaptiveSlate700),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: context.isDarkMode ? Colors.white : context.adaptiveSlate700,
+                                      fontWeight: context.isDarkMode ? FontWeight.bold : FontWeight.normal,
+                                    ),
                                     overflow: TextOverflow.ellipsis,
                                     maxLines: 2,
                                   ),
@@ -1812,7 +1888,11 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                         message: ticket.title,
                         child: Text(
                           ticket.title,
-                          style: TextStyle(fontSize: 13, color: context.adaptiveSlate700),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: context.isDarkMode ? Colors.white : context.adaptiveSlate700,
+                            fontWeight: context.isDarkMode ? FontWeight.bold : FontWeight.normal,
+                          ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 2,
                         ),
@@ -1832,7 +1912,7 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                 controller: _billCtrl,
                                 autofocus: true,
                                 keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                style: TextStyle(fontSize: 13, color: Colors.blue.shade600, fontWeight: FontWeight.w500),
+                                style: TextStyle(fontSize: 13, color: context.isDarkMode ? Colors.lightBlue.shade300 : Colors.lightBlue.shade600, fontWeight: FontWeight.w500),
                                 decoration: const InputDecoration(
                                   isDense: true,
                                   contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -1869,8 +1949,8 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                                     : '₹ 0.00',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.blue.shade600,
-                                  fontWeight: FontWeight.w500,
+                                  color: context.isDarkMode ? Colors.white : context.adaptiveSlate600,
+                                  fontWeight: context.isDarkMode ? FontWeight.bold : FontWeight.w500,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -1894,8 +1974,8 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
                           : '₹ 0.00',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.blue.shade600,
-                        fontWeight: FontWeight.w500,
+                        color: context.isDarkMode ? Colors.white : context.adaptiveSlate600,
+                        fontWeight: context.isDarkMode ? FontWeight.bold : FontWeight.w500,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1904,56 +1984,120 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
             // Payment collected
             Expanded(
               flex: 1,
-              child: currentUser?.isAccountant == true
-                  ? DropdownButton<bool>(
-                      value: ticket.paymentCollected ?? false,
-                      items: const [
-                        DropdownMenuItem(value: false, child: Text('No')),
-                        DropdownMenuItem(value: true, child: Text('Yes')),
-                      ],
-                      selectedItemBuilder: (BuildContext context) {
-                        return [
-                          Text(
-                            'No',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: context.adaptiveSlate600,
-                              fontWeight: FontWeight.w500,
-                            ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: currentUser?.isAccountant == true
+                    ? Transform.translate(
+                        offset: const Offset(-12, 0),
+                        child: DropdownButton<bool>(
+                          value: ticket.paymentCollected ?? false,
+                          items: const [
+                            DropdownMenuItem(value: false, child: Text('No')),
+                            DropdownMenuItem(value: true, child: Text('Yes')),
+                          ],
+                          selectedItemBuilder: (BuildContext context) {
+                            return [
+                              Text(
+                                'No',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: context.isDarkMode ? Colors.white : context.adaptiveSlate600,
+                                  fontWeight: context.isDarkMode ? FontWeight.bold : FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                'Yes',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ];
+                          },
+                          onChanged: (val) async {
+                            if (val != null && val != ticket.paymentCollected) {
+                              final updated = ticket.copyWith(paymentCollected: val);
+                              await ref.read(ticketUpdaterProvider.notifier).updateTicket(updated);
+                            }
+                          },
+                          isDense: true,
+                          underline: SizedBox(),
+                          icon: Icon(Icons.arrow_drop_down, color: context.isDarkMode ? Colors.white : context.adaptiveSlate600),
+                          iconSize: 20,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: context.isDarkMode ? Colors.white : context.adaptiveSlate700,
+                            fontWeight: context.isDarkMode ? FontWeight.bold : FontWeight.w500,
                           ),
-                          Text(
-                            'Yes',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.green,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        ),
+                      )
+                    : Text(
+                        (ticket.paymentCollected ?? false) ? 'Yes' : 'No',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: (ticket.paymentCollected ?? false) ? Colors.green : (context.isDarkMode ? Colors.white : context.adaptiveSlate600),
+                          fontWeight: (ticket.paymentCollected ?? false) ? FontWeight.w600 : (context.isDarkMode ? FontWeight.bold : FontWeight.normal),
+                        ),
+                      ),
+              ),
+            ),
+            SizedBox(width: 32),
+            // AMC
+            Expanded(
+              flex: 1,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: isClaimedByMe
+                    ? Transform.translate(
+                        offset: const Offset(-12, 0),
+                        child: DropdownButton<bool?>(
+                          value: ticket.hasAmc,
+                          items: const [
+                            DropdownMenuItem(value: null, child: SizedBox.shrink()),
+                            DropdownMenuItem(value: false, child: Text('No')),
+                            DropdownMenuItem(value: true, child: Text('Yes')),
+                          ],
+                          selectedItemBuilder: (BuildContext context) {
+                            return [
+                              SizedBox.shrink(),
+                              SizedBox.shrink(), // Don't show 'No' text, just the dropdown arrow
+                              Text(
+                                'Yes',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ];
+                          },
+                          onChanged: (val) async {
+                            if (val != null && val != ticket.hasAmc) {
+                              final updated = ticket.copyWith(hasAmc: val);
+                              await ref.read(ticketUpdaterProvider.notifier).updateTicket(updated);
+                            }
+                          },
+                          isDense: true,
+                          underline: SizedBox(),
+                          icon: Icon(Icons.arrow_drop_down, color: context.isDarkMode ? Colors.white : context.adaptiveSlate600),
+                          iconSize: 20,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: context.isDarkMode ? Colors.white : context.adaptiveSlate700,
+                            fontWeight: context.isDarkMode ? FontWeight.bold : FontWeight.w500,
                           ),
-                        ];
-                      },
-                      onChanged: (val) async {
-                        if (val != null && val != ticket.paymentCollected) {
-                          final updated = ticket.copyWith(paymentCollected: val);
-                          await ref.read(ticketUpdaterProvider.notifier).updateTicket(updated);
-                        }
-                      },
-                      isDense: true,
-                      underline: SizedBox(),
-                      iconSize: 20,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: context.adaptiveSlate700,
-                        fontWeight: FontWeight.w500,
+                        ),
+                      )
+                    : Text(
+                        ticket.hasAmc == true ? 'Yes' : '', // Don't show 'No' when not editable
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    )
-                  : Text(
-                      (ticket.paymentCollected ?? false) ? 'Yes' : 'No',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: (ticket.paymentCollected ?? false) ? Colors.green : AppColors.slate600,
-                        fontWeight: (ticket.paymentCollected ?? false) ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
+              ),
             ),
             SizedBox(width: 32),
             // Completed Date
@@ -1961,23 +2105,50 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
               flex: 2,
               child: Row(
                 children: [
-                  Icon(LucideIcons.calendarDays, size: 14, color: context.adaptiveSlate400),
+                  Icon(LucideIcons.calendarDays, size: 14, color: context.isDarkMode ? Colors.white : context.adaptiveSlate400),
                   SizedBox(width: 4),
-                  Text(
-                    () {
-                      // Use completedDate (completed_at) if available
-                      if (ticket.completedDate != null) {
-                        return DateFormat('dd/MM/yyyy').format(ticket.completedDate!.toLocal());
-                      }
-                      // For resolved/closed/billed tickets without completed_at, fall back to updatedAt
-                      const resolvedStatuses = {'Resolved', 'Closed', 'BillRaised', 'BillProcessed'};
-                      if (resolvedStatuses.contains(ticket.status) && ticket.updatedAt != null) {
-                        return DateFormat('dd/MM/yyyy').format(ticket.updatedAt!.toLocal());
-                      }
-                      return '';
-                    }(),
-                    style: TextStyle(fontSize: 13, color: context.adaptiveSlate600),
+                  Flexible(
+                    child: Text(
+                      () {
+                        // Use completedDate (completed_at) if available
+                        if (ticket.completedDate != null) {
+                          return DateFormat('dd/MM/yyyy').format(ticket.completedDate!.toLocal());
+                        }
+                        // For resolved/closed/billed tickets without completed_at, fall back to updatedAt
+                        const resolvedStatuses = {'Resolved', 'Closed', 'BillRaised', 'BillProcessed'};
+                        if (resolvedStatuses.contains(ticket.status) && ticket.updatedAt != null) {
+                          return DateFormat('dd/MM/yyyy').format(ticket.updatedAt!.toLocal());
+                        }
+                        return '';
+                      }(),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: context.isDarkMode ? Colors.white : context.adaptiveSlate600,
+                        fontWeight: context.isDarkMode ? FontWeight.bold : FontWeight.normal,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
+                  SizedBox(width: 4),
+                  if (isClaimedByMe)
+                    _savingCompletedDate
+                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : _EditButton(
+                            onTap: () async {
+                              setState(() => _suppressNextTap = true);
+                              final initialDate = ticket.completedDate ?? ticket.updatedAt ?? DateTime.now();
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate: initialDate,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2030),
+                              );
+                              if (date != null && mounted) {
+                                _saveCompletedDate(date);
+                              }
+                              if (mounted) setState(() => _suppressNextTap = false);
+                            },
+                          ),
                 ],
               ),
             ),
@@ -1987,12 +2158,39 @@ class _TicketTableRowState extends ConsumerState<TicketTableRow> {
               flex: 2,
               child: Row(
                 children: [
-                  Icon(LucideIcons.calendarDays, size: 14, color: context.adaptiveSlate400),
+                  Icon(LucideIcons.calendarDays, size: 14, color: context.isDarkMode ? Colors.white : context.adaptiveSlate400),
                   SizedBox(width: 4),
-                  Text(
-                    ticket.createdAt != null ? DateFormat('dd/MM/yyyy').format(ticket.createdAt!) : '',
-                    style: TextStyle(fontSize: 13, color: context.adaptiveSlate600),
+                  Flexible(
+                    child: Text(
+                      ticket.createdAt != null ? DateFormat('dd/MM/yyyy').format(ticket.createdAt!.toLocal()) : '',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: context.isDarkMode ? Colors.white : context.adaptiveSlate600,
+                        fontWeight: context.isDarkMode ? FontWeight.bold : FontWeight.normal,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
+                  SizedBox(width: 4),
+                  if (isClaimedByMe)
+                    _savingReportedDate
+                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : _EditButton(
+                            onTap: () async {
+                              setState(() => _suppressNextTap = true);
+                              final initialDate = ticket.createdAt ?? DateTime.now();
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate: initialDate,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2030),
+                              );
+                              if (date != null && mounted) {
+                                _saveReportedDate(date);
+                              }
+                              if (mounted) setState(() => _suppressNextTap = false);
+                            },
+                          ),
                 ],
               ),
             ),
@@ -2094,6 +2292,9 @@ class _EditButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
+    final color = isDark ? Colors.white : AppColors.primary;
+
     return GestureDetector(
       // Absorb the event so it doesn't bubble to the row's InkWell
       onTap: onTap,
@@ -2105,10 +2306,10 @@ class _EditButton extends StatelessWidget {
           child: Container(
             padding: EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Icon(LucideIcons.pencil, size: 12, color: AppColors.primary),
+            child: Icon(LucideIcons.pencil, size: 12, color: color),
           ),
         ),
       ),

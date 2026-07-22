@@ -330,7 +330,10 @@ class ChatRepository {
       conversations.putIfAbsent(partnerId, () => {
         'last_message_at': createdAt,
         'messages_from_partner': <String>[],
+        'total_message_count': 0,
       });
+
+      conversations[partnerId]!['total_message_count'] = (conversations[partnerId]!['total_message_count'] as int) + 1;
 
       final currentLast = conversations[partnerId]!['last_message_at'] as DateTime;
       if (createdAt.isAfter(currentLast)) {
@@ -391,7 +394,10 @@ class ChatRepository {
           conversations.putIfAbsent(partnerId, () => {
             'last_message_at': createdAt,
             'messages_from_partner': <String>[],
+            'total_message_count': 0,
           });
+
+          conversations[partnerId]!['total_message_count'] = (conversations[partnerId]!['total_message_count'] as int) + 1;
 
           // Track the latest message time
           final currentLast = conversations[partnerId]!['last_message_at'] as DateTime;

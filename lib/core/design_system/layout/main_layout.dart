@@ -23,6 +23,16 @@ import '../../../features/productivity/presentation/widgets/reminder_toast_overl
 import '../../../features/productivity/presentation/providers/reminder_provider.dart';
 import '../../services/reminder_sound_service.dart';
 import '../../services/chat_sound_service.dart';
+// -- Layout State Providers ---------------------------------------------------
+class TicketPaneOpenNotifier extends Notifier<bool> {
+  @override
+  bool build() => true;
+  void toggle() => state = !state;
+}
+
+final ticketPaneOpenProvider = NotifierProvider<TicketPaneOpenNotifier, bool>(
+  TicketPaneOpenNotifier.new,
+);
 
 class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -38,7 +48,6 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   double _firstPaneWidth = 240;
   final double _minPaneWidth = 180;
   final double _maxPaneWidth = 400;
-  bool _isTicketPaneOpen = true;
   bool _isMobileSidebarOpen = false;
   Timer? _lastSeenUpdateTimer;
   bool _isDisposed = false;
@@ -282,9 +291,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                 if (!_isRestrictedAgent && !widget.currentPath.startsWith('/sales-channel'))
                   _CollapsibleTicketPane(
                     currentPath: widget.currentPath,
-                    isOpen: _isTicketPaneOpen,
-                    onToggle: () =>
-                        setState(() => _isTicketPaneOpen = !_isTicketPaneOpen),
+                    isOpen: ref.watch(ticketPaneOpenProvider),
+                    onToggle: () => ref.read(ticketPaneOpenProvider.notifier).toggle(),
                   ),
                 Expanded(
                   child: Column(
@@ -3128,6 +3136,30 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
                         if (unreadA > 0 && unreadB == 0) return -1;
                         if (unreadB > 0 && unreadA == 0) return 1;
 
+                        // Sort by most recent message first
+                        final convA = conversations[agentAId];
+                        final convB = conversations[agentBId];
+                        
+                        final lastA = convA?['last_message_at'] as DateTime?;
+                        final lastB = convB?['last_message_at'] as DateTime?;
+
+                        if (lastA != null && lastB != null) {
+                          final timeComp = lastB.compareTo(lastA); // Descending (recent first)
+                          if (timeComp != 0) return timeComp;
+                        } else if (lastA != null) {
+                          return -1;
+                        } else if (lastB != null) {
+                          return 1;
+                        }
+
+                        // Sort by message frequency (most exchanged messages first)
+                        final countA = (convA?['total_message_count'] as int?) ?? 0;
+                        final countB = (convB?['total_message_count'] as int?) ?? 0;
+                        
+                        if (countA != countB) {
+                          return countB.compareTo(countA); // Descending (higher frequency first)
+                        }
+
                         // Otherwise alphabetical
                         final nameA = (a['full_name'] ?? a['username'] ?? '')
                             .toString()
@@ -3326,6 +3358,8 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
                       },
                     );
                   },
+                  skipLoadingOnReload: true,
+                  skipLoadingOnRefresh: true,
                   loading: () => const Center(
                     child: SizedBox(
                       height: 16,
@@ -3348,6 +3382,8 @@ class _ChannelsListState extends ConsumerState<_ChannelsList> {
                   ),
                 );
               },
+              skipLoadingOnReload: true,
+              skipLoadingOnRefresh: true,
               loading: () => const Center(
                 child: SizedBox(
                   height: 16,

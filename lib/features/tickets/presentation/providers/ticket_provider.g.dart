@@ -220,7 +220,7 @@ final class PaginatedTicketsProvider
   PaginatedTickets create() => PaginatedTickets();
 }
 
-String _$paginatedTicketsHash() => r'f38a5f4785a9916064fa914558d706035b1bdf67';
+String _$paginatedTicketsHash() => r'61c31ee8ff0d3caf0170bf6ed5a52f73e56ac9b8';
 
 abstract class _$PaginatedTickets extends $AsyncNotifier<List<Ticket>> {
   FutureOr<List<Ticket>> build();
